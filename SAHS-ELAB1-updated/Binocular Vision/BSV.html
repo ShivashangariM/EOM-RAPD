@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Clinical Fusion & Stereopsis Simulator</title>
+  
+  <!-- Fonts & Icon Packs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',    /* Slate 900 */
+            secondary: '#0284c7',  /* Sky 600 */
+            accent: '#0d9488',     /* Teal 600 */
+            lightbg: '#f8fafc',    /* Slate 50 */
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #0284c7;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    .dark .glass {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+    }
+
+    /* Fusion target dynamic translations */
+    .target-transition {
+      transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease;
+    }
+    
+    /* Stereoscopic pop-out 3D shadow depth simulations */
+    .stereo-shadow-active {
+      filter: drop-shadow(0px 8px 12px rgba(2, 132, 199, 0.45));
+      transform: scale(1.1);
+      transition: transform 0.4s ease, filter 0.4s ease;
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <!-- CLINICAL AUDIO SYNTHESIZER -->
+  <script>
+    let audioCtx = null;
+    
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("AudioContext blocked or unsupported.");
+      }
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click':
+          playAudioTone(720, 'sine', 0.08, 0.04);
+          break;
+        case 'tick':
+          playAudioTone(1000, 'triangle', 0.03, 0.015);
+          break;
+        case 'warning':
+          playAudioTone(190, 'sawtooth', 0.25, 0.05);
+          break;
+        case 'success':
+          playAudioTone(520, 'sine', 0.1, 0.05);
+          setTimeout(() => playAudioTone(640, 'sine', 0.15, 0.05), 80);
+          break;
+        case 'blip':
+          playAudioTone(480, 'sine', 0.06, 0.03);
+          break;
+        case 'switch':
+          playAudioTone(380, 'triangle', 0.12, 0.04);
+          break;
+      }
+    }
+  </script>
+
+  <!-- NAVIGATION BAR -->
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-500">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800">
+          <i class="fa-solid fa-shapes text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+            SAHS-E-LAB | <span class="text-secondary">Binocular Single Vision (BSV) Lab</span>
+            <span class="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900">v1.5</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-extrabold">Simultaneous Macular Perception, Flat Fusion, &amp; Stereopsis</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+          <button onclick="toggleDarkMode()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke text-sky-600 dark:text-sky-400"></i>
+          </button>
+        </div>
+
+        <div class="relative md:hidden">
+          <button onclick="toggleMobileDropdown()" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-900 flex items-center justify-center text-slate-700 dark:text-slate-200 cursor-pointer">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </button>
+          <div id="mobileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 py-2">
+            <button onclick="openMenuModal('about'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-info text-secondary w-4 text-center"></i> About Us
+            </button>
+            <button onclick="toggleMute(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i id="mobileMuteIcon" class="fa-solid fa-volume-high text-teal-600 w-4 text-center"></i> <span id="mobileMuteText">Mute Sound</span>
+            </button>
+            <button onclick="openMenuModal('reference'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-book-bookmark text-amber-500 w-4 text-center"></i> Reference
+            </button>
+            <button onclick="toggleDarkMode(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-half-stroke text-sky-600 w-4 text-center"></i> Theme Toggle
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- MASTER CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-12 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-500" id="workspaceContainer">
+    
+    <!-- LEFT PANEL: Dynamic Synoptophore & Cortical Percept Screen -->
+    <section class="lg:col-span-7 space-y-4 font-mono" id="simulationViewport">
+      
+      <!-- Interactive Virtual Synoptophore Scope Viewport -->
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs relative transition-all duration-500">
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Cortical Fusion Integration Percept</span>
+          <span class="text-[10px] font-mono text-secondary px-2.5 py-1 bg-sky-50 dark:bg-sky-950/40 rounded border border-sky-100 dark:border-sky-900/60 font-bold animate-pulse" id="binocularLockStatus">LEVEL 1: SIMULTANEOUS PERCEPTION ACTIVE</span>
+        </div>
+
+        <!-- The Central Cortical Screen combining Left and Right eye channels -->
+        <div class="bg-slate-950 rounded-2xl relative flex flex-col justify-between items-stretch h-[260px] md:h-[300px] overflow-hidden select-none shadow-inner" id="fusionViewportBox">
+          
+          <!-- Monocular Input Previews (Left OS and Right OD Channels) -->
+          <div class="absolute top-3 left-4 right-4 flex justify-between z-20 pointer-events-none">
+            <!-- Left OS input -->
+            <div class="bg-slate-900/90 border border-slate-800 p-2 rounded-xl text-center space-y-1 w-[80px] sm:w-[110px]">
+              <span class="text-[8px] text-emerald-500 font-extrabold uppercase">Left Eye OS</span>
+              <div class="h-8 sm:h-12 flex items-center justify-center relative bg-slate-950 rounded-lg overflow-hidden border border-slate-800" id="monocPreviewOS">
+                <!-- Hydrated dynamically by JavaScript -->
+              </div>
+            </div>
+            <!-- Right OD input -->
+            <div class="bg-slate-900/90 border border-slate-800 p-2 rounded-xl text-center space-y-1 w-[80px] sm:w-[110px]">
+              <span class="text-[8px] text-red-500 font-extrabold uppercase">Right Eye OD</span>
+              <div class="h-8 sm:h-12 flex items-center justify-center relative bg-slate-950 rounded-lg overflow-hidden border border-slate-800" id="monocPreviewOD">
+                <!-- Hydrated dynamically by JavaScript -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Cortical Percept Integrated Stage -->
+          <div class="flex-1 flex justify-center items-center relative z-10">
+            <div id="integratedCorticalStage" class="w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] bg-slate-900/50 border border-slate-800/80 rounded-2xl relative flex items-center justify-center">
+              
+              <!-- Left Eye Channel Element Overlay (Emerald Tint) -->
+              <div id="channelOS" class="absolute inset-0 flex items-center justify-center pointer-events-none target-transition">
+                <!-- Populated by JS Level selectors -->
+              </div>
+
+              <!-- Right Eye Channel Element Overlay (Red Tint) -->
+              <div id="channelOD" class="absolute inset-0 flex items-center justify-center pointer-events-none target-transition">
+                <!-- Populated by JS Level selectors -->
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Live dynamic feed bar -->
+          <div class="bg-slate-900 border-t border-slate-900 p-2.5 px-4 z-10" id="liveCommentaryBar">
+            <div class="flex justify-center items-center gap-2 max-w-lg mx-auto">
+              <span class="text-[8px] bg-sky-950 text-secondary border border-sky-800 font-black tracking-widest uppercase px-1.5 py-0.5 rounded flex-shrink-0 animate-pulse">Diagnostics Feed</span>
+              <p id="commentaryText" class="text-[10px] text-slate-300 font-mono truncate font-bold text-center flex-1">Awaiting target adjustments...</p>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-glasses text-secondary"></i>
+            <span>Level 1 fuses dissimilar objects; Level 2 fuses check elements; Level 3 resolves disparity depth.</span>
+          </div>
+          <span class="text-[9px] font-bold text-slate-400 italic">Stereoscopic Disparity: Arc Seconds Calibration</span>
+        </div>
+      </div>
+
+      <!-- Real-Time Sensory Crossover Status Cards -->
+      <div id="pathwayMonitorCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <h4 class="text-xs uppercase font-black text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+          <i class="fa-solid fa-network-wired text-secondary animate-pulse"></i> Realtime Cortical Channel Monitors
+        </h4>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
+          <!-- Left Eye Feed -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block">Left channel (OS)</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="osChannelStatus" class="text-md font-black text-emerald-600">ACTIVE</span>
+              <span id="osLatency" class="text-[9px] text-slate-400">0.0 ms</span>
+            </div>
+          </div>
+
+          <!-- Right Eye Feed -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-red-500 uppercase tracking-widest block">Right channel (OD)</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="odChannelStatus" class="text-md font-black text-red-500">ACTIVE</span>
+              <span id="odLatency" class="text-[9px] text-slate-400">0.0 ms</span>
+            </div>
+          </div>
+
+          <!-- Stereoscopic Depth Output -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest block">Stereoacuity Yield</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="stereoAcuityVal" class="text-md font-black text-purple-600 dark:text-purple-400">40" Arc</span>
+              <span class="text-[9px] text-slate-400">Depth Resolution</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT PANEL: Controllers, Syllabus & Assessment MCQs -->
+    <section class="lg:col-span-5 space-y-4">
+      
+      <!-- PRACTICE CONTROLS CARD -->
+      <div id="practiceControlsCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-xs">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-secondary"></i> Practice Clinic Console
+            </h3>
+            <p class="text-[11px] text-slate-600 dark:text-slate-400 font-bold">Select binocular single vision levels and inspect cortical abnormalities.</p>
+          </div>
+          <button onclick="resetSimulatorToPrimary()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-300 dark:bg-rose-950/20 dark:border-rose-900 rounded-xl text-[10px] font-black text-rose-600 dark:text-rose-400 transition flex items-center gap-1" title="Reset eyes to center and uncover">
+            <i class="fa-solid fa-arrow-rotate-left"></i> Reset
+          </button>
+        </div>
+
+        <!-- Worth's BSV level selection -->
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">1. BSV Level Target</label>
+          <select id="bsvLevelSelect" onchange="updateBSVLevel()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary shadow-sm">
+            <option value="level1">Level 1: Simultaneous Macular Perception (Bird &amp; Cage)</option>
+            <option value="level2">Level 2: Sensory Flat Fusion (Rabbit Ears &amp; Tails)</option>
+            <option value="level3">Level 3: Stereopsis / Vectographic Depth (Pop-out Ring Disparity)</option>
+          </select>
+        </div>
+
+        <!-- Pathology Selection -->
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">2. Sensory / Motor Abnormality</label>
+          <select id="pathologySelect" onchange="updatePathology()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary shadow-sm">
+            <option value="normal">Normal Binocular Single Vision (Intact Crossover)</option>
+            <option value="suppression_od">Monocular Sensory Suppression OD (Right Channel blocked)</option>
+            <option value="suppression_os">Monocular Sensory Suppression OS (Left Channel blocked)</option>
+            <option value="diplopia">Retinal Diplopia (Visual projection split/misaligned)</option>
+            <option value="horror_fusionis">Horror Fusionis (Brain actively rejects sensory fusion)</option>
+            <option value="arc">Anomalous Retinal Correspondence (Microstrabismic ARC)</option>
+          </select>
+        </div>
+
+        <!-- Horizontal Vergence offset slide (Acts as the synoptophore rotation arm) -->
+        <div class="space-y-2 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <div class="flex justify-between items-baseline text-xs font-bold text-slate-700 dark:text-slate-200">
+            <span class="flex items-center gap-1"><i class="fa-solid fa-ruler-horizontal text-secondary"></i> Vergence Alignment (Synoptophore Arm)</span>
+            <span id="vergenceReadout" class="font-mono text-secondary text-base font-black">0.0 Δ</span>
+          </div>
+          
+          <input type="range" id="vergenceSlider" min="-30" max="30" step="1" value="0" oninput="slideVergence()" class="w-full accent-secondary">
+          
+          <div class="flex justify-between text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider pt-1">
+            <span>Base-In (Exo)</span>
+            <span class="text-teal-600">Zero Alignment</span>
+            <span>Base-Out (Eso)</span>
+          </div>
+        </div>
+
+        <!-- Stereoscopic Depth slide (Active primarily for Level 3) -->
+        <div id="depthDisparityPanel" class="hidden space-y-2 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <div class="flex justify-between items-baseline text-xs font-bold text-slate-700 dark:text-slate-200">
+            <span class="flex items-center gap-1"><i class="fa-solid fa-layer-group text-purple-500"></i> Stereo Disparity (Depth)</span>
+            <span id="depthReadout" class="font-mono text-purple-600 dark:text-purple-400 text-base font-black">40" Arc</span>
+          </div>
+          
+          <input type="range" id="depthSlider" min="0" max="4" step="1" value="4" oninput="slideDepthDisparity()" class="w-full accent-purple-600">
+          
+          <div class="flex justify-between text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider pt-1">
+            <span>0" (Stereoblind)</span>
+            <span>200" (Coarse)</span>
+            <span>40" (Fine depth)</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Beginner Instruction Guide -->
+        <div id="beginnerInstructionCard" class="p-3.5 bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900 rounded-2xl text-[11px] space-y-2">
+          <span class="font-extrabold text-secondary uppercase tracking-widest text-[9px] block flex items-center gap-1">
+            <i class="fa-solid fa-graduation-cap animate-pulse"></i> Beginner's Guidance Tutorial
+          </span>
+          <div id="beginnerInstructionsText" class="text-slate-600 dark:text-slate-400 leading-relaxed space-y-1">
+            <!-- Populated dynamically by JS engine -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TEST MODE INPUT CONSOLE (Only visible in Assessment mode) -->
+      <div id="testModeConsole" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Diagnostic Assessment Board</h3>
+            <p class="text-[10px] text-slate-600 dark:text-slate-400">Examine the integrated sensory views, determine anomalies, and report findings.</p>
+          </div>
+          <span id="assessmentScoreReadout" class="text-xs font-black bg-slate-100 dark:bg-slate-800 border border-slate-300 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">Score: Unsubmitted</span>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Clinical Binocular Fusion Diagnosis (50% Marks)</label>
+          <select id="testDiagnosisSelect" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary">
+            <option value="">-- Choose Sensory Defect --</option>
+            <option value="normal">Normal Binocular Single Vision (Orthotropic)</option>
+            <option value="suppression_od">Monocular Sensory Suppression OD (Right Channel blocked)</option>
+            <option value="suppression_os">Monocular Sensory Suppression OS (Left Channel blocked)</option>
+            <option value="diplopia">Retinal Diplopia (Visual projection split)</option>
+            <option value="horror_fusionis">Horror Fusionis (Active foveal rejection)</option>
+            <option value="arc">Anomalous Retinal Correspondence (ARC)</option>
+          </select>
+          <p id="diagnosisFeedback" class="text-[11px] font-bold hidden"></p>
+        </div>
+
+        <!-- Symmetrical Pathway MCQ Quiz -->
+        <div class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-900">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block">Pathway Mechanics Quiz (50% Marks)</span>
+          <div id="testMcqSuite" class="space-y-4"></div>
+        </div>
+
+        <button onclick="submitTestAssessment()" class="w-full py-3 bg-secondary text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+          Submit Assessment Profile
+        </button>
+      </div>
+
+      <!-- CLINICAL REFERENCES & SYLLABUS -->
+      <div id="clinicalSyllabusCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-book-open text-teal-600 animate-pulse"></i> Clinical Syllabus Guidelines
+          </h3>
+          <span class="bg-teal-50 dark:bg-teal-950/40 text-teal-600 border border-teal-100 dark:border-teal-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">BSV Keys</span>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <select id="pearlSelector" onchange="displayClinicalPearl()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-700 dark:text-slate-200 font-extrabold focus:outline-none shadow-xs">
+            <option value="levels">Worth's Three Levels of BSV</option>
+            <option value="horror_fusionis">Understanding Horror Fusionis</option>
+            <option value="stereopsis_seconds">Seconds of Arc Disparity Thresholds</option>
+            <option value="arc_pathology">Anomalous Retinal Correspondence (ARC) Mechanics</option>
+          </select>
+
+          <!-- Selected pearl description -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800" id="pearlDescBox">
+            <p class="font-extrabold text-slate-900 dark:text-white text-xs" id="pearlTitle">Worth's Three Levels of BSV</p>
+            <p class="text-slate-600 dark:text-slate-400 text-[11px] mt-2 leading-relaxed" id="pearlDesc">
+              1. Simultaneous Macular Perception (Level 1): Ability to perceive two dissimilar images at once.<br>
+              2. Flat Fusion (Level 2): Ability to merge similar images with check elements into a single 2D picture.<br>
+              3. Stereopsis (Level 3): Ability to resolve subtle horizontal retinal disparity as three-dimensional depth.
+            </p>
+            <div class="mt-3 flex items-center gap-2">
+              <span class="text-[9px] font-bold bg-sky-50 dark:bg-sky-950 text-secondary border border-sky-100 dark:border-sky-900 px-2 py-0.5 rounded">EyeWiki Standard</span>
+              <a href="https://eyewiki.org/Stereopsis" target="_blank" class="text-[9px] font-bold text-red-600 hover:underline flex items-center gap-1">
+                <i class="fa-brands fa-youtube animate-pulse"></i> Clinical Video Ref
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- CLINICAL SYSTEM CODE ENGINE -->
+  <script>
+    const simState = {
+      mode: 'practice',           // 'practice' or 'test'
+      bsvLevel: 'level1',         // 'level1', 'level2', 'level3'
+      pathology: 'normal',        // chosen sensory adaptation profile
+      activePathology: 'normal',  // active sensory runtime target
+      soundMuted: false,
+      vergenceOffset: 0,          // horizontal vergence deviation on synoptophore arm in prism diopters
+      depthValue: 40,             // Stereoacuity in seconds of arc (Level 3 disparity)
+      selectedQuestions: [],
+      scores: {
+        diagnosisScore: 0,
+        mcqScore: 0
+      }
+    };
+
+    const pearlsDatabase = {
+      levels: {
+        title: "Worth's Three Levels of BSV",
+        desc: "Established by Worth: Level 1 (Simultaneous Macular Perception) requires placing dissimilar targets (e.g. bird and cage) over foveal projections; Level 2 (Flat Fusion) blends identical contours carrying monocular check elements; Level 3 (Stereopsis) resolves horizontal foveal disparity into 3D stereoscopic depth."
+      },
+      horror_fusionis: {
+        title: "Understanding Horror Fusionis",
+        desc: "A sensory fusion anomaly where the brain actively rejects central sensory integration. As EOM vergence sliders bring left/right targets close to fusion, the foveal projections actively repel and jump past each other (skipping the fusion point), rendering stable binocular union impossible."
+      },
+      stereopsis_seconds: {
+        title: "Seconds of Arc Disparity Thresholds",
+        desc: "Stereoacuity measures the smallest horizontal disparity processed into depth, valued in seconds of arc (\"). Normal fine stereopsis resolves under 40\" of arc. Values above 200\" represent coarse stereopsis, while complete stereo-blindness represents absolute S-cone or cortical pathway disruption."
+      },
+      arc_pathology: {
+        title: "Anomalous Retinal Correspondence (ARC)",
+        desc: "An adaptation to early-onset strabismus. To avoid constant diplopia, the brain maps the fovea of the fixating eye with a non-foveal, eccentric retinal point in the deviating eye. This achieves binocular fusion cortically despite a manifest objective motor squint."
+      }
+    };
+
+    const targetTemplates = {
+      level1: {
+        os: `<div class="text-6xl text-emerald-500 drop-shadow-md"><i class="fa-solid fa-crow"></i></div>`, // Bird
+        od: `<div class="text-7xl text-red-500 drop-shadow-md border-4 border-dashed border-red-500/30 p-2 rounded-xl"><i class="fa-solid fa-border-none opacity-20 absolute inset-0"></i><i class="fa-solid fa-chess-rook opacity-10"></i></div>`, // Cage
+        desc: "Simultaneous Macular Perception"
+      },
+      level2: {
+        os: `<div class="relative flex flex-col items-center justify-center">
+               <div class="text-6xl text-emerald-500"><i class="fa-solid fa-hippo"></i></div>
+               <span class="absolute top-0 right-0 text-emerald-400 font-extrabold text-xs bg-slate-900 p-0.5 rounded">Ears</span>
+             </div>`, // Hippo with ears only
+        od: `<div class="relative flex flex-col items-center justify-center">
+               <div class="text-6xl text-red-500"><i class="fa-solid fa-hippo"></i></div>
+               <span class="absolute bottom-0 left-0 text-red-400 font-extrabold text-xs bg-slate-900 p-0.5 rounded">Tail</span>
+             </div>`, // Hippo with tail only
+        desc: "Flat Sensory & Motor Fusion"
+      },
+      level3: {
+        os: `<div class="w-16 h-16 rounded-full border-4 border-emerald-500 flex items-center justify-center relative shadow-inner">
+               <span class="text-emerald-500 text-xs font-black">L</span>
+             </div>`,
+        od: `<div id="stereopsisOdTarget" class="w-16 h-16 rounded-full border-4 border-red-500 flex items-center justify-center relative shadow-inner">
+               <span class="text-red-500 text-xs font-black">R</span>
+             </div>`,
+        desc: "Vectographic Stereopsis Depth"
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      syncCompletionBadge();
+      updateBSVLevel();
+    });
+
+    function slideVergence() {
+      simState.vergenceOffset = parseInt(document.getElementById('vergenceSlider').value);
+      document.getElementById('vergenceReadout').innerText = `${simState.vergenceOffset.toFixed(1)} Δ`;
+      renderBSVProjections();
+    }
+
+    function slideDepthDisparity() {
+      const idx = parseInt(document.getElementById('depthSlider').value);
+      const values = [0, 200, 100, 60, 40];
+      simState.depthValue = values[idx];
+      
+      const readout = document.getElementById('depthReadout');
+      const acuityVal = document.getElementById('stereoAcuityVal');
+
+      if (simState.depthValue === 0) {
+        readout.innerText = "0\" Arc (Stereoblind)";
+        acuityVal.innerText = "No Depth";
+      } else {
+        readout.innerText = `${simState.depthValue}\" Arc`;
+        acuityVal.innerText = `${simState.depthValue}\" Arc`;
+      }
+
+      renderBSVProjections();
+    }
+
+    function updateBSVLevel() {
+      soundFeedback('switch');
+      simState.bsvLevel = document.getElementById('bsvLevelSelect').value;
+
+      const badge = document.getElementById('binocularLockStatus');
+      const depthPanel = document.getElementById('depthDisparityPanel');
+
+      if (simState.bsvLevel === 'level1') {
+        badge.innerText = "LEVEL 1: SIMULTANEOUS MACULAR PERCEPTION ACTIVE";
+        depthPanel.classList.add('hidden');
+      } else if (simState.bsvLevel === 'level2') {
+        badge.innerText = "LEVEL 2: SENSORY FLAT FUSION ACTIVE";
+        depthPanel.classList.add('hidden');
+      } else {
+        badge.innerText = "LEVEL 3: VECTOGRAPHIC STEREOPSIS ACTIVE";
+        depthPanel.classList.remove('hidden');
+      }
+
+      // Reset vergence slider to center on tab switches
+      document.getElementById('vergenceSlider').value = 0;
+      simState.vergenceOffset = 0;
+      document.getElementById('vergenceReadout').innerText = "0.0 Δ";
+
+      renderBSVProjections();
+      updateBeginnerTutorial();
+    }
+
+    function renderBSVProjections() {
+      const osChannel = document.getElementById('channelOS');
+      const odChannel = document.getElementById('channelOD');
+      
+      const prevOS = document.getElementById('monocPreviewOS');
+      const prevOD = document.getElementById('monocPreviewOD');
+
+      // Hydrate monocular baseline images into preview channels
+      const template = targetTemplates[simState.bsvLevel];
+      prevOS.innerHTML = template.os;
+      prevOD.innerHTML = template.od;
+
+      // Populate main integrated cortical screen channels
+      osChannel.innerHTML = template.os;
+      odChannel.innerHTML = template.od;
+
+      // Reset transformations
+      osChannel.style.transform = 'translate(0px, 0px)';
+      odChannel.style.transform = 'translate(0px, 0px)';
+      osChannel.style.opacity = '1';
+      odChannel.style.opacity = '1';
+
+      document.getElementById('osChannelStatus').innerText = "ACTIVE";
+      document.getElementById('osChannelStatus').className = "text-md font-black text-emerald-600";
+      document.getElementById('odChannelStatus').innerText = "ACTIVE";
+      document.getElementById('odChannelStatus').className = "text-md font-black text-red-500";
+
+      const path = simState.activePathology;
+      let shiftOD_x = simState.vergenceOffset * 2.8; // translate scale factor
+      let shiftOS_x = 0;
+
+      // 1. Sensory Suppression overrides
+      if (path === 'suppression_od') {
+        odChannel.style.opacity = '0'; // Right eye blocked
+        document.getElementById('odChannelStatus').innerText = "SUPPRESSED";
+        document.getElementById('odChannelStatus').className = "text-md font-black text-rose-500";
+        
+        document.getElementById('commentaryText').innerText = "Right foveal channel suppressed. Only Left OS target visible.";
+        updateCorticalResult(false, "Suppression OD");
+        return;
+      }
+      if (path === 'suppression_os') {
+        osChannel.style.opacity = '0'; // Left eye blocked
+        document.getElementById('osChannelStatus').innerText = "SUPPRESSED";
+        document.getElementById('osChannelStatus').className = "text-md font-black text-rose-500";
+
+        document.getElementById('commentaryText').innerText = "Left foveal channel suppressed. Only Right OD target visible.";
+        updateCorticalResult(false, "Suppression OS");
+        return;
+      }
+
+      // 2. Retinal Diplopia kinetics
+      if (path === 'diplopia') {
+        // Uncorrected manifest deviation splits channels horizontally
+        // Fusing requires moving the synoptophore arm (vergence slider) oppositely to neutralise deviation
+        // e.g., deviation rests at +15px. Saccadic alignment to -15px fuses them.
+        const restingDeviation = -15; // default esotropic split
+        shiftOD_x = (simState.vergenceOffset + restingDeviation) * 2.8;
+
+        const aligned = Math.abs(simState.vergenceOffset + restingDeviation) < 2;
+        if (aligned) {
+          executeSuccessfulFusion(path);
+        } else {
+          document.getElementById('commentaryText').innerText = "Diplopia: Visual axes misaligned. Slide vergence arm to neutralize.";
+          updateCorticalResult(false, "Diplopia");
+        }
+      }
+
+      // 3. Horror Fusionis active foveal rejection kinetic!
+      else if (path === 'horror_fusionis') {
+        // As horizontal vergence brings targets together, they physically jump over each other at the zero point!
+        let offset = simState.vergenceOffset;
+        if (Math.abs(offset) < 4) {
+          // If close to zero, force a sudden jump leap
+          offset = offset >= 0 ? 8 : -8;
+          soundFeedback('warning');
+        }
+        shiftOD_x = offset * 2.8;
+        
+        document.getElementById('commentaryText').innerText = "Horror Fusionis: Cortex actively repels foveal integration. Single vision impossible.";
+        updateCorticalResult(false, "Rejection");
+      }
+
+      // 4. Anomalous Retinal Correspondence (ARC)
+      else if (path === 'arc') {
+        // In ARC, the brain perceives the targets as fused and aligned *despite* an objective deviation
+        // e.g., there is a manifest turn, but foveas have adapted. Targets align at 0.0 offset.
+        shiftOD_x = simState.vergenceOffset * 2.8;
+        const aligned = Math.abs(simState.vergenceOffset) < 2;
+        if (aligned) {
+          executeSuccessfulFusion(path);
+        } else {
+          document.getElementById('commentaryText').innerText = "ARC: Cortical pseudo-foveal binocular axis active.";
+          updateCorticalResult(false, "Unfused ARC");
+        }
+      }
+
+      // 5. Normal Binocular fusion
+      else {
+        const aligned = Math.abs(simState.vergenceOffset) < 2;
+        if (aligned) {
+          executeSuccessfulFusion(path);
+        } else {
+          document.getElementById('commentaryText').innerText = "Misaligned: Use vergence slider to achieve central alignment.";
+          updateCorticalResult(false, "Misaligned");
+        }
+      }
+
+      // Apply horizontal displacements
+      osChannel.style.transform = `translate(${shiftOS_x}px, 0px)`;
+      odChannel.style.transform = `translate(${shiftOD_x}px, 0px)`;
+    }
+
+    function executeSuccessfulFusion(pathology) {
+      const osChannel = document.getElementById('channelOS');
+      const odChannel = document.getElementById('channelOD');
+
+      if (simState.bsvLevel === 'level1') {
+        // Level 1: Place bird symmetrically inside cage
+        document.getElementById('commentaryText').innerText = "Level 1 Achieved: Bird placed perfectly inside cage foveally.";
+        updateCorticalResult(true, "Level 1 fused");
+      } 
+      else if (simState.bsvLevel === 'level2') {
+        // Level 2: Symmetrical Flat fusion. Hippo ears and tail fuse into a single complete hippo
+        document.getElementById('commentaryText').innerText = "Level 2 Achieved: Ears & tail fused consensually. Central hippo complete.";
+        updateCorticalResult(true, "Level 2 fused");
+      } 
+      else {
+        // Level 3: Stereopsis pop-out disparity miosis
+        // If stereoblind (depth = 0), no 3D pop out. Fine depth triggers drop-shadow scalers
+        if (simState.depthValue === 0) {
+          document.getElementById('commentaryText').innerText = "Level 3 Fail: Symmetrical flat circles, zero stereoscopic pop-out.";
+          updateCorticalResult(false, "Stereo-blind");
+        } else {
+          const depthScale = Math.max(1.0, 1.25 - (simState.depthValue / 400)); // lower arc seconds = higher scale
+          const odTarget = document.getElementById('stereopsisOdTarget');
+          if (odTarget) {
+            odTarget.className = "w-16 h-16 rounded-full border-4 border-red-500 flex items-center justify-center relative shadow-inner stereo-shadow-active";
+            odTarget.style.transform = `scale(${depthScale})`;
+          }
+          document.getElementById('commentaryText').innerText = `Level 3 Achieved: ${simState.depthValue}\" Disparity Pop-Out resolved symmetrically.`;
+          updateCorticalResult(true, "Level 3 fused");
+        }
+      }
+    }
+
+    function updateCorticalResult(fused, text) {
+      const lockBadge = document.getElementById('binocularLockStatus');
+      if (fused) {
+        lockBadge.innerText = `BINOCULAR LOCK: ${text.toUpperCase()}`;
+        lockBadge.className = "text-[10px] font-mono text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 rounded border border-emerald-100 dark:border-emerald-900/60 font-black px-2 py-1";
+      } else {
+        lockBadge.innerText = `CORTICAL BLOCKED: ${text.toUpperCase()}`;
+        lockBadge.className = "text-[10px] font-mono text-rose-500 bg-rose-50 dark:bg-rose-950/40 rounded border border-rose-100 dark:border-rose-900/60 font-black px-2 py-1";
+      }
+    }
+
+    function updatePathology() {
+      const selected = document.getElementById('pathologySelect').value;
+      if (simState.mode === 'practice') {
+        simState.activePathology = selected;
+      }
+      resetSimulatorToPrimary();
+    }
+
+    // Master Symmetrical parameters reset
+    function resetSimulatorToPrimary() {
+      soundFeedback('success');
+      simState.vergenceOffset = 0;
+      document.getElementById('vergenceSlider').value = 0;
+      document.getElementById('vergenceReadout').innerText = "0.0 Δ";
+
+      if (simState.mode === 'test') {
+        const testSlider = document.getElementById('testDistanceSlider'); // legacy test fallbacks
+        if (testSlider) testSlider.value = 0;
+      }
+
+      renderBSVProjections();
+      updateBeginnerTutorial();
+    }
+
+    function updateBeginnerTutorial() {
+      const manual = document.getElementById('beginnerInstructionsText');
+      if (!manual) return;
+
+      const path = simState.activePathology;
+      const level = simState.bsvLevel;
+
+      if (path === 'normal') {
+        if (level === 'level1') {
+          manual.innerHTML = `
+            <p class="font-bold text-slate-700 dark:text-slate-200">Level 1: Simultaneous Macular Perception</p>
+            <p class="mt-1">Both eyes see completely different images (Bird vs. Cage). Symmetrical foveation overlaps them so the bird sits directly inside the cage at <strong>0.0 Δ vergence alignment</strong>.</p>
+          `;
+        } else if (level === 'level2') {
+          manual.innerHTML = `
+            <p class="font-bold text-slate-700 dark:text-slate-200">Level 2: Sensory Flat Fusion</p>
+            <p class="mt-1">The Left eye sees a hippo with ears, and the Right eye sees a hippo with a tail. Symmetrical flat fusion blends them into a single, complete hippo carrying both Ears &amp; Tail check elements.</p>
+          `;
+        } else {
+          manual.innerHTML = `
+            <p class="font-bold text-slate-700 dark:text-slate-200">Level 3: Stereopsis Depth</p>
+            <p class="mt-1">By introducing horizontal retinal disparity, the cortex processes three-dimensional depth. The central target pop outs towards you as depth disparity decreases to <strong>40\" fine arc seconds</strong>.</p>
+          `;
+        }
+      } 
+      else if (path === 'suppression_od') {
+        manual.innerHTML = `
+          <p class="font-bold text-rose-500">Monocular Suppression OD</p>
+          <p class="mt-1">The visual cortex actively blocks signals from the right eye fovea. Even if you align the vergence arm perfectly, the cage (Level 1) or tail (Level 2) remains completely invisible.</p>
+        `;
+      }
+      else if (path === 'suppression_os') {
+        manual.innerHTML = `
+          <p class="font-bold text-rose-500">Monocular Suppression OS</p>
+          <p class="mt-1">The visual cortex actively suppresses the left eye. The bird (Level 1) or hippo ears (Level 2) completely vanish from cortical perception.</p>
+        `;
+      }
+      else if (path === 'diplopia') {
+        manual.innerHTML = `
+          <p class="font-bold text-slate-700 dark:text-slate-200">Retinal Diplopia (Esotropic split)</p>
+          <p class="mt-1">Due to manifest ocular strabismus, the targets rest separated in space. To fuse them foveally, slide the vergence arm towards the <strong>Base-Out (eso)</strong> direction (slide to <strong>+15 Δ</strong>) to pull foveal coordinates back into union.</p>
+        `;
+      }
+      else if (path === 'horror_fusionis') {
+        manual.innerHTML = `
+          <p class="font-bold text-rose-600">Horror Fusionis (Central Rejection)</p>
+          <p class="mt-1">A profound sensory disruption. As you slide the vergence arm closer to fusion, the brain actively rejects integration, causing the targets to <strong>rapidly jump past each other</strong> at the center point, preventing stable BSV.</p>
+        `;
+      }
+      else if (path === 'arc') {
+        manual.innerHTML = `
+          <p class="font-bold text-slate-700 dark:text-slate-200">Anomalous Retinal Correspondence (ARC)</p>
+          <p class="mt-1">Despite an objective motor deviation, the brain has adapted a pseudo-foveal coordinate projection. Hence, targets successfully fuse at <strong>0.0 Δ</strong> offset, but stereopsis depth resolves poorly.</p>
+        `;
+      }
+    }
+
+    function changeMode(target) {
+      soundFeedback('switch');
+      simState.mode = target;
+
+      const pracBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      const pracConsole = document.getElementById('practiceControlsCard');
+      const testConsole = document.getElementById('testModeConsole');
+      const clinicalSyllabusCard = document.getElementById('clinicalSyllabusCard');
+      const bodyFrame = document.getElementById('bodyFrame');
+
+      document.getElementById('testDiagnosisSelect').value = "";
+      document.getElementById('diagnosisFeedback').classList.add('hidden');
+
+      const finalScoreCard = document.getElementById('finalScoreCard');
+      if (finalScoreCard) finalScoreCard.classList.add('hidden');
+
+      if (target === 'practice') {
+        bodyFrame.className = "bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer";
+        
+        pracConsole.classList.remove('hidden');
+        testConsole.classList.add('hidden');
+        clinicalSyllabusCard.classList.remove('hidden');
+
+        simState.activePathology = simState.pathology;
+      } else {
+        bodyFrame.className = "bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-800 text-slate-400 hover:bg-slate-900 shadow-xs cursor-pointer";
+        
+        pracConsole.classList.add('hidden');
+        testConsole.classList.remove('hidden');
+        clinicalSyllabusCard.classList.add('hidden');
+
+        // Choose random sensory-motor pathway combination for test mode
+        const sensoryOptions = ['normal', 'suppression_od', 'suppression_os', 'diplopia', 'horror_fusionis', 'arc'];
+        const randomSensory = sensoryOptions[Math.floor(Math.random() * sensoryOptions.length)];
+
+        simState.activePathology = randomSensory;
+
+        simState.scores.diagnosisScore = 0;
+        simState.scores.mcqScore = 0;
+        setupTestMcqSuite();
+      }
+
+      resetSimulatorToPrimary();
+    }
+
+    function setupTestMcqSuite() {
+      const shuffled = [...clinicalMcqPool].sort(() => 0.5 - Math.random());
+      simState.selectedQuestions = shuffled.slice(0, 3); // pick 3 high-yield sensory fusion path MCQs
+
+      const container = document.getElementById('testMcqSuite');
+      container.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const div = document.createElement('div');
+        div.className = "bg-white p-4 rounded-2xl border border-slate-200 space-y-2 text-xs text-slate-900 shadow-xs";
+        div.innerHTML = `
+          <p class="font-extrabold text-slate-950">${idx + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1.5 pt-1">
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 font-bold">
+              <input type="radio" name="mcq_${idx}" value="a" class="accent-secondary text-slate-950">
+              <span>${q.options.a}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 font-bold">
+              <input type="radio" name="mcq_${idx}" value="b" class="accent-secondary text-slate-950">
+              <span>${q.options.b}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 font-bold">
+              <input type="radio" name="mcq_${idx}" value="c" class="accent-secondary text-slate-950">
+              <span>${q.options.c}</span>
+            </label>
+          </div>
+          <p id="mcq_${idx}_feedback" class="text-[10px] font-bold hidden"></p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function displayClinicalPearl() {
+      soundFeedback('blip');
+      const val = document.getElementById('pearlSelector').value;
+      const pearl = pearlsDatabase[val];
+      if (pearl) {
+        document.getElementById('pearlTitle').innerText = pearl.title;
+        document.getElementById('pearlDesc').innerText = pearl.desc;
+      }
+    }
+
+    function submitTestAssessment() {
+      if (simState.mode !== 'test') return;
+
+      const selectedDiag = document.getElementById('testDiagnosisSelect').value;
+      let unanswered = false;
+      const answers = [];
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const checked = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+        if (!checked) {
+          unanswered = true;
+        } else {
+          answers.push({
+            idx: idx,
+            selected: checked.value,
+            correct: q.correct,
+            explanation: q.explanation
+          });
+        }
+      });
+
+      if (!selectedDiag || unanswered) {
+        soundFeedback('warning');
+        const feedback = document.getElementById('diagnosisFeedback');
+        feedback.innerText = "Please choose your Clinical diagnosis and complete all Pathway MCQs.";
+        feedback.className = "text-[11px] font-extrabold text-red-700 block mt-2 animate-pulse";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      // Check Clinical Diagnosis
+      const feedback = document.getElementById('diagnosisFeedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedDiag === simState.activePathology) {
+        feedback.innerText = "Correct Clinical Sensory-Motor Diagnosis! (+50 pts)";
+        feedback.className = "text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        const accurateName = document.querySelector(`#testDiagnosisSelect option[value="${simState.activePathology}"]`).innerText;
+        feedback.innerText = `Incorrect. Active profile was: ${accurateName}. (+0 pts)`;
+        feedback.className = "text-[11px] font-bold text-red-700 dark:text-red-400 block mt-1";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      // Check MCQs
+      let correctCount = 0;
+      answers.forEach((ans) => {
+        const box = document.getElementById(`mcq_${ans.idx}_feedback`);
+        box.classList.remove('hidden');
+        if (ans.selected === ans.correct) {
+          box.innerText = `Correct! (+16.6 pts) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+          correctCount++;
+        } else {
+          box.innerText = `Incorrect. (Correct Answer: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-red-600 dark:text-red-400 block mt-1";
+        }
+      });
+      simState.scores.mcqScore = Math.round(correctCount * 16.66);
+
+      const totalScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('assessmentScoreReadout').innerText = `Score: ${totalScore}/100`;
+
+      // Results badge display
+      let card = document.getElementById('finalScoreCard');
+      if (!card) {
+        const parent = document.getElementById('simulationViewport');
+        card = document.createElement('div');
+        card.id = "finalScoreCard";
+        parent.appendChild(card);
+      }
+
+      card.className = "p-5 rounded-3xl text-center space-y-3 transition-all duration-500 ";
+      card.innerHTML = `
+        <div class="space-y-1">
+          <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText"></p>
+          <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed" id="finalStatusDescription"></p>
+        </div>
+        <div id="practiceRedirectBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <p class="text-[10px] text-red-700 dark:text-red-400 font-extrabold">Return to practice mode to review Worth's binocular fusion scales.</p>
+          <button onclick="changeMode('practice')" class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+            <i class="fa-solid fa-graduation-cap mr-1"></i> Return to Practice
+          </button>
+        </div>
+      `;
+
+      card.classList.remove('hidden');
+      const statTxt = card.querySelector('#finalStatusText');
+      const statDsc = card.querySelector('#finalStatusDescription');
+      const rdrBlk = card.querySelector('#practiceRedirectBlock');
+
+      if (totalScore >= 80) {
+        soundFeedback('success');
+        card.className += "bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 animate-pulse";
+        statTxt.innerText = `PASSED (${totalScore}%)`;
+        statDsc.innerText = "Binocular Single Vision (BSV) sensory fusion evaluation logged. Completion criteria met.";
+        rdrBlk.classList.add('hidden');
+
+        // Log completion badge to index hub database
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completed.includes('Fusion')) {
+          completed.push('Fusion');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        }
+        syncCompletionBadge();
+      } else {
+        soundFeedback('warning');
+        card.className += "bg-red-50 dark:bg-red-950/25 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-300";
+        statTxt.innerText = `FAILED (${totalScore}%)`;
+        statDsc.innerText = "Assessment score is below the 80% passing standard. Practice and review sensory-motor alignment.";
+        rdrBlk.classList.remove('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        completed = completed.filter(el => el !== 'Fusion');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        syncCompletionBadge();
+      }
+    }
+
+    function syncCompletionBadge() {
+      const completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completed.includes('Fusion')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/45 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+
+    // Modal display triggers
+    function openMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.remove('hidden');
+    }
+
+    function closeMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.add('hidden');
+    }
+
+    function toggleMobileDropdown() {
+      document.getElementById('mobileDropdown').classList.toggle('hidden');
+    }
+
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const icon = document.getElementById('muteIcon');
+      const text = document.getElementById('muteText');
+      const mobileIcon = document.getElementById('mobileMuteIcon');
+      const mobileText = document.getElementById('mobileMuteText');
+
+      if (simState.soundMuted) {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400";
+        text.innerText = "Unmute";
+        if (mobileIcon) mobileIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+        if (mobileText) mobileText.innerText = "Unmute Sound";
+      } else {
+        icon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse";
+        text.innerText = "Mute";
+        if (mobileIcon) mobileIcon.className = "fa-solid fa-volume-high text-teal-700 animate-pulse";
+        if (mobileText) mobileText.innerText = "Mute Sound";
+        soundFeedback('blip');
+      }
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+      soundFeedback('switch');
+    }
+  </script>
+
+  <!-- ABOUT MODAL -->
+  <div id="aboutModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer text-slate-600 dark:text-slate-300">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-graduation-cap text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">About BSV Sensory Fusion Lab</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Vinayaka Mission's Research Foundation</p>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        This high-fidelity educational module explores Worth's three tiers of binocular single vision (BSV): Simultaneous Macular Perception, Sensory Flat Fusion, and Stereopsis depth disparity metrics.
+      </p>
+      <div class="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200/60 dark:border-slate-900 space-y-1.5 text-xs">
+        <p class="font-extrabold text-secondary tracking-widest text-[9px] uppercase">Faculty Architect &amp; Program Lead</p>
+        <p class="font-black text-slate-900 dark:text-white">Shivashangari M</p>
+        <p class="text-slate-500 dark:text-slate-400">Assistant Professor, Optometry Unit</p>
+        <p class="text-slate-500 dark:text-slate-400 text-[10px]">School of Allied Health Sciences (SAHS), Salem, Tamil Nadu, India.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- REFERENCE MODAL -->
+  <div id="referenceModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer text-slate-600 dark:text-slate-300">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">Clinical References</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Trusted Academic Guidelines &amp; Literature</p>
+        </div>
+      </div>
+      <div class="space-y-3 max-h-[350px] overflow-y-auto pr-1 text-xs">
+        <div class="space-y-1">
+          <span class="text-[9px] font-black uppercase text-secondary tracking-widest">AAO (Sensory &amp; Motor BSV Scales)</span>
+          <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+            Binocular single vision requires simultaneous retinal projections converging onto matched corresponding cortical receptive fields. This occurs at three hierarchical levels, reaching a fine stereoacuity threshold of 40 seconds of arc in normal healthy individuals.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

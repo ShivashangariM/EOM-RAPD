@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Extraocular Muscle (EOM) Simulator</title>
+  
+  <!-- ThreeJS & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <!-- Fonts & Icon Packs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',    /* Slate 900 */
+            secondary: '#2563eb',  /* Blue 600 */
+            accent: '#0d9488',     /* Teal 600 */
+            lightbg: '#f8fafc',    /* Slate 50 */
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #2563eb;
+    }
+
+    #three-container { 
+      width: 100%; 
+      height: 100%;
+      position: relative; 
+      cursor: crosshair;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    .dark .glass {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+    }
+
+    .active-btn { 
+      background-color: #2563eb !important; 
+      color: white !important; 
+      border-color: #2563eb !important; 
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); 
+    }
+
+    .cardinal-btn {
+      background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+      cursor: pointer; height: 42px;
+    }
+    .dark .cardinal-btn {
+      background: #ffffff; border-color: #334155; color: white;
+    }
+    .cardinal-btn:hover { background-color: #f8fafc; border-color: #cbd5e1; transform: translateY(-1px); }
+    .dark .cardinal-btn:hover { background-color: #334155; border-color: #475569; }
+    
+    .arrow-box { background: #f1f5f9; color: #64748b; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 12px; }
+    .dark .arrow-box { background: #0f172a; color: #94a3b8; }
+    .active-btn .arrow-box { background: rgba(255,255,255,0.2); color: white; }
+
+    .floating-label {
+      position: absolute; pointer-events: auto; cursor: pointer;
+      background: rgba(15, 23, 42, 0.9); color: white; padding: 4px 10px;
+      border-radius: 6px; font-size: 9px; font-weight: 800; white-space: nowrap;
+      transform: translate(-50%, -50%); z-index: 50; border: 1px solid rgba(255,255,255,0.2);
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0.35;
+    }
+    .highlight-label { background: #06b6d4 !important; opacity: 1 !important; transform: translate(-50%, -50%) scale(1.2) !important; z-index: 100; box-shadow: 0 0 20px rgba(6, 182, 212, 0.5); }
+    .active-label { background: #2563eb !important; opacity: 1 !important; transform: translate(-50%, -50%) scale(1.1); }
+
+    .eye-badge {
+      position: absolute; padding: 4px 10px; border-radius: 8px; font-weight: 900; font-size: 11px;
+      color: white; z-index: 60; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid rgba(255,255,255,0.3);
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <script>
+    let audioCtx = null;
+    
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("Audio Context blocked or unsupported.");
+      }
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click': playAudioTone(600, 'sine', 0.08, 0.04); break;
+        case 'tick': playAudioTone(800, 'triangle', 0.04, 0.01); break;
+        case 'warning': playAudioTone(220, 'sawtooth', 0.25, 0.04); break;
+        case 'success':
+          playAudioTone(520, 'sine', 0.1, 0.05);
+          setTimeout(() => playAudioTone(660, 'sine', 0.15, 0.05), 80);
+          break;
+        case 'blip': playAudioTone(480, 'sine', 0.06, 0.03); break;
+        case 'switch': playAudioTone(380, 'triangle', 0.12, 0.04); break;
+      }
+    }
+  </script>
+
+  <!-- HEADER / CLINICAL BAR -->
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-opacity duration-300" id="mainHeader">
+    <nav class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="./Ocular-Motility.html" onclick="soundFeedback('switch')" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition shadow-xs">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div>
+          <h1 class="text-md font-extrabold tracking-tight text-slate-900 dark:text-white">
+            SAHS-E-LAB | <span class="text-secondary">EOM Kinematics</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Extraocular Muscle Action &amp; Palsy Simulator</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <!-- Desktop Horizontal Menu Items -->
+        <div class="hidden lg:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+        </div>
+
+        
+
+        <!-- Completion status indicator -->
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="max-w-7xl mx-auto px-6 pt-24 pb-12 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-500" id="workspaceContainer">
+    
+    <!-- LEFT PANEL: 3D VIEWPORT & EXTRAOCULAR TENSION MONITOR (7 COLS) -->
+    <section class="lg:col-span-7 space-y-4">
+      
+      <!-- Interactive Eye Canvas Frame -->
+      <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs relative transition-all duration-500">
+        <div class="flex justify-between items-center" id="viewportCardHeader">
+          <span class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500">3D Ocular Muscle Kinematics Visualizer</span>
+          <span class="text-[10px] font-mono text-secondary px-2.5 py-1 bg-sky-50 dark:bg-sky-950/40 rounded border border-sky-100 dark:border-sky-900/60 font-bold" id="currentGazeLabel">Gaze: Primary Position</span>
+        </div>
+
+        <!-- Simulated 3D Render Screen -->
+        <div class="bg-slate-950 rounded-2xl relative h-[300px] md:h-[350px] overflow-hidden select-none shadow-inner" id="pupilsScreen">
+          <div id="three-container"></div>
+          <div id="labels-overlay" class="absolute inset-0 pointer-events-none"></div>
+          
+          <div id="badge-od" class="eye-badge bg-red-500 shadow-red-500/20">OD (Patient Right)</div>
+          <div id="badge-os" class="eye-badge bg-emerald-500 shadow-emerald-500/20">OS (Patient Left)</div>
+        </div>
+
+        <!-- Live Commentary Bar (hidden in test mode) -->
+        <div class="bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 p-3 rounded-xl" id="liveCommentaryBar">
+          <div class="flex items-center gap-2">
+            <span class="text-[8px] bg-blue-100 dark:bg-blue-950/80 text-secondary border border-blue-300 dark:border-blue-900 font-bold tracking-widest uppercase px-1.5 py-0.5 rounded flex-shrink-0 animate-pulse">Live Analysis</span>
+            <p id="liveCommentaryText" class="text-[10.5px] text-slate-600 dark:text-slate-300 font-mono font-semibold flex-1">Select a cardinal direction to observe muscle contractions.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Extraocular Muscle Contractile Tension Monitor -->
+      <div id="signalMonitorCard" class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
+        <h4 class="text-xs uppercase font-extrabold text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+          <i class="fa-solid fa-gauge-high text-secondary animate-pulse"></i> Extraocular Muscle Tension Monitor (Sherrington's Law)
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Left Eye (OS) Muscle Tension -->
+          <div class="space-y-2 p-3 bg-slate-50/50 dark:bg-slate-950/20 rounded-xl border border-slate-200/50 dark:border-slate-900">
+            <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800 pb-1">Left Eye (OS)</p>
+            <div class="space-y-1 text-[10px]">
+              <!-- MR -->
+              <div class="flex justify-between font-semibold text-slate-600 dark:text-slate-400"><span>Medial Rectus (MR)</span><span id="os-MR-val">0%</span></div>
+              <div class="w-full bg-slate-100 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="os-MR-bar" class="bg-emerald-500 h-full w-[0%] transition-all duration-150"></div></div>
+              <!-- LR -->
+              <div class="flex justify-between font-semibold text-slate-600 dark:text-slate-400"><span>Lateral Rectus (LR)</span><span id="os-LR-val">0%</span></div>
+              <div class="w-full bg-slate-100 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="os-LR-bar" class="bg-emerald-500 h-full w-[0%] transition-all duration-150"></div></div>
+              <!-- Vertical Recti & Obliques Combined Agonists -->
+              <div class="flex justify-between font-semibold text-slate-600 dark:text-slate-400"><span>Vertical Agonist Pair (SR/IR)</span><span id="os-vert-val">0%</span></div>
+              <div class="w-full bg-slate-100 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="os-vert-bar" class="bg-emerald-500 h-full w-[0%] transition-all duration-150"></div></div>
+              <!-- Obliques Combined Agonists -->
+              <div class="flex justify-between font-semibold text-slate-600 dark:text-slate-400"><span>Oblique Agonist Pair (SO/IO)</span><span id="os-obl-val">0%</span></div>
+              <div class="w-full bg-slate-100 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="os-obl-bar" class="bg-emerald-500 h-full w-[0%] transition-all duration-150"></div></div>
+            </div>
+          </div>
+          
+          <!-- Right Eye (OD) Muscle Tension -->
+          <div class="space-y-2 p-3 bg-slate-50/50 dark:bg-slate-950/20 rounded-xl border border-slate-200/50 dark:border-slate-900">
+            <p class="text-[10px] font-bold text-red-500 dark:text-red-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800 pb-1">Right Eye (OD)</p>
+            <div class="space-y-1 text-[10px]">
+              <!-- MR -->
+              <div class="flex justify-between font-semibold text-slate-600 dark:text-slate-400"><span>Medial Rectus (MR)</span><span id="od-MR-val">0%</span></div>
+              <div class="w-full bg-slate-100 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="od-MR-bar" class="bg-red-500 h-full w-[0%] transition-all duration-150"></div></div>
+              <!-- LR -->
+              <div class="flex justify-between font-semibold text-slate-600 dark:text-slate-400"><span>Lateral Rectus (LR)</span><span id="od-LR-val">0%</span></div>
+              <div class="w-full bg-slate-100 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="od-LR-bar" class="bg-red-500 h-full w-[0%] transition-all duration-150"></div></div>
+              <!-- Vertical Recti & Obliques Combined Agonists -->
+              <div class="flex justify-between font-semibold text-slate-600 dark:text-slate-400"><span>Vertical Agonist Pair (SR/IR)</span><span id="od-vert-val">0%</span></div>
+              <div class="w-full bg-slate-100 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="od-vert-bar" class="bg-red-500 h-full w-[0%] transition-all duration-150"></div></div>
+              <!-- Obliques Combined Agonists -->
+              <div class="flex justify-between font-semibold text-slate-600 dark:text-slate-400"><span>Oblique Agonist Pair (SO/IO)</span><span id="od-obl-val">0%</span></div>
+              <div class="w-full bg-slate-100 dark:bg-slate-900 rounded-full h-1.5 overflow-hidden"><div id="od-obl-bar" class="bg-red-500 h-full w-[0%] transition-all duration-150"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TEST CONSOLE PANEL (Appears in Test Mode only) -->
+      <div id="testConsoleContainer" class="hidden bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-xs text-slate-900 dark:text-slate-100 transition-colors duration-500">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div>
+            <h3 class="text-sm font-black text-slate-900 dark:text-white uppercase">Formulate Motility Diagnosis</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Examine the patient's gaze patterns, and select which EOM palsy is present.</p>
+          </div>
+          <span class="text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-800" id="liveScoreCard">Overall Score: Unsubmitted</span>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Gaze controller in test mode -->
+          <div class="space-y-2">
+            <span class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500">Test Gaze Controller</span>
+            <div class="grid grid-cols-3 gap-1.5 max-w-[180px]">
+              <button onclick="setGaze('up-dextro')" class="cardinal-btn"><div class="arrow-box">↖</div></button>
+              <button onclick="setGaze('up')" class="cardinal-btn"><div class="arrow-box">↑</div></button>
+              <button onclick="setGaze('up-levo')" class="cardinal-btn"><div class="arrow-box">↗</div></button>
+              
+              <button onclick="setGaze('dextro')" class="cardinal-btn"><div class="arrow-box">←</div></button>
+              <button onclick="setGaze('primary')" class="rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase shadow-md hover:bg-blue-700 transition">Center</button>
+              <button onclick="setGaze('levo')" class="cardinal-btn"><div class="arrow-box">→</div></button>
+              
+              <button onclick="setGaze('down-dextro')" class="cardinal-btn"><div class="arrow-box">↙</div></button>
+              <button onclick="setGaze('down')" class="cardinal-btn"><div class="arrow-box">↓</div></button>
+              <button onclick="setGaze('down-levo')" class="cardinal-btn"><div class="arrow-box">↘</div></button>
+            </div>
+          </div>
+
+          <!-- Diagnosis formulation dropdown -->
+          <div class="space-y-2">
+            <label class="text-[10px] uppercase font-black text-slate-900 dark:text-white tracking-wider">Clinical Impression</label>
+            <select id="userDiagnosisSelect" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary shadow-xs">
+              <option value="">-- Diagnosis Formulation --</option>
+              <option value="normal">Normal Binocular Gaze Profiles</option>
+              <option value="right_lr_palsy">Right Eye (OD): Lateral Rectus Palsy (CN VI)</option>
+              <option value="left_lr_palsy">Left Eye (OS): Lateral Rectus Palsy (CN VI)</option>
+              <option value="right_mr_palsy">Right Eye (OD): Medial Rectus Palsy</option>
+              <option value="left_mr_palsy">Left Eye (OS): Medial Rectus Palsy</option>
+              <option value="right_so_palsy">Right Eye (OD): Superior Oblique Palsy (CN IV)</option>
+              <option value="left_so_palsy">Left Eye (OS): Superior Oblique Palsy (CN IV)</option>
+              <option value="right_sr_palsy">Right Eye (OD): Superior Rectus under-action</option>
+              <option value="left_sr_palsy">Left Eye (OS): Superior Rectus under-action</option>
+            </select>
+            <p id="diagnosisFeedback" class="text-[11px] font-bold hidden"></p>
+          </div>
+
+          <!-- MCQ Suite -->
+          <div class="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800" id="testMcqSuite">
+            <p class="text-[10px] uppercase font-extrabold text-slate-500 dark:text-slate-400">Muscle Dynamics Assessment (50% Marks)</p>
+            <div id="dynamicTestMcqs" class="space-y-4"></div>
+          </div>
+        </div>
+
+        <!-- Submit Evaluation button -->
+        <div class="pt-4 border-t border-slate-200 dark:border-slate-800">
+          <button onclick="submitTestEvaluation()" id="btnSubmitTest" class="w-full py-3 bg-secondary hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition shadow-md cursor-pointer">
+            Submit Test Evaluation
+          </button>
+        </div>
+      </div>
+
+      <!-- Final status certificate badge -->
+      <div id="finalScoreCard" class="hidden p-5 rounded-2xl text-center space-y-4 shadow-sm border border-slate-200 dark:border-slate-800">
+        <div class="space-y-1">
+          <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText">Status: Unsubmitted</p>
+          <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed" id="finalStatusDescription">Score 80% or more to qualify for the departmental lab certificate badge.</p>
+        </div>
+        
+        <div id="practiceRedirectionBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+          <p class="text-[11px] text-red-600 dark:text-red-400 font-extrabold leading-normal">
+            Concept Mastery Needed! We highly recommend returning to the guided Practice Mode environment to study muscle kinematics yoke tables.
+          </p>
+          <button onclick="changeMode('practice')" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer">
+            <i class="fa-solid fa-graduation-cap mr-1"></i> Switch to Practice Mode &amp; Learn
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: PRACTICE PANEL CONTROLS & DEFINITIONS (5 COLS) -->
+    <section class="lg:col-span-5 space-y-4" id="controlsPanel">
+      
+      <!-- MODE TOGGLE CONTROLLER -->
+      <div class="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-xs transition-colors duration-500">
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-chalkboard-user"></i> Practice Mode
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-vial"></i> Test Mode
+        </button>
+      </div>
+
+      <!-- PRACTICE CONTROLS CONTAINER -->
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-xs transition-colors duration-500" id="interactiveControlsCard">
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-secondary"></i> Practice Controller
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Model ocular pathology and manipulate eye gazes.</p>
+        </div>
+
+        <!-- Pathology Selection -->
+        <div class="space-y-2">
+          <label class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">Simulate EOM Palsy Profile</label>
+          <select id="pathologySelect" onchange="updatePathology()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 dark:text-slate-100 font-bold focus:outline-none focus:border-secondary transition-all shadow-xs">
+            <option value="normal">Normal Binocular Gaze Profiles</option>
+            <option value="right_lr_palsy">Right Eye: Lateral Rectus Palsy (CN VI Deficit)</option>
+            <option value="left_lr_palsy">Left Eye: Lateral Rectus Palsy (CN VI Deficit)</option>
+            <option value="right_mr_palsy">Right Eye: Medial Rectus Palsy (Adduction Deficit)</option>
+            <option value="left_mr_palsy">Left Eye: Medial Rectus Palsy (Adduction Deficit)</option>
+            <option value="right_so_palsy">Right Eye: Superior Oblique Palsy (CN IV Deficit)</option>
+            <option value="left_so_palsy">Left Eye: Superior Oblique Palsy (CN IV Deficit)</option>
+            <option value="right_sr_palsy">Right Eye: Superior Rectus under-action</option>
+            <option value="left_sr_palsy">Left Eye: Superior Rectus under-action</option>
+          </select>
+        </div>
+
+        <!-- 9-Point Cardinal Gaze Pad -->
+        <div class="space-y-2">
+          <label class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">Cardinal Eye Gaze Pad</label>
+          <div class="grid grid-cols-3 gap-2 max-w-[200px]" id="gazePadGroup">
+            <button onclick="setGaze('up-dextro')" id="btnGaze-up-dextro" class="cardinal-btn"><div class="arrow-box">↖</div></button>
+            <button onclick="setGaze('up')" id="btnGaze-up" class="cardinal-btn"><div class="arrow-box">↑</div></button>
+            <button onclick="setGaze('up-levo')" id="btnGaze-up-levo" class="cardinal-btn"><div class="arrow-box">↗</div></button>
+            
+            <button onclick="setGaze('dextro')" id="btnGaze-dextro" class="cardinal-btn"><div class="arrow-box">←</div></button>
+            <button onclick="setGaze('primary')" id="btnGaze-primary" class="rounded-xl bg-blue-600 text-white text-[10px] font-black uppercase active-btn shadow-md hover:bg-blue-700 transition">Center</button>
+            <button onclick="setGaze('levo')" id="btnGaze-levo" class="cardinal-btn"><div class="arrow-box">→</div></button>
+            
+            <button onclick="setGaze('down-dextro')" id="btnGaze-down-dextro" class="cardinal-btn"><div class="arrow-box">↙</div></button>
+            <button onclick="setGaze('down')" id="btnGaze-down" class="cardinal-btn"><div class="arrow-box">↓</div></button>
+            <button onclick="setGaze('down-levo')" id="btnGaze-down-levo" class="cardinal-btn"><div class="arrow-box">↘</div></button>
+          </div>
+        </div>
+
+        <!-- Muscle Highlight Help -->
+        <div class="p-4 bg-sky-50 dark:bg-sky-950/25 border border-sky-100 dark:border-sky-900 rounded-2xl space-y-2">
+          <span class="text-[9px] uppercase font-extrabold text-secondary tracking-widest block"><i class="fa-solid fa-circle-question"></i> Understanding Cardinal Gaze Testing</span>
+          <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+            Standard visual motor screenings examine EOM function inside the 9-points cardinal field. Under Hering's Law of Equal Innervation, yoke muscles receive equal neural impulses. For example, looking up-and-right (Dextroelevation) tests the Right Superior Rectus paired with the Left Inferior Oblique.
+          </p>
+        </div>
+      </div>
+
+      <!-- CLINICAL PEARLS & COOPERATIVE LAWS -->
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs transition-colors duration-500" id="pearlsContainerCard">
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-book-open text-teal-600"></i> Clinical Pearls &amp; Muscle Actions
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Academic definitions and diagnostic criteria (AAO, AOA).</p>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <select id="pearlSelector" onchange="displayClinicalPearl()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-700 dark:text-slate-200 font-semibold focus:outline-none shadow-xs">
+            <option value="hering">Hering's Law (Equal Innervation)</option>
+            <option value="sherrington">Sherrington's Law (Reciprocal Innervation)</option>
+            <option value="yoke">Yoke Muscles Pairings</option>
+            <option value="so_palsy">Superior Oblique Palsy Symptoms</option>
+            <option value="lr_palsy">Abducens Nerve Palsy Mechanics</option>
+          </select>
+
+          <!-- Pearl Detail Field -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800" id="pearlDetailContainer">
+            <p class="font-bold text-slate-900 dark:text-white text-xs" id="pearlTitle">Hering's Law (Equal Innervation)</p>
+            <p class="text-slate-600 dark:text-slate-400 text-[11px] mt-1.5 leading-relaxed font-medium" id="pearlDesc">
+              States that corresponding yoke muscles in both eyes receive equal and simultaneous neural stimulation. This allows the eyes to move in a coordinated, conjugate fashion during visual pursuit.
+            </p>
+            <div class="mt-3 flex items-center gap-2">
+              <span class="text-[9px] font-bold bg-sky-50 dark:bg-sky-950 text-secondary border border-sky-100 dark:border-sky-900 px-2 py-0.5 rounded">AAO Standard</span>
+              <a href="https://eyewiki.aao.org" target="_blank" class="text-[9px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                <i class="fa-solid fa-up-right-from-square animate-pulse"></i> Search EyeWiki
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- MODALS CONTAINER -->
+  <!-- About Us Modal -->
+  <div id="aboutModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200 transition-colors duration-500">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-graduation-cap text-lg"></i></div>
+        <div>
+          <h3 class="text-md font-bold text-slate-900 dark:text-white">About SAHS-E-LAB</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Vinayaka Mission's Research Foundation</p>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        The <strong>SAHS-E-LAB Ocular Motility Program</strong> is designed to support clinical learning using high-fidelity simulations.
+      </p>
+      <div class="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200/60 dark:border-slate-900 space-y-1.5 text-xs">
+        <p class="font-extrabold text-secondary tracking-widest text-[9px] uppercase">Faculty Architect &amp; Program Lead</p>
+        <p class="font-black text-slate-900 dark:text-white">Shivashangari M</p>
+        <p class="text-slate-500 dark:text-slate-400">Assistant Professor, Optometry Unit</p>
+        <p class="text-slate-500 dark:text-slate-400">School of Allied Health Sciences (SAHS), Salem, Tamil Nadu, India.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reference Modal -->
+  <div id="referenceModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200 transition-colors duration-500">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-md font-bold text-slate-900 dark:text-white">Clinical References</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Trusted Academic Guidelines &amp; Literature</p>
+        </div>
+      </div>
+      <div class="space-y-3 max-h-[350px] overflow-y-auto pr-1 text-xs">
+        <div class="space-y-1">
+          <span class="text-[9px] font-black uppercase text-secondary tracking-widest">AAO (American Academy of Ophthalmology)</span>
+          <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+            The Extraocular muscle motor pathway coordinates visual axis convergence, torsion and vergence. Palsies manifest most prominently during gaze positions corresponding directly to the paralyzed muscle.
+          </p>
+          <a href="https://www.aao.org" target="_blank" class="text-[10px] font-bold text-secondary hover:underline"><i class="fa-solid fa-up-right-from-square"></i> AAO Educational Resource</a>
+        </div>
+        <div class="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <span class="text-[9px] font-black uppercase text-teal-600 tracking-widest">AOA (American Optometric Association)</span>
+          <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+            Clinical assessments map ocular alignments using Hess charts, Lancaster screens, and 9-point motility evaluations.
+          </p>
+          <a href="https://www.aoa.org" target="_blank" class="text-[10px] font-bold text-secondary hover:underline"><i class="fa-solid fa-up-right-from-square"></i> AOA Motility Guidelines</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIMULATION CORE LOGIC -->
+  <script>
+    const simState = {
+      mode: 'practice',          // 'practice' or 'test'
+      gazeKey: 'primary',        // Active direction
+      pathology: 'normal',      // 'normal', 'right_lr_palsy', etc.
+      activePathology: 'normal',// Active pathology in computation
+      soundMuted: false,         // Audio persistent state
+      selectedQuestions: [],     // MCQ pool
+      scores: {
+        diagnosisScore: 0,
+        mcqScore: 0
+      }
+    };
+
+    let scene, camera, renderer, controls, raycaster, mouse;
+    let leftEye, rightEye;
+    let leftMuscles = {}, rightMuscles = {};
+    let muscleObjects = [];
+    let targetRotL = new THREE.Euler(0, 0, 0);
+    let targetRotR = new THREE.Euler(0, 0, 0);
+    let leftScleraMesh, rightScleraMesh;
+    let leftCorneaMesh, rightCorneaMesh;
+    let hoveredMuscleRef = null;
+    let hoveredFromLabel = null;
+
+    const muscleInfo = {
+      'MR': { name: 'Medial Rectus', color: 0x9e1a1a },
+      'LR': { name: 'Lateral Rectus', color: 0x9e1a1a },
+      'SR': { name: 'Superior Rectus', color: 0x9e1a1a },
+      'IR': { name: 'Inferior Rectus', color: 0x9e1a1a },
+      'SO': { name: 'Superior Oblique', color: 0x7a1818 },
+      'IO': { name: 'Inferior Oblique', color: 0x7a1818 }
+    };
+
+    const config = {
+      'primary': { label: 'Primary Position', L: [0,0,0], R: [0,0,0] },
+      'dextro': { label: 'Dextroversion (Gaze Right)', L: [0, -0.55, 0], R: [0, -0.55, 0] },
+      'levo': { label: 'Levoversion (Gaze Left)', L: [0, 0.55, 0], R: [0, 0.55, 0] },
+      'up': { label: 'Supraversion (Gaze Up)', L: [-0.4, 0, 0], R: [-0.4, 0, 0] },
+      'down': { label: 'Infraversion (Gaze Down)', L: [0.4, 0, 0], R: [0.4, 0, 0] },
+      'up-dextro': { label: 'Dextroelevation (Gaze Up-Right)', L: [-0.35, -0.45, 0.15], R: [-0.35, -0.45, -0.15] },
+      'down-dextro': { label: 'Dextrodepression (Gaze Down-Right)', L: [0.35, -0.45, -0.15], R: [0.35, -0.45, 0.15] },
+      'up-levo': { label: 'Levoelevation (Gaze Up-Left)', L: [-0.35, 0.45, -0.15], R: [-0.35, 0.45, 0.15] },
+      'down-levo': { label: 'Levodepression (Gaze Down-Left)', L: [0.35, 0.45, 0.15], R: [0.35, 0.45, -0.15] }
+    };
+
+    const masterMcqPool = [
+      {
+        id: "q1",
+        question: "Hering's Law states that yoke muscles receive equal and simultaneous innervation. Which muscle is the yoke of Left Lateral Rectus (LR)?",
+        options: {
+          a: "Right Lateral Rectus (LR)",
+          b: "Right Medial Rectus (MR)",
+          c: "Left Medial Rectus (MR)"
+        },
+        correct: "b",
+        explanation: "During levoversion (looking left), Left LR (abducts OS) works in pair with Right MR (adducts OD). They are yoke muscles."
+      },
+      {
+        id: "q2",
+        question: "Which cranial nerve innervates the Superior Oblique (SO) muscle?",
+        options: {
+          a: "Cranial Nerve III (Oculomotor)",
+          b: "Cranial Nerve IV (Trochlear)",
+          c: "Cranial Nerve VI (Abducens)"
+        },
+        correct: "b",
+        explanation: "SO is exclusively innervated by the IVth cranial nerve (Trochlear)."
+      },
+      {
+        id: "q3",
+        question: "When a patient presents with a Right Cranial Nerve VI palsy, they exhibit:",
+        options: {
+          a: "Failure of Right eye abduction",
+          b: "Failure of Right eye adduction",
+          c: "Failure of Right eye depression"
+        },
+        correct: "a",
+        explanation: "CN VI palsy paralyzes the Lateral Rectus, leading to failure of abduction (cannot look temporalward) in the affected eye."
+      },
+      {
+        id: "q4",
+        question: "Superior Oblique (SO) palsy classically leads to vertical diplopia which is worst on:",
+        options: {
+          a: "Lateral gaze to the affected side",
+          b: "Nasalward gaze (adduction) and depression of the affected eye",
+          c: "Primary position with bilateral head tilt"
+        },
+        correct: "b",
+        explanation: "SO's main action as a depressor is isolated when the eye is in adduction (looking inwards)."
+      },
+      {
+        id: "q5",
+        question: "What is the primary muscle responsible for eye elevation in abduction?",
+        options: {
+          a: "Superior Rectus (SR)",
+          b: "Inferior Oblique (IO)",
+          c: "Superior Oblique (SO)"
+        },
+        correct: "a",
+        explanation: "In abduction (looking outwards), the visual axis aligns with the line of pull of the Superior Rectus, making it the primary elevator."
+      }
+    ];
+
+    const pearlsDatabase = {
+      hering: {
+        title: "Hering's Law of Equal Innervation",
+        desc: "States that corresponding yoke muscles in both eyes receive equal and simultaneous neural stimulation. This allows the eyes to move in a coordinated, conjugate fashion during visual pursuit."
+      },
+      sherrington: {
+        title: "Sherrington's Law of Reciprocal Innervation",
+        desc: "In any eye movement, increased contraction of an agonist muscle is accompanied by a corresponding and proportional relaxation of its antagonist muscle."
+      },
+      yoke: {
+        title: "Yoke Muscle Pairings",
+        desc: "Yoke muscles are primary muscle pairs that act together to produce conjugate gaze. Examples include:<br>• Dextroversion: RLR &amp; LMR<br>• Levoversion: LLR &amp; RMR<br>• Dextroelevation: RSR &amp; LIO<br>• Levodepression: LIR &amp; RSO."
+      },
+      so_palsy: {
+        title: "Superior Oblique Palsy (CN IV)",
+        desc: "Manifests as vertical diplopia. The affected eye sits higher (Hypertropia) when looking nasalward. Patients often develop a head tilt to the opposite side to minimize diplopia."
+      },
+      lr_palsy: {
+        title: "Abducens Nerve Palsy (CN VI)",
+        desc: "Characterized by an esotropia (crossed eye) in primary position and an absolute inability to look temporalward on the side of the lesion. Frequently caused by microvascular disease or elevated intracranial pressure."
+      }
+    };
+
+    // Procedural textures for 3D render
+    function createScleraTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512; canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fefefa';
+      ctx.fillRect(0, 0, 512, 256);
+
+      const baseGrad = ctx.createRadialGradient(256, 128, 60, 256, 128, 256);
+      baseGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      baseGrad.addColorStop(0.85, 'rgba(235, 241, 248, 0.45)');
+      ctx.fillStyle = baseGrad;
+      ctx.fillRect(0, 0, 512, 256);
+
+      // Veins
+      ctx.strokeStyle = '#dc2626';
+      ctx.globalAlpha = 0.35;
+      for (let i = 0; i < 8; i++) {
+        ctx.beginPath();
+        ctx.lineWidth = 0.5 + Math.random() * 1.0;
+        let x = 120 + Math.random() * 260;
+        let y = 30 + Math.random() * 190;
+        ctx.moveTo(x, y);
+        for(let j=0; j<4; j++) {
+          x += (Math.random() - 0.5) * 40;
+          y += (Math.random() - 0.5) * 40;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    function createIrisTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256; canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      const cx = 128, cy = 128;
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(0, 0, 256, 256);
+
+      const grad = ctx.createRadialGradient(cx, cy, 15, cx, cy, 128);
+      grad.addColorStop(0, '#020617');
+      grad.addColorStop(0.3, '#1a3c5e');
+      grad.addColorStop(0.7, '#2b5c8f');
+      grad.addColorStop(1, '#0c1d30');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(cx, cy, 128, 0, Math.PI*2); ctx.fill();
+
+      // Fibers
+      ctx.strokeStyle = 'rgba(111, 174, 224, 0.45)';
+      for (let i = 0; i < 180; i += 2) {
+        const angle = i * Math.PI / 90;
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        ctx.beginPath();
+        ctx.lineWidth = 0.8;
+        ctx.moveTo(cx + cos*25, cy + sin*25);
+        ctx.lineTo(cx + cos*(80 + Math.random()*30), cy + sin*(80 + Math.random()*30));
+        ctx.stroke();
+      }
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    function createMuscleTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128; canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#8f2020';
+      ctx.fillRect(0, 0, 128, 64);
+      ctx.fillStyle = 'rgba(255, 120, 110, 0.2)';
+      for (let y = 0; y < 64; y += 4) {
+        ctx.fillRect(0, y, 128, 1.5);
+      }
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    function createEyeUnit(side) {
+      const group = new THREE.Group();
+      const posX = (side === 'R') ? -3.5 : 3.5;
+      group.position.x = posX;
+
+      const scleraTex = createScleraTexture();
+      const sclera = new THREE.Mesh(
+        new THREE.SphereGeometry(1.8, 48, 48),
+        new THREE.MeshStandardMaterial({ map: scleraTex, roughness: 0.15, metalness: 0.05 })
+      );
+      group.add(sclera);
+
+      if (side === 'L') leftScleraMesh = sclera;
+      else rightScleraMesh = sclera;
+
+      const irisTex = createIrisTexture();
+      const iris = new THREE.Mesh(
+        new THREE.CircleGeometry(1.0, 32),
+        new THREE.MeshStandardMaterial({ map: irisTex, roughness: 0.4 })
+      );
+      iris.position.z = 1.77;
+      group.add(iris);
+
+      const pupil = new THREE.Mesh(
+        new THREE.CircleGeometry(0.42, 24),
+        new THREE.MeshBasicMaterial({ color: 0x010204 })
+      );
+      pupil.position.z = 1.78;
+      group.add(pupil);
+
+      const cornea = new THREE.Mesh(
+        new THREE.SphereGeometry(1.81, 48, 48, 0, Math.PI*2, 0, 0.95),
+        new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, shininess: 800 })
+      );
+      cornea.rotation.x = -Math.PI / 2;
+      group.add(cornea);
+
+      if (side === 'L') leftCorneaMesh = cornea;
+      else rightCorneaMesh = cornea;
+
+      // Muscles
+      const muscles = {};
+      const r = 1.8, originZ = -15;
+      const medX = side === 'R' ? r : -r, latX = side === 'R' ? -r : r;
+      const muscleTex = createMuscleTexture();
+
+      const addM = (id, pts, thick) => {
+        const curve = new THREE.CatmullRomCurve3(pts);
+        const m = new THREE.Mesh(
+          new THREE.TubeGeometry(curve, 30, thick, 8, false),
+          new THREE.MeshStandardMaterial({
+            map: muscleTex,
+            color: muscleInfo[id].color,
+            roughness: 0.3,
+            metalness: 0.1,
+            transparent: true,
+            opacity: 0.8
+          })
+        );
+        m.userData = { id, side: side === 'L' ? 'OS' : 'OD', labelAnchor: pts[0].clone(), originalColor: muscleInfo[id].color };
+        group.add(m); muscles[id] = m;
+        muscleObjects.push(m);
+      };
+
+      addM('MR', [new THREE.Vector3(medX, 0, 0.8), new THREE.Vector3(medX*1.2, 0, -4), new THREE.Vector3(posX*0.4, 0, originZ)], 0.3);
+      addM('LR', [new THREE.Vector3(latX, 0, 0.8), new THREE.Vector3(latX*1.2, 0, -4), new THREE.Vector3(posX*1.6, 0, originZ)], 0.3);
+      addM('SR', [new THREE.Vector3(0, r, 0.8), new THREE.Vector3(0, r+0.4, -4), new THREE.Vector3(posX, 0.8, originZ)], 0.3);
+      addM('IR', [new THREE.Vector3(0, -r, 0.8), new THREE.Vector3(0, -r-0.4, -4), new THREE.Vector3(posX, -0.8, originZ)], 0.3);
+
+      const soX = (side === 'L') ? -1.8 : 1.8;
+      addM('SO', [new THREE.Vector3(side==='L'?0.4:-0.4, r, 1.0), new THREE.Vector3(soX, 2.1, 2), new THREE.Vector3(soX, 2.1, -6)], 0.18);
+      addM('IO', [new THREE.Vector3(side==='L'?0.4:-0.4, -r, 1.0), new THREE.Vector3(0, -2.8, 0), new THREE.Vector3(posX, -2.2, -8)], 0.18);
+
+      return { group, muscles };
+    }
+
+    function createFloatingLabels() {
+      const overlay = document.getElementById('labels-overlay');
+      overlay.innerHTML = ''; 
+      ['OD', 'OS'].forEach(side => {
+        Object.entries(muscleInfo).forEach(([id, info]) => {
+          const label = document.createElement('div');
+          label.className = 'floating-label'; 
+          label.id = `label-${side}-${id}`;
+          label.innerText = id;
+          overlay.appendChild(label);
+        });
+      });
+    }
+
+    function updateUIOverlays() {
+      const container = document.getElementById('three-container');
+      if (!container) return;
+      const widthHalf = container.clientWidth / 2, heightHalf = container.clientHeight / 2;
+      const vector = new THREE.Vector3();
+      
+      [ {obj: rightEye, id: 'badge-od'}, {obj: leftEye, id: 'badge-os'} ].forEach(e => {
+        const el = document.getElementById(e.id);
+        if (el) {
+          vector.set(0, 2.8, 0); e.obj.localToWorld(vector); vector.project(camera);
+          el.style.left = `${(vector.x * widthHalf) + widthHalf}px`;
+          el.style.top = `${-(vector.y * heightHalf) + heightHalf}px`;
+        }
+      });
+
+      [ {eye: leftEye, m: leftMuscles, s: 'OS'}, {eye: rightEye, m: rightMuscles, s: 'OD'} ].forEach(e => {
+        Object.entries(e.m).forEach(([id, m]) => {
+          const label = document.getElementById(`label-${e.s}-${id}`);
+          if (!label) return;
+
+          vector.copy(m.userData.labelAnchor); m.localToWorld(vector); vector.project(camera);
+          if (vector.z > 1 || simState.mode === 'test') {
+            label.style.display = 'none';
+          } else {
+            label.style.display = 'block';
+            label.style.left = `${(vector.x * widthHalf) + widthHalf}px`;
+            label.style.top = `${-(vector.y * heightHalf) + heightHalf}px`;
+
+            const isHovered = (hoveredMuscleRef === m) || (hoveredFromLabel && hoveredFromLabel.side === e.s && hoveredFromLabel.id === id);
+            label.className = `floating-label ${isHovered ? 'highlight-label' : ''} ${m.userData.isActive ? 'active-label' : ''}`;
+          }
+        });
+      });
+    }
+
+    function init3D() {
+      const container = document.getElementById('three-container');
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(34, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.set(0, 1.2, 14);
+      
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+      
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.maxDistance = 20;
+      controls.minDistance = 5;
+      
+      raycaster = new THREE.Raycaster();
+      mouse = new THREE.Vector2(-10, -10);
+      
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+      
+      const keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+      keyLight.position.set(5, 10, 8);
+      scene.add(keyLight);
+      
+      const fillLight = new THREE.DirectionalLight(0xc1d5e6, 0.4);
+      fillLight.position.set(-5, 5, -5);
+      scene.add(fillLight);
+
+      const rimLight = new THREE.PointLight(0x3b82f6, 1.2, 20);
+      rimLight.position.set(0, -1, 5);
+      scene.add(rimLight);
+      
+      const OS = createEyeUnit('L'); leftEye = OS.group; leftMuscles = OS.muscles;
+      const OD = createEyeUnit('R'); rightEye = OD.group; rightMuscles = OD.muscles;
+      scene.add(leftEye, rightEye);
+      
+      createFloatingLabels();
+      setGaze('primary');
+      
+      container.addEventListener('mousemove', (e) => {
+        const rect = container.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      });
+
+      animate();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      raycaster.setFromCamera(mouse, camera);
+      
+      const intersectsMuscles = raycaster.intersectObjects(muscleObjects);
+      hoveredMuscleRef = intersectsMuscles.length > 0 ? intersectsMuscles[0].object : null;
+
+      const v = 0.12;
+      ['x','y','z'].forEach(ax => {
+        leftEye.rotation[ax] = THREE.MathUtils.lerp(leftEye.rotation[ax], targetRotL[ax], v);
+        rightEye.rotation[ax] = THREE.MathUtils.lerp(rightEye.rotation[ax], targetRotR[ax], v);
+      });
+
+      // Reciprocal Innervation Colors & Signal levels
+      muscleObjects.forEach(m => {
+        const mSide = m.userData.side;
+        const mId = m.userData.id;
+        
+        let active = m.userData.isActive;
+        let hover = hoveredMuscleRef === m;
+
+        const targetCol = hover ? 0x06b6d4 : (active ? 0x2563eb : m.userData.originalColor);
+        m.material.color.lerp(new THREE.Color(targetCol), 0.12);
+        m.material.opacity = THREE.MathUtils.lerp(m.material.opacity, (active || hover) ? 1.0 : 0.3, 0.12);
+      });
+
+      updateUIOverlays();
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // Dynamic Clinical Commentary generation
+    function getEomAnalysis(gaze, path) {
+      if (path === 'normal') {
+        if (gaze === 'primary') return "Primary Position: Baseline symmetrical muscle tone on all 12 extraocular muscles.";
+        if (gaze === 'dextro') return "Dextroversion: Agonists are Right LR (CN VI) & Left MR (CN III). Antagonists relax proportionally.";
+        if (gaze === 'levo') return "Levoversion: Agonists are Left LR (CN VI) & Right MR (CN III) (Conjugate yoke pairing).";
+        if (gaze === 'up') return "Supraversion: Coordinated elevation. Bilateral SR (CN III) & IO (CN III) contract simultaneously.";
+        if (gaze === 'down') return "Infraversion: Coordinated depression. Bilateral IR (CN III) & SO (CN IV) contract simultaneously.";
+        if (gaze === 'up-dextro') return "Dextroelevation: Primary elevator of right eye is Right SR. Primary elevator of left eye is Left IO.";
+        if (gaze === 'down-dextro') return "Dextrodepression: Primary depressor of right eye is Right IR. Primary depressor of left eye is Left SO.";
+        if (gaze === 'up-levo') return "Levoelevation: Primary elevator of right eye is Right IO. Primary elevator of left eye is Left SR.";
+        if (gaze === 'down-levo') return "Levodepression: Primary depressor of right eye is Right SO. Primary depressor of left eye is Left IR.";
+      }
+      
+      // Clinical deviation comments
+      if (path === 'right_lr_palsy') {
+        if (gaze.includes('dextro')) return "[ABDUCENS PALSY] Gaze Right. Right Lateral Rectus is paralyzed. OD fails to abduct beyond primary midline, resulting in convergent strabismus and uncrossed diplopia.";
+      }
+      if (path === 'left_lr_palsy') {
+        if (gaze.includes('levo')) return "[ABDUCENS PALSY] Gaze Left. Left Lateral Rectus is paralyzed. OS fails to abduct past midline, yielding immediate left-hand diplopia.";
+      }
+      if (path === 'right_mr_palsy') {
+        if (gaze.includes('levo') || gaze === 'convergence') return "[ADDUCTION DEFICIT] Gaze Left. Right Medial Rectus is under-acting. OD fails to cross inwards nasalward.";
+      }
+      if (path === 'left_mr_palsy') {
+        if (gaze.includes('dextro')) return "[ADDUCTION DEFICIT] Gaze Right. Left Medial Rectus is under-acting. OS fails to turn inwards.";
+      }
+      if (path === 'right_so_palsy') {
+        if (gaze === 'down-levo' || gaze === 'levo') return "[TROCHLEAR PALSY] Gaze Down-Left. Right Superior Oblique is weak. Right eye sits abnormally high (Hypertropia) on adduction, failing to depress.";
+      }
+      if (path === 'left_so_palsy') {
+        if (gaze === 'down-dextro' || gaze === 'dextro') return "[TROCHLEAR PALSY] Gaze Down-Right. Left Superior Oblique is weak. Left eye displays hypertropia on right nasalward adduction.";
+      }
+      if (path === 'right_sr_palsy') {
+        if (gaze.includes('up')) return "[ELEVATION PALSY] Gaze Up. Right Superior Rectus is weak. OD fails to elevate fully, causing vertical misalignment.";
+      }
+      if (path === 'left_sr_palsy') {
+        if (gaze.includes('up')) return "[ELEVATION PALSY] Gaze Up. Left Superior Rectus is weak. OS fails to elevate.";
+      }
+      return "Examining conjugate yoke movements...";
+    }
+
+    // Dynamic bio-tension generator bars
+    function updateTensionBars(gaze, path, activeOD, activeOS) {
+      const tensionProfiles = {
+        primary: { MR: 20, LR: 20, vert: 20, obl: 20 },
+        dextro: { MR: 10, LR: 85, vert: 15, obl: 15 },
+        levo: { MR: 85, LR: 10, vert: 15, obl: 15 },
+        up: { MR: 15, LR: 15, vert: 85, obl: 75 },
+        down: { MR: 15, LR: 15, vert: 75, obl: 85 },
+        'up-dextro': { MR: 10, LR: 75, vert: 80, obl: 30 },
+        'down-dextro': { MR: 10, LR: 75, vert: 30, obl: 80 },
+        'up-levo': { MR: 75, LR: 10, vert: 80, obl: 30 },
+        'down-levo': { MR: 75, LR: 10, vert: 30, obl: 80 }
+      };
+
+      const base = tensionProfiles[gaze] || tensionProfiles['primary'];
+      
+      let odMR = base.MR, odLR = base.LR, odVert = base.vert, odObl = base.obl;
+      let osMR = base.MR, osLR = base.LR, osVert = base.vert, osObl = base.obl;
+
+      // Inverse conjugation
+      if (gaze === 'dextro' || gaze === 'up-dextro' || gaze === 'down-dextro') {
+        odMR = base.LR; odLR = base.MR; // OD abducts (LR), OS adducts (MR)
+        osMR = base.MR; osLR = base.LR;
+      } else if (gaze === 'levo' || gaze === 'up-levo' || gaze === 'down-levo') {
+        odMR = base.MR; odLR = base.LR;
+        osMR = base.LR; osLR = base.MR; // OS abducts (LR), OD adducts (MR)
+      }
+
+      // Paralyzed muscle dropouts
+      if (path === 'right_lr_palsy') odLR = Math.min(odLR, 5);
+      if (path === 'left_lr_palsy') osLR = Math.min(osLR, 5);
+      if (path === 'right_mr_palsy') odMR = Math.min(odMR, 5);
+      if (path === 'left_mr_palsy') osMR = Math.min(osMR, 5);
+      if (path === 'right_so_palsy' && gaze.includes('levo')) odObl = Math.min(odObl, 10);
+      if (path === 'left_so_palsy' && gaze.includes('dextro')) osObl = Math.min(osObl, 10);
+      if (path === 'right_sr_palsy') odVert = Math.min(odVert, 10);
+      if (path === 'left_sr_palsy') osVert = Math.min(osVert, 10);
+
+      // Render OS Bars
+      document.getElementById('os-MR-val').innerText = `${osMR}%`;
+      document.getElementById('os-MR-bar').style.width = `${osMR}%`;
+      document.getElementById('os-LR-val').innerText = `${osLR}%`;
+      document.getElementById('os-LR-bar').style.width = `${osLR}%`;
+      document.getElementById('os-vert-val').innerText = `${osVert}%`;
+      document.getElementById('os-vert-bar').style.width = `${osVert}%`;
+      document.getElementById('os-obl-val').innerText = `${osObl}%`;
+      document.getElementById('os-obl-bar').style.width = `${osObl}%`;
+
+      // Render OD Bars
+      document.getElementById('od-MR-val').innerText = `${odMR}%`;
+      document.getElementById('od-MR-bar').style.width = `${odMR}%`;
+      document.getElementById('od-LR-val').innerText = `${odLR}%`;
+      document.getElementById('od-LR-bar').style.width = `${odLR}%`;
+      document.getElementById('od-vert-val').innerText = `${odVert}%`;
+      document.getElementById('od-vert-bar').style.width = `${odVert}%`;
+      document.getElementById('od-obl-val').innerText = `${odObl}%`;
+      document.getElementById('od-obl-bar').style.width = `${odObl}%`;
+    }
+
+    function setGaze(key) {
+      simState.gazeKey = key;
+      const baseData = config[key] || config['primary'];
+      let lRot = [...baseData.L], rRot = [...baseData.R];
+      let displayLabel = baseData.label;
+
+      // ACTIVE PALSY RESTRICTIONS
+      const path = simState.activePathology;
+      if (path === 'right_lr_palsy') {
+        if (key === 'dextro' || key === 'up-dextro' || key === 'down-dextro') {
+          rRot[1] = Math.max(0.0, rRot[1]); // block right lateral abduction
+        }
+      }
+      if (path === 'left_lr_palsy') {
+        if (key === 'levo' || key === 'up-levo' || key === 'down-levo') {
+          lRot[1] = Math.min(0.0, lRot[1]); // block left lateral abduction
+        }
+      }
+      if (path === 'right_mr_palsy') {
+        if (key === 'levo' || key === 'up-levo' || key === 'down-levo') {
+          rRot[1] = Math.min(0.0, rRot[1]); // block right medial adduction
+        }
+      }
+      if (path === 'left_mr_palsy') {
+        if (key === 'dextro' || key === 'up-dextro' || key === 'down-dextro') {
+          lRot[1] = Math.max(0.0, lRot[1]); // block left medial adduction
+        }
+      }
+      if (path === 'right_so_palsy') {
+        if (key === 'down-levo' || key === 'levo') {
+          rRot[0] = Math.max(-0.1, rRot[0]); // block depression on adduction (causes hypertropia)
+        }
+      }
+      if (path === 'left_so_palsy') {
+        if (key === 'down-dextro' || key === 'dextro') {
+          lRot[0] = Math.max(-0.1, lRot[0]); // block depression on adduction
+        }
+      }
+      if (path === 'right_sr_palsy') {
+        if (key === 'up' || key === 'up-dextro') {
+          rRot[0] = Math.max(-0.1, rRot[0]); // block upward elevation
+        }
+      }
+      if (path === 'left_sr_palsy') {
+        if (key === 'up' || key === 'up-levo') {
+          lRot[0] = Math.max(-0.1, lRot[0]); // block upward elevation
+        }
+      }
+
+      document.getElementById('currentGazeLabel').innerText = `Gaze: ${displayLabel}`;
+      targetRotL.set(lRot[0], lRot[1], lRot[2]);
+      targetRotR.set(rRot[0], rRot[1], rRot[2]);
+
+      // Highlight active muscles in ThreeJS
+      const activeOS = [];
+      const activeOD = [];
+      
+      if (key === 'dextro') { activeOD.push('LR'); activeOS.push('MR'); }
+      else if (key === 'levo') { activeOD.push('MR'); activeOS.push('LR'); }
+      else if (key === 'up') { activeOD.push('SR', 'IO'); activeOS.push('SR', 'IO'); }
+      else if (key === 'down') { activeOD.push('IR', 'SO'); activeOS.push('IR', 'SO'); }
+      else if (key === 'up-dextro') { activeOD.push('SR'); activeOS.push('IO'); }
+      else if (key === 'down-dextro') { activeOD.push('IR'); activeOS.push('SO'); }
+      else if (key === 'up-levo') { activeOD.push('IO'); activeOS.push('SR'); }
+      else if (key === 'down-levo') { activeOD.push('SO'); activeOS.push('IR'); }
+
+      Object.keys(leftMuscles).forEach(k => leftMuscles[k].userData.isActive = activeOS.includes(k));
+      Object.keys(rightMuscles).forEach(k => rightMuscles[k].userData.isActive = activeOD.includes(k));
+
+      // Synchronize button active styles
+      document.querySelectorAll('button[id^="btnGaze-"]').forEach(b => b.classList.remove('active-btn'));
+      const activeBtn = document.getElementById(`btnGaze-${key}`);
+      if (activeBtn) activeBtn.classList.add('active-btn');
+
+      // Update Tension Bars
+      updateTensionBars(key, path, activeOD, activeOS);
+
+      // Commentary
+      const commentary = getEomAnalysis(key, path);
+      document.getElementById('liveCommentaryText').innerText = commentary;
+    }
+
+    function updatePathology() {
+      simState.pathology = document.getElementById('pathologySelect').value;
+      if (simState.mode === 'practice') {
+        simState.activePathology = simState.pathology;
+      }
+      setGaze(simState.gazeKey);
+    }
+
+    function changeMode(targetMode) {
+      soundFeedback('switch');
+      simState.mode = targetMode;
+
+      const practiceBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      const bodyFrame = document.getElementById('bodyFrame');
+      const mainHeader = document.getElementById('mainHeader');
+      const workspaceContainer = document.getElementById('workspaceContainer');
+      const controlsPanel = document.getElementById('controlsPanel');
+      const testConsoleContainer = document.getElementById('testConsoleContainer');
+      
+      const viewportCardHeader = document.getElementById('viewportCardHeader');
+      const liveCommentaryBar = document.getElementById('liveCommentaryBar');
+      const signalMonitorCard = document.getElementById('signalMonitorCard');
+
+      document.getElementById('diagnosisFeedback').classList.add('hidden');
+      document.getElementById('finalScoreCard').classList.add('hidden');
+      document.getElementById('practiceRedirectionBlock').classList.add('hidden');
+      document.getElementById('liveScoreCard').innerText = "Overall Score: Unsubmitted";
+
+      if (targetMode === 'practice') {
+        bodyFrame.className = "bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500";
+        mainHeader.className = "w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-opacity duration-300";
+        workspaceContainer.className = "max-w-7xl mx-auto px-6 pt-24 pb-12 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-500";
+        
+        controlsPanel.classList.remove('hidden');
+        testConsoleContainer.classList.add('hidden');
+        viewportCardHeader.classList.remove('invisible');
+        liveCommentaryBar.classList.remove('hidden');
+        signalMonitorCard.classList.remove('hidden');
+
+        practiceBtn.className = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        testBtn.className = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer";
+
+        simState.activePathology = simState.pathology;
+      } else {
+        // Clinical evaluation full-centered setup - High Contrast Dark Exam Viewport
+        bodyFrame.className = "bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500";
+        mainHeader.className = "w-full fixed top-0 left-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 shadow-xs transition-opacity duration-300 opacity-95";
+        workspaceContainer.className = "max-w-3xl mx-auto px-4 pt-24 pb-12 flex-1 w-full flex flex-col items-stretch gap-6 transition-all duration-500";
+        
+        controlsPanel.classList.add('hidden');
+        testConsoleContainer.classList.remove('hidden');
+        viewportCardHeader.classList.add('invisible');
+        liveCommentaryBar.classList.add('hidden');
+        signalMonitorCard.classList.add('hidden');
+
+        testBtn.className = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        practiceBtn.className = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-800 text-slate-400 hover:bg-slate-900 shadow-xs cursor-pointer";
+
+        // Select a random EOM palsy pathology for examination
+        const pathologies = Object.keys(pathologyMatrix);
+        const randomPath = pathologies[Math.floor(Math.random() * pathologies.length)];
+        simState.activePathology = randomPath;
+
+        // Reset inputs
+        document.getElementById('userDiagnosisSelect').value = "";
+        simState.scores.diagnosisScore = 0;
+        simState.scores.mcqScore = 0;
+        
+        setupTestQuestions();
+      }
+
+      setGaze('primary');
+    }
+
+    const pathologyMatrix = {
+      normal: {},
+      right_lr_palsy: {},
+      left_lr_palsy: {},
+      right_mr_palsy: {},
+      left_mr_palsy: {},
+      right_so_palsy: {},
+      left_so_palsy: {},
+      right_sr_palsy: {},
+      left_sr_palsy: {}
+    };
+
+    function setupTestQuestions() {
+      const shuffled = [...masterMcqPool].sort(() => 0.5 - Math.random());
+      simState.selectedQuestions = shuffled.slice(0, 5);
+      
+      const mcqContainer = document.getElementById('dynamicTestMcqs');
+      mcqContainer.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, index) => {
+        const questionBlock = document.createElement('div');
+        questionBlock.className = "bg-white p-4 rounded-xl border border-slate-200 space-y-2 text-xs shadow-xs text-slate-900";
+        questionBlock.innerHTML = `
+          <p class="font-bold text-slate-900">${index + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1">
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 text-slate-900 font-semibold">
+              <input type="radio" name="mcq_${index}" value="a" class="accent-secondary text-slate-900">
+              <span>${q.options.a}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 text-slate-900 font-semibold">
+              <input type="radio" name="mcq_${index}" value="b" class="accent-secondary text-slate-900">
+              <span>${q.options.b}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 text-slate-900 font-semibold">
+              <input type="radio" name="mcq_${index}" value="c" class="accent-secondary text-slate-900">
+              <span>${q.options.c}</span>
+            </label>
+          </div>
+          <p id="mcq_${index}_feedback" class="text-[10px] font-bold hidden"></p>
+        `;
+        mcqContainer.appendChild(questionBlock);
+      });
+    }
+
+    function submitTestEvaluation() {
+      if (simState.mode !== 'test') return;
+
+      const userSel = document.getElementById('userDiagnosisSelect').value;
+      
+      let unanswered = false;
+      const userAnswers = [];
+
+      simState.selectedQuestions.forEach((q, index) => {
+        const checked = document.querySelector(`input[name="mcq_${index}"]:checked`);
+        if (!checked) {
+          unanswered = true;
+        } else {
+          userAnswers.push({
+            index: index,
+            selected: checked.value,
+            correct: q.correct,
+            explanation: q.explanation
+          });
+        }
+      });
+
+      if (!userSel || unanswered) {
+        soundFeedback('warning');
+        const feedback = document.getElementById('diagnosisFeedback');
+        feedback.innerText = "Please select your clinical diagnosis and answer all 5 questions before submitting.";
+        feedback.className = "text-[11px] font-extrabold text-red-600 block mt-2";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      // Diagnose evaluation
+      const diagFeedback = document.getElementById('diagnosisFeedback');
+      diagFeedback.classList.remove('hidden');
+      if (userSel === simState.activePathology) {
+        diagFeedback.innerText = "Correct Clinical Diagnosis Formulation! (+50 pts)";
+        diagFeedback.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        const niceName = document.querySelector(`#userDiagnosisSelect option[value="${simState.activePathology}"]`).innerText;
+        diagFeedback.innerText = `Incorrect. Correct pathology is: ${niceName}. (+0 pts)`;
+        diagFeedback.className = "text-[10px] font-bold text-red-600 dark:text-red-400 block mt-1";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      // MCQ Evaluation
+      let correctCount = 0;
+      userAnswers.forEach((ans) => {
+        const feedbackEl = document.getElementById(`mcq_${ans.index}_feedback`);
+        feedbackEl.classList.remove('hidden');
+        if (ans.selected === ans.correct) {
+          feedbackEl.innerText = `Correct! (+10 pts) — ${ans.explanation}`;
+          feedbackEl.className = "text-[10px] font-bold text-emerald-600 block mt-1";
+          correctCount++;
+        } else {
+          feedbackEl.innerText = `Incorrect. (Correct: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+          feedbackEl.className = "text-[10px] font-bold text-red-600 block mt-1";
+        }
+      });
+      simState.scores.mcqScore = correctCount * 10;
+
+      const absoluteScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('liveScoreCard').innerText = `Overall Score: ${absoluteScore}/100`;
+
+      // Certificate presentation
+      const resultCard = document.getElementById('finalScoreCard');
+      const statusText = document.getElementById('finalStatusText');
+      const statusDesc = document.getElementById('finalStatusDescription');
+      const practiceRedirBlock = document.getElementById('practiceRedirectionBlock');
+
+      resultCard.classList.remove('hidden');
+      if (absoluteScore >= 80) {
+        soundFeedback('success');
+        resultCard.className = "p-5 rounded-2xl text-center space-y-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-300 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 animate-pulse";
+        statusText.innerText = `Status: PASSED (${absoluteScore}%)`;
+        statusDesc.innerText = "Excellent binocular diagnostic evaluation! Milestone successfully registered in the departmental database.";
+        practiceRedirBlock.classList.add('hidden');
+
+        // Append 'EOM' module to local storage list of completed simulators
+        let completedList = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completedList.includes('EOM')) {
+          completedList.push('EOM');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completedList));
+        }
+        syncLocalSyncBadge();
+      } else {
+        soundFeedback('warning');
+        resultCard.className = "p-5 rounded-2xl text-center space-y-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-300";
+        statusText.innerText = `Status: FAILED (${absoluteScore}%)`;
+        statusDesc.innerText = "Score is below the 80% passing threshold. Please return to practice mode to master yoke mechanics.";
+        practiceRedirBlock.classList.remove('hidden');
+
+        let completedList = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        completedList = completedList.filter(item => item !== 'EOM' && item !== 'EOM.html' && item !== 'EOM Simulator');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completedList));
+        syncLocalSyncBadge();
+      }
+    }
+
+    function syncLocalSyncBadge() {
+      const completedList = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completedList.includes('EOM')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+
+    function displayClinicalPearl() {
+      soundFeedback('blip');
+      const val = document.getElementById('pearlSelector').value;
+      const pearl = pearlsDatabase[val];
+      if (pearl) {
+        document.getElementById('pearlTitle').innerText = pearl.title;
+        document.getElementById('pearlDesc').innerHTML = pearl.desc;
+      }
+    }
+
+    // Modal Control Panels
+    function openMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.remove('hidden');
+    }
+
+    function closeMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.add('hidden');
+    }
+
+    // Mute Audio control
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const muteIcon = document.getElementById('muteIcon');
+      const muteText = document.getElementById('muteText');
+
+      if (simState.soundMuted) {
+        muteIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+        muteText.innerText = "Unmute";
+      } else {
+        muteIcon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse";
+        muteText.innerText = "Mute";
+        soundFeedback('click');
+      }
+    }
+
+    // Class based dark mode toggling
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+      soundFeedback('click');
+    }
+
+    window.onload = function() {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      init3D();
+      syncLocalSyncBadge();
+    };
+
+    window.onresize = () => {
+      const c = document.getElementById('three-container');
+      if (c && camera && renderer) {
+        camera.aspect = c.clientWidth / c.clientHeight; 
+        camera.updateProjectionMatrix();
+        renderer.setSize(c.clientWidth, c.clientHeight);
+      }
+    };
+  </script>
+</body>
+</html>

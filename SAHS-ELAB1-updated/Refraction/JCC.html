@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Clinical JCC Refinement Lab</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',
+            secondary: '#0284c7',
+            accent: '#0d9488',
+            lightbg: '#f8fafc',
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            lcd: ['Share Tech Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    .dark ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    ::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+    /* Custom Input Sliders */
+    input[type=range] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      height: 20px; width: 20px;
+      border-radius: 50%;
+      background: #0284c7;
+      cursor: pointer;
+      margin-top: -8px;
+      box-shadow: 0 0 10px rgba(2, 132, 199, 0.5);
+      border: 2px solid #ffffff;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      appearance: none;
+      width: 100%; height: 4px;
+      cursor: pointer;
+      background: #cbd5e1;
+      border-radius: 2px;
+    }
+    .dark input[type=range]::-webkit-slider-runnable-track {
+      background: #334155;
+    }
+
+    /* Phoropter Viewport Dark Background */
+    .phoropter-bg {
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 70%, #020617 100%);
+      box-shadow: inset 0 0 60px rgba(0,0,0,0.95);
+    }
+
+    /* JCC Lens Frame Glow Filter */
+    .jcc-lens-glow {
+      filter: drop-shadow(0 0 12px rgba(14, 165, 233, 0.35));
+    }
+
+    /* JCC Flip Animation Class */
+    .jcc-flipping {
+      transition: transform 0.25s ease-in-out;
+      transform: scaleX(-1);
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <script>
+    let audioCtx = null;
+    
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("AudioContext blocked or unsupported.");
+      }
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click': playAudioTone(720, 'sine', 0.08, 0.04); break;
+        case 'flip': 
+          playAudioTone(400, 'triangle', 0.06, 0.05); 
+          setTimeout(() => playAudioTone(600, 'triangle', 0.08, 0.05), 60);
+          break;
+        case 'dial': playAudioTone(320, 'sine', 0.04, 0.02); break;
+        case 'warning': playAudioTone(190, 'sawtooth', 0.25, 0.05); break;
+        case 'success':
+          playAudioTone(520, 'sine', 0.1, 0.05);
+          setTimeout(() => playAudioTone(640, 'sine', 0.15, 0.05), 80);
+          break;
+        case 'switch': playAudioTone(380, 'triangle', 0.12, 0.04); break;
+      }
+    }
+  </script>
+
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-500">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="Refraction.html" class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hover:bg-slate-800 transition cursor-pointer">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </a>
+        <div class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hidden sm:flex">
+          <i class="fa-solid fa-circle-dot text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+            SAHS-E-LAB | <span class="text-secondary">Clinical JCC Refinement Lab</span>
+            <span class="bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-sky-200 dark:border-sky-900">BEGINNER GUIDED v3.6</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-extrabold">Jackson Cross-Cylinder Astigmatism Axis &amp; Power Refinement</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+          <button onclick="toggleDarkMode()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke text-sky-600 dark:text-sky-400"></i>
+          </button>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-4 sm:px-6 pt-24 pb-12 gap-6">
+    
+    <!-- LEFT COLUMN: Interactive JCC Lens Viewport & Optotype Display -->
+    <section class="lg:w-[58%] space-y-4" id="simulationViewport">
+      
+      <!-- PHOROPTER & OPTOTYPE VIEWPORT CARD -->
+      <div class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-2xl relative transition-all duration-500">
+        
+        <!-- Viewport Header Status Bar -->
+        <div class="flex justify-between items-center text-xs font-mono border-b border-slate-100 dark:border-slate-800 pb-2">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-eye text-secondary"></i> Patient Viewport &amp; Trial Frame Scale
+          </span>
+          <div class="flex items-center gap-2">
+            <span class="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700" id="currentJccModeBadge">
+              MODE: AXIS REFINEMENT
+            </span>
+            <span class="text-[9px] bg-sky-500 text-white font-extrabold px-2.5 py-0.5 rounded shadow-xs" id="currentFlipPosBadge">
+              POSITION 1
+            </span>
+          </div>
+        </div>
+
+        <!-- JCC Viewport Box containing SVG & Optotype Chart -->
+        <div class="phoropter-bg rounded-3xl mx-auto relative flex items-center justify-center overflow-hidden border-[8px] border-slate-800 dark:border-slate-950 select-none w-full" style="height: 360px;" id="jccViewportBox">
+          
+          <svg viewBox="-190 -150 380 300" class="w-full h-full" id="jccSvg">
+            <defs>
+              <filter id="optotypeBlurFilter">
+                <feGaussianBlur id="blurStdDev" stdDeviation="0.0" />
+              </filter>
+              <!-- Metallic Lens Ring Gradient -->
+              <linearGradient id="lensRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#cbd5e1" />
+                <stop offset="50%" stop-color="#64748b" />
+                <stop offset="100%" stop-color="#334155" />
+              </linearGradient>
+            </defs>
+
+            <!-- BACKGROUND OPTOTYPE TARGET CHART (SNELLEN & RING OF DOTS) -->
+            <g id="optotypeGroup" filter="url(#optotypeBlurFilter)" opacity="0.95">
+              <!-- Ring of Dots Astigmatic Target -->
+              <circle cx="0" cy="0" r="110" fill="none" stroke="#334155" stroke-width="1" stroke-dasharray="3 3" opacity="0.4"/>
+              
+              <!-- Dots in a circle (360 degrees) -->
+              <g fill="#f8fafc">
+                <circle cx="0" cy="-75" r="4" /><circle cx="37.5" cy="-65" r="4" /><circle cx="65" cy="-37.5" r="4" />
+                <circle cx="75" cy="0" r="4" /><circle cx="65" cy="37.5" r="4" /><circle cx="37.5" cy="65" r="4" />
+                <circle cx="0" cy="75" r="4" /><circle cx="-37.5" cy="65" r="4" /><circle cx="-65" cy="37.5" r="4" />
+                <circle cx="-75" cy="0" r="4" /><circle cx="-65" cy="-37.5" r="4" /><circle cx="-37.5" cy="-65" r="4" />
+              </g>
+
+              <!-- Central Snellen Test Letters -->
+              <g font-family="JetBrains Mono, monospace" font-weight="900" fill="#ffffff" text-anchor="middle" dominant-baseline="central">
+                <text x="0" y="-25" font-size="28" letter-spacing="6">Z R O</text>
+                <text x="0" y="15" font-size="20" letter-spacing="8">N D V K</text>
+                <text x="0" y="45" font-size="14" letter-spacing="10">8 5 2 9 4</text>
+              </g>
+            </g>
+
+            <!-- TRIAL FRAME DEGREE SCALE (0° to 180° DEGREE TICKS AND NUMBERS) -->
+            <g id="trialBarrelScale" stroke="#64748b" stroke-width="1" opacity="0.8">
+              <circle cx="0" cy="0" r="108" fill="none" stroke="#475569" stroke-width="2"/>
+              <!-- Ticks and Numbers every 30 degrees -->
+              <g fill="#94a3b8" font-size="8" font-weight="bold" font-family="JetBrains Mono" text-anchor="middle" dominant-baseline="central" stroke="none">
+                <text x="-122" y="0">180°</text>
+                <text x="-106" y="-62">150°</text>
+                <text x="-62" y="-106">120°</text>
+                <text x="0" y="-122">90°</text>
+                <text x="62" y="-106">60°</text>
+                <text x="106" y="-62">30°</text>
+                <text x="122" y="0">0°</text>
+              </g>
+
+              <!-- Active Trial Axis Line (Bright Sky Blue Guide Line) -->
+              <g id="trialAxisGuideGroup">
+                <line id="trialAxisGuideLine" x1="-108" y1="0" x2="108" y2="0" stroke="#0ea5e9" stroke-width="3" stroke-dasharray="6 3" transform="rotate(0)"/>
+                <!-- Outer Trial Axis Arrow Pointer -->
+                <circle id="trialAxisTip" cx="-108" cy="0" r="5" fill="#0ea5e9" stroke="#ffffff" stroke-width="1.5" transform="rotate(0)" />
+              </g>
+            </g>
+
+            <!-- INTERACTIVE JCC LENS ASSEMBLY OVERLAY -->
+            <g id="jccAssemblyGroup" transform="rotate(0)">
+              <!-- Outer JCC Lens Metal Ring -->
+              <circle cx="0" cy="0" r="95" fill="rgba(255, 255, 255, 0.04)" stroke="url(#lensRingGrad)" stroke-width="10" class="jcc-lens-glow" />
+              <circle cx="0" cy="0" r="90" fill="none" stroke="#0f172a" stroke-width="1" />
+
+              <!-- JCC Handle Shaft (Mechanical Rotation Shaft along Handle Axis) -->
+              <line x1="0" y1="95" x2="0" y2="135" stroke="#94a3b8" stroke-width="7" stroke-linecap="round" />
+              <circle cx="0" cy="135" r="8" fill="#64748b" stroke="#cbd5e1" stroke-width="2" />
+              <text x="0" y="135" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-size="6" font-weight="extrabold">HANDLE</text>
+
+              <!-- MINUS CYLINDER AXIS DOTS / MARKS (RED) -->
+              <g id="minusCylGroup" transform="rotate(45)">
+                <line x1="-90" y1="0" x2="90" y2="0" stroke="#ef4444" stroke-width="2" stroke-dasharray="3 3" opacity="0.8"/>
+                <!-- Red Dots on minus axis -->
+                <circle cx="-82" cy="0" r="7" fill="#ef4444" stroke="#ffffff" stroke-width="2" />
+                <circle cx="82" cy="0" r="7" fill="#ef4444" stroke="#ffffff" stroke-width="2" />
+                <text x="-82" y="0" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-size="8" font-weight="black">-</text>
+                <text x="82" y="0" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-size="8" font-weight="black">-</text>
+                <text x="-65" y="-10" fill="#ef4444" font-size="7" font-weight="extrabold">RED (-)</text>
+              </g>
+
+              <!-- PLUS CYLINDER AXIS DOTS / MARKS (WHITE / GREEN) -->
+              <g id="plusCylGroup" transform="rotate(-45)">
+                <line x1="-90" y1="0" x2="90" y2="0" stroke="#22c55e" stroke-width="2" stroke-dasharray="3 3" opacity="0.8"/>
+                <!-- White/Green Dots on plus axis -->
+                <circle cx="-82" cy="0" r="7" fill="#22c55e" stroke="#ffffff" stroke-width="2" />
+                <circle cx="82" cy="0" r="7" fill="#22c55e" stroke="#ffffff" stroke-width="2" />
+                <text x="-82" y="0" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-size="8" font-weight="black">+</text>
+                <text x="82" y="0" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-size="8" font-weight="black">+</text>
+                <text x="-65" y="-10" fill="#22c55e" font-size="7" font-weight="extrabold">WHITE (+)</text>
+              </g>
+
+              <!-- JCC Power Label Center Pin -->
+              <circle cx="0" cy="0" r="18" fill="#0f172a" stroke="#0284c7" stroke-width="2" />
+              <text x="0" y="-1" text-anchor="middle" dominant-baseline="central" fill="#0284c7" font-size="8" font-weight="900" font-family="JetBrains Mono" id="jccPowerCenterLabel">±0.25</text>
+            </g>
+
+            <!-- ON-SCREEN POSITION & DIRECTORY BADGE -->
+            <g transform="translate(0, -135)">
+              <rect x="-70" y="-10" width="140" height="20" rx="10" fill="#0f172a" stroke="#0284c7" stroke-width="1.5"/>
+              <text x="0" y="1" text-anchor="middle" dominant-baseline="central" fill="#38bdf8" font-size="8" font-weight="900" font-family="JetBrains Mono" id="svgPosBannerText">LENS POSITION 1 ACTIVE</text>
+            </g>
+
+          </svg>
+
+        </div>
+
+        <!-- SIMULATED PATIENT VOICE / RESPONSE DISPLAY -->
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2">
+          <div class="flex justify-between items-center text-[10px] font-mono text-slate-400">
+            <span class="text-amber-400 font-extrabold flex items-center gap-1">
+              <i class="fa-solid fa-comment-dots"></i> PATIENT FEEDBACK RESPONSE:
+            </span>
+            <span class="text-slate-500 uppercase font-bold" id="patientClarityDeltaText">CLARITY DIFFERENCE: --</span>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
+            <p id="patientVoiceBubble" class="text-sm font-extrabold text-sky-300 font-sans tracking-wide">
+              "Please flip between Position 1 and Position 2 to evaluate clarity."
+            </p>
+          </div>
+        </div>
+
+        <!-- BEGINNER INTERACTIVE CLINICAL STEP ASSISTANT -->
+        <div class="bg-sky-950/40 border-2 border-sky-500/60 p-4 rounded-2xl space-y-3" id="beginnerActionBox">
+          <div class="flex justify-between items-center border-b border-sky-800/80 pb-2">
+            <span class="text-xs font-black uppercase text-sky-300 tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-compass text-amber-400 animate-bounce"></i> BEGINNER CLINICAL STEP ASSISTANT
+            </span>
+            <span class="text-[10px] font-mono font-bold text-sky-200 bg-sky-900/80 px-2 py-0.5 rounded border border-sky-700" id="currentStepBadge">
+              PHASE 1: AXIS REFINEMENT
+            </span>
+          </div>
+
+          <!-- Immediate Action Direction -->
+          <div class="flex items-start gap-3 bg-slate-900/90 p-3 rounded-xl border border-sky-800">
+            <div class="w-9 h-9 rounded-xl bg-sky-500 text-slate-950 font-black flex items-center justify-center flex-shrink-0 text-base" id="actionDirectionIcon">
+              <i class="fa-solid fa-arrows-rotate"></i>
+            </div>
+            <div class="space-y-1">
+              <h4 class="text-xs font-extrabold text-white uppercase tracking-wider" id="actionHeaderTitle">WHAT TO DO NEXT:</h4>
+              <p class="text-xs font-semibold text-sky-200 leading-relaxed" id="actionStepInstruction">
+                Click <strong>"FLIP JCC LENS"</strong> button below to compare Position 1 and Position 2.
+              </p>
+            </div>
+          </div>
+
+          <!-- Refinement Flow Progress Tracker -->
+          <div class="grid grid-cols-3 gap-2 text-center text-[9px] font-mono font-bold pt-1">
+            <div class="p-2 rounded-lg bg-sky-600 text-white border border-sky-400" id="flowStep1">
+              1. AXIS ("Chase Red")
+            </div>
+            <div class="p-2 rounded-lg bg-slate-800 text-slate-400 border border-slate-700" id="flowStep2">
+              2. POWER (Red/White)
+            </div>
+            <div class="p-2 rounded-lg bg-slate-800 text-slate-400 border border-slate-700" id="flowStep3">
+              3. FINAL RX CHECK
+            </div>
+          </div>
+        </div>
+
+        <!-- CLINICAL DIAGNOSTICS TICKER -->
+        <div class="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2.5 px-4 rounded-xl font-mono">
+          <div class="flex justify-center items-center gap-2 max-w-lg mx-auto">
+            <span class="text-[8px] bg-sky-100 dark:bg-sky-950 text-secondary border border-sky-200 dark:border-sky-800 font-black tracking-widest uppercase px-1.5 py-0.5 rounded flex-shrink-0 animate-pulse">Diagnostics Feed</span>
+            <p id="commentaryText" class="text-[10px] text-slate-600 dark:text-slate-300 truncate font-bold text-center flex-1">Select Axis or Power Refinement, flip JCC lens, and adjust trial lens parameters.</p>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: Refraction Controls & Clinical Assessment -->
+    <section class="lg:w-[42%] space-y-4">
+      
+      <!-- Mode Switching Tabs (Practice vs Assessment) -->
+      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-3xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-xs">
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-chalkboard-user"></i> Practice Mode
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-vial"></i> Assessment
+        </button>
+      </div>
+
+      <!-- PRACTICE CONTROLS CARD -->
+      <div id="practiceControlsCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        
+        <div class="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-2">
+          <div>
+            <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-secondary"></i> JCC &amp; Trial Refraction Workbench
+            </h3>
+            <p class="text-[10px] text-slate-400 font-bold">Configure JCC flip positions and refine cylinder axis &amp; power</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="autoRefineStep()" class="px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 border border-sky-300 dark:bg-sky-950/20 dark:border-sky-900 rounded-xl text-[10px] font-black text-secondary transition flex items-center gap-1 cursor-pointer" title="Auto-adjust 1 clinical step towards target">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Step
+            </button>
+            <button onclick="resetSimulator()" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-300 dark:bg-rose-950/20 dark:border-rose-900 rounded-xl text-[10px] font-black text-rose-600 dark:text-rose-400 transition flex items-center gap-1 cursor-pointer">
+              <i class="fa-solid fa-arrow-rotate-left"></i> Reset
+            </button>
+          </div>
+        </div>
+
+        <!-- JCC ACTION FLIP BUTTON & MODE SELECTOR -->
+        <div class="p-3 bg-sky-50/60 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/60 rounded-2xl space-y-3">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">
+                <i class="fa-solid fa-bullseye text-secondary mr-1"></i> Refinement Mode
+              </label>
+              <select id="jccRefineModeSelect" onchange="setJccRefineMode(this.value)" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary cursor-pointer">
+                <option value="AXIS">1. Axis Refinement (Handle Parallel)</option>
+                <option value="POWER">2. Power Refinement (Mark Aligned)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">
+                <i class="fa-solid fa-circle-dot text-amber-500 mr-1"></i> JCC Lens Power
+              </label>
+              <select id="jccPowerSelect" onchange="setJccPower(this.value)" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary cursor-pointer">
+                <option value="0.25">±0.25 D (Standard)</option>
+                <option value="0.50">±0.50 D (Low Vision)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- BIG JCC FLIP BUTTON -->
+          <button onclick="flipJccLens()" class="w-full py-3.5 bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-500 hover:to-teal-500 text-white font-black rounded-xl text-xs shadow-md transition transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-arrows-rotate text-base animate-spin-slow"></i> FLIP JCC LENS (POS 1 ↔ POS 2)
+          </button>
+        </div>
+
+        <!-- TRIAL LENS CYLINDER AXIS CONTROL -->
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-rose-500 tracking-widest">
+              <i class="fa-solid fa-rotate"></i> Trial Cylinder Axis (°): <span id="readoutTrialAxis" class="text-slate-900 dark:text-white font-mono text-xs">160°</span>
+            </span>
+            <span class="text-[8px] font-extrabold text-amber-500 uppercase" id="chaseRedGuidance">Rule: "Chase the Red"</span>
+          </div>
+          <div class="flex items-center gap-2 pt-1">
+            <button onclick="adjustTrialAxis(-15)" class="px-2 py-1.5 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold text-xs transition cursor-pointer" title="-15° Counter-Clockwise">-15° ↺</button>
+            <button onclick="adjustTrialAxis(-5)" class="px-2 py-1.5 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold text-xs transition cursor-pointer" title="-5° Counter-Clockwise">-5° ↺</button>
+            <input type="range" id="trialAxisSlider" min="0" max="180" step="1" value="160" oninput="slideTrialControl('axis')" class="w-full">
+            <button onclick="adjustTrialAxis(5)" class="px-2 py-1.5 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold text-xs transition cursor-pointer" title="+5° Clockwise">+5° ↻</button>
+            <button onclick="adjustTrialAxis(15)" class="px-2 py-1.5 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold text-xs transition cursor-pointer" title="+15° Clockwise">+15° ↻</button>
+          </div>
+        </div>
+
+        <!-- TRIAL LENS CYLINDER POWER CONTROL -->
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-sky-500 tracking-widest">
+              <i class="fa-solid fa-minus"></i> Trial Cylinder Power (DC): <span id="readoutTrialCyl" class="text-slate-900 dark:text-white font-mono text-xs">-1.00 D</span>
+            </span>
+            <label class="flex items-center gap-1 cursor-pointer">
+              <input type="checkbox" id="autoSeLockToggle" checked onchange="toggleSeLock(this.checked)" class="accent-secondary text-xs">
+              <span class="text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase">1:2 SE Lock</span>
+            </label>
+          </div>
+          <div class="flex items-center gap-3 pt-1">
+            <button onclick="adjustTrialCyl(-0.25)" class="w-9 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer" title="Add -0.25 DC">-0.25</button>
+            <input type="range" id="trialCylSlider" min="-6.00" max="0.00" step="0.25" value="-1.00" oninput="slideTrialControl('cyl')" class="w-full">
+            <button onclick="adjustTrialCyl(0.25)" class="w-9 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer" title="Reduce -0.25 DC">+0.25</button>
+          </div>
+        </div>
+
+        <!-- TRIAL LENS SPHERE POWER CONTROL -->
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest">
+              <i class="fa-solid fa-circle"></i> Trial Sphere Power (DS): <span id="readoutTrialSph" class="text-slate-900 dark:text-white font-mono text-xs">-2.00 D</span>
+            </span>
+            <span class="text-[8px] font-mono text-slate-400" id="readoutTrialSE">SE: -2.50 DS</span>
+          </div>
+          <div class="flex items-center gap-3 pt-1">
+            <button onclick="adjustTrialSph(-0.25)" class="w-9 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">-0.25</button>
+            <input type="range" id="trialSphSlider" min="-10.00" max="6.00" step="0.25" value="-2.00" oninput="slideTrialControl('sph')" class="w-full">
+            <button onclick="adjustTrialSph(0.25)" class="w-9 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">+0.25</button>
+          </div>
+        </div>
+
+        <!-- PATIENT TRUE ANATOMICAL PRESCRIPTION SETUP -->
+        <div class="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl space-y-2">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1">
+            <span class="text-[9px] font-black uppercase text-slate-400 block">
+              <i class="fa-solid fa-user-doctor text-secondary mr-1"></i> Patient True Prescription Setup
+            </span>
+            <button onclick="loadRandomPracPreset()" class="text-[8px] font-bold text-sky-600 hover:text-sky-500 uppercase flex items-center gap-1 cursor-pointer">
+              <i class="fa-solid fa-shuffle"></i> Random Case
+            </button>
+          </div>
+
+          <!-- Preset Case Selection Dropdown for Beginners -->
+          <div>
+            <label class="text-[8px] font-extrabold uppercase text-slate-400 block mb-1">Select Practice Case Preset:</label>
+            <select id="pracPresetSelect" onchange="loadPracPreset(this.value)" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 dark:text-slate-100 cursor-pointer focus:outline-none focus:border-secondary">
+              <option value="0">Case 1: -1.50 DS / -0.75 DC x 90° (With-The-Rule)</option>
+              <option value="1">Case 2: -2.25 DS / -1.25 DC x 180° (Against-The-Rule)</option>
+              <option value="2">Case 3: -3.00 DS / -1.00 DC x 45° (Oblique 45°)</option>
+              <option value="3">Case 4: -1.00 DS / -1.50 DC x 135° (Oblique 135°)</option>
+              <option value="4">Case 5: -2.50 DS / -0.50 DC x 75° (Near-Vertical)</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 pt-1">
+            <div>
+              <label class="text-[8px] font-black text-emerald-500 uppercase block">True Sph</label>
+              <input type="number" id="pracTrueSph" step="0.25" value="-1.50" onchange="updateCustomPracPatient()" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-center">
+            </div>
+            <div>
+              <label class="text-[8px] font-black text-sky-500 uppercase block">True Cyl</label>
+              <input type="number" id="pracTrueCyl" step="0.25" value="-0.75" onchange="updateCustomPracPatient()" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-center">
+            </div>
+            <div>
+              <label class="text-[8px] font-black text-rose-500 uppercase block">True Axis</label>
+              <input type="number" id="pracTrueAxis" min="0" max="180" step="5" value="90" onchange="updateCustomPracPatient()" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-center">
+            </div>
+          </div>
+        </div>
+
+        <!-- PROCEDURE GUIDE BOX -->
+        <div id="beginnerInstructionCard" class="p-3.5 bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900 rounded-2xl text-[11px] space-y-2">
+          <span class="font-extrabold text-secondary uppercase tracking-widest text-[9px] block flex items-center gap-1">
+            <i class="fa-solid fa-lightbulb text-amber-500 animate-pulse"></i> JCC Clinical Protocol Rules
+          </span>
+          <p class="text-slate-600 dark:text-slate-400 leading-relaxed">
+            1. <strong>Axis Refinement First</strong>: Align JCC handle parallel to trial cylinder axis. Flip between Pos 1 and Pos 2. Rotate trial axis towards red dots ("Chase the Red") until equal.<br>
+            2. <strong>Power Refinement Second</strong>: Align JCC red/white dots with trial cylinder axis. Flip. If red dot on axis is clearer, add minus cyl power (e.g. $-0.25\text{ D}$).<br>
+            3. <strong>Spherical Equivalent Rule</strong>: For every $-0.50\text{ D}$ cylinder added, add $+0.25\text{ D}$ sphere to maintain Circle of Least Confusion on retina.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- TEST / ASSESSMENT CONSOLE -->
+      <div id="testModeConsole" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Verification Board</h3>
+            <p class="text-[10px] text-slate-600 dark:text-slate-400">Refine the unknown patient's astigmatism and record your final prescription.</p>
+          </div>
+          <span id="assessmentScoreReadout" class="text-xs font-black bg-slate-100 dark:bg-slate-800 border border-slate-300 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">Score: Unsubmitted</span>
+        </div>
+
+        <div class="space-y-3">
+          <!-- JCC ACTION FLIP BUTTON & MODE SELECTOR (TEST MODE) -->
+          <div class="p-3 bg-sky-50/60 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/60 rounded-2xl space-y-3">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">
+                  <i class="fa-solid fa-bullseye text-secondary mr-1"></i> Mode
+                </label>
+                <select id="testJccRefineModeSelect" onchange="setJccRefineMode(this.value)" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none">
+                  <option value="AXIS">1. Axis Refinement</option>
+                  <option value="POWER">2. Power Refinement</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">
+                  <i class="fa-solid fa-circle-dot text-amber-500 mr-1"></i> JCC Power
+                </label>
+                <select id="testJccPowerSelect" onchange="setJccPower(this.value)" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none">
+                  <option value="0.25">±0.25 D</option>
+                  <option value="0.50">±0.50 D</option>
+                </select>
+              </div>
+            </div>
+
+            <button onclick="flipJccLens()" class="w-full py-3.5 bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-500 hover:to-teal-500 text-white font-black rounded-xl text-xs shadow-md transition transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+              <i class="fa-solid fa-arrows-rotate text-sm"></i> FLIP JCC LENS (POS 1 ↔ POS 2)
+            </button>
+          </div>
+
+          <!-- TEST MODE AXIS CONTROL -->
+          <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+              <span class="text-[9px] font-black uppercase text-rose-500 tracking-widest"><i class="fa-solid fa-rotate"></i> Trial Axis (°): <span id="testReadoutAxis" class="text-slate-900 dark:text-white font-mono text-xs">160°</span></span>
+            </div>
+            <div class="flex items-center gap-2 pt-1">
+              <button onclick="adjustTrialAxis(-5)" class="px-2.5 py-1.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs cursor-pointer">-5° ↺</button>
+              <input type="range" id="testTrialAxisSlider" min="0" max="180" step="1" value="160" oninput="slideTestControl('axis')" class="w-full">
+              <button onclick="adjustTrialAxis(5)" class="px-2.5 py-1.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs cursor-pointer">+5° ↻</button>
+            </div>
+          </div>
+
+          <!-- TEST MODE CYLINDER CONTROL -->
+          <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+              <span class="text-[9px] font-black uppercase text-sky-500 tracking-widest"><i class="fa-solid fa-minus"></i> Trial Cyl Power: <span id="testReadoutCyl" class="text-slate-900 dark:text-white font-mono text-xs">-1.00 D</span></span>
+            </div>
+            <div class="flex items-center gap-3 pt-1">
+              <button onclick="adjustTrialCyl(-0.25)" class="w-9 h-8 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold cursor-pointer">-0.25</button>
+              <input type="range" id="testTrialCylSlider" min="-6.00" max="0.00" step="0.25" value="-1.00" oninput="slideTestControl('cyl')" class="w-full">
+              <button onclick="adjustTrialCyl(0.25)" class="w-9 h-8 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold cursor-pointer">+0.25</button>
+            </div>
+          </div>
+
+          <!-- TEST MODE SPHERE CONTROL -->
+          <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+              <span class="text-[9px] font-black uppercase text-emerald-500 tracking-widest"><i class="fa-solid fa-circle"></i> Trial Sphere Power: <span id="testReadoutSph" class="text-slate-900 dark:text-white font-mono text-xs">-2.00 D</span></span>
+            </div>
+            <div class="flex items-center gap-3 pt-1">
+              <button onclick="adjustTrialSph(-0.25)" class="w-9 h-8 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold cursor-pointer">-0.25</button>
+              <input type="range" id="testTrialSphSlider" min="-10.00" max="6.00" step="0.25" value="-2.00" oninput="slideTestControl('sph')" class="w-full">
+              <button onclick="adjustTrialSph(0.25)" class="w-9 h-8 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold cursor-pointer">+0.25</button>
+            </div>
+          </div>
+
+          <!-- RECORDED RX ENTRY FIELDS -->
+          <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div>
+              <label class="text-[9px] uppercase font-black text-emerald-500 block mb-1">Sphere (DS)</label>
+              <input type="number" id="testSphInput" step="0.25" placeholder="-2.00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-bold text-center">
+            </div>
+            <div>
+              <label class="text-[9px] uppercase font-black text-sky-500 block mb-1">Cylinder (DC)</label>
+              <input type="number" id="testCylInput" step="0.25" placeholder="-1.50" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-bold text-center">
+            </div>
+            <div>
+              <label class="text-[9px] uppercase font-black text-rose-500 block mb-1">Axis (°)</label>
+              <input type="number" id="testAxisInput" min="0" max="180" step="1" placeholder="145" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-bold text-center">
+            </div>
+          </div>
+        </div>
+
+        <div id="diagnosisFeedback" class="text-[11px] font-bold hidden px-3 py-2 rounded-lg"></div>
+
+        <div class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-900">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block">JCC Refinement Quiz (50% Marks)</span>
+          <div id="testMcqSuite" class="space-y-4"></div>
+        </div>
+
+        <button onclick="submitTestAssessment()" class="w-full py-3 bg-secondary text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+          Submit Final Refraction &amp; Assessment Profile
+        </button>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- About Modal -->
+  <div id="aboutModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-circle-dot text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">About JCC Refinement Lab</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Subjective Refraction Unit</p>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        This simulator models clinical Jackson Cross-Cylinder (JCC) astigmatism refinement. It calculates vector ray-tracing and Sturm's Conoid blur circles across flip positions (Position 1 vs Position 2) to simulate true patient subjective responses for both cylinder axis ("Chase the Red") and cylinder power refinement.
+      </p>
+    </div>
+  </div>
+
+  <!-- Reference Modal -->
+  <div id="referenceModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">Clinical JCC Rules (AAO / Optometry Guidelines)</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Jackson Cross-Cylinder Rules</p>
+        </div>
+      </div>
+      <div class="space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+        <p><strong>1. Optical Construction:</strong> A Jackson Cross-Cylinder is a combination of two cylinders of equal power but opposite signs with their axes at right angles (e.g. $+0.25\text{ DS} / -0.50\text{ DC}$ = $\pm 0.25\text{ DC}$). Spherical Equivalent = $0.00\text{ D}$.</p>
+        <p><strong>2. Axis Refinement:</strong> Align JCC handle parallel to trial cylinder axis (dots at $45^\circ$). Rotate trial axis towards the red (minus) axis dots of the clearer position ("Chase the Red").</p>
+        <p><strong>3. Power Refinement:</strong> Align JCC red or white dots directly over trial cylinder axis. If red dot on axis is clearer -> add $-0.25\text{ DC}$. If white dot on axis is clearer -> reduce minus cylinder power by $+0.25\text{ DC}$.</p>
+        <p><strong>4. Spherical Equivalent Rule:</strong> When adding $-0.50\text{ DC}$ of cylinder, add $+0.25\text{ DS}$ of sphere to keep the Circle of Least Confusion on the retina.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const clinicalMcqPool = [
+      {
+        question: "During JCC axis refinement, how is the Jackson Cross-Cylinder lens positioned relative to the trial cylinder axis?",
+        options: { 
+          a: "The JCC handle (flip axis) is aligned parallel to the trial cylinder axis", 
+          b: "The red (minus) dots are aligned parallel to the trial cylinder axis", 
+          c: "The white (plus) dots are aligned parallel to the trial cylinder axis" 
+        },
+        correct: "a",
+        explanation: "Aligning the handle parallel to the trial axis places the red and white principal axes at 45° to the trial cylinder axis, ideal for detecting axis misalignment."
+      },
+      {
+        question: "When performing cylinder power refinement, if the patient reports that the flip position with the RED dot aligned with the trial cylinder axis is clearer, what adjustment should be made?",
+        options: { 
+          a: "Increase minus cylinder power by -0.25 DC", 
+          b: "Decrease minus cylinder power by +0.25 DC", 
+          c: "Rotate cylinder axis by 15 degrees" 
+        },
+        correct: "a",
+        explanation: "A clearer vision when the red (minus) dot is on the trial cylinder axis indicates the patient requires MORE minus cylinder power."
+      },
+      {
+        question: "According to the Spherical Equivalent maintenance rule, how should sphere power be adjusted when adding -0.50 DC of cylinder during refinement?",
+        options: { 
+          a: "Add +0.25 DS to sphere power", 
+          b: "Add -0.25 DS to sphere power", 
+          c: "No sphere change is needed" 
+        },
+        correct: "a",
+        explanation: "To maintain the Circle of Least Confusion on the retina, adding -0.50 DC cylinder requires adding +0.25 DS sphere (+1:2 ratio)."
+      },
+      {
+        question: "What is the Spherical Equivalent (SE) power of a standard ±0.25 D Jackson Cross-Cylinder lens?",
+        options: { a: "0.00 D", b: "+0.25 D", c: "-0.25 D" },
+        correct: "a",
+        explanation: "A ±0.25 D JCC consists of +0.25 DS / -0.50 DC. Its Spherical Equivalent is (+0.25) + (-0.50 / 2) = 0.00 D, ensuring image position is unchanged."
+      }
+    ];
+
+    // 5 Simple Beginner Practice Presets
+    const simplePracticePresets = [
+      { sph: -1.50, cyl: -0.75, axis: 90 },  // Case 1: Simple WTR
+      { sph: -2.25, cyl: -1.25, axis: 180 }, // Case 2: Simple ATR
+      { sph: -3.00, cyl: -1.00, axis: 45 },  // Case 3: Oblique 45
+      { sph: -1.00, cyl: -1.50, axis: 135 }, // Case 4: Oblique 135
+      { sph: -2.50, cyl: -0.50, axis: 75 }   // Case 5: Near-vertical
+    ];
+
+    const simState = {
+      mode: 'practice',
+      soundMuted: false,
+      jccRefineMode: 'AXIS', // AXIS or POWER
+      jccPower: 0.25,        // 0.25 or 0.50
+      flipPosition: 1,       // 1 or 2
+      autoSeLock: true,
+
+      // True Patient Prescription (Uncorrected Astigmatism)
+      practiceTruePatient: { sph: -1.50, cyl: -0.75, axis: 90 },
+      customTestPatient: { sph: -2.00, cyl: -1.50, axis: 145 },
+
+      // Current Trial Lens Settings
+      trialSph: -1.50,
+      trialCyl: -0.25,
+      trialAxis: 110,
+
+      selectedQuestions: [],
+      scores: { diagnosisScore: 0, mcqScore: 0 }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      syncCompletionBadge();
+      loadPracPreset(0);
+    });
+
+    // Enforce strict 0.25 D rounding
+    function roundToQuarter(val) {
+      return Math.round(val * 4) / 4;
+    }
+
+    function loadPracPreset(index) {
+      const pIdx = parseInt(index) || 0;
+      const preset = simplePracticePresets[pIdx];
+      simState.practiceTruePatient = { ...preset };
+
+      document.getElementById('pracTrueSph').value = preset.sph.toFixed(2);
+      document.getElementById('pracTrueCyl').value = preset.cyl.toFixed(2);
+      document.getElementById('pracTrueAxis').value = preset.axis;
+
+      // Set initial trial lens parameters offset by ~20° and 0.50 D so student has a clear task
+      let initTrialAxis = (preset.axis + 20) % 180;
+      let initTrialCyl = roundToQuarter(Math.min(0, preset.cyl + 0.50));
+      if (initTrialCyl === 0) initTrialCyl = -0.25;
+      let initTrialSph = roundToQuarter(preset.sph + ((preset.cyl - initTrialCyl) / 2));
+
+      simState.trialSph = initTrialSph;
+      simState.trialCyl = initTrialCyl;
+      simState.trialAxis = initTrialAxis;
+      simState.flipPosition = 1;
+
+      document.getElementById('trialSphSlider').value = initTrialSph;
+      document.getElementById('trialCylSlider').value = initTrialCyl;
+      document.getElementById('trialAxisSlider').value = initTrialAxis;
+
+      soundFeedback('success');
+      updateJccPhysics();
+    }
+
+    function loadRandomPracPreset() {
+      const randIdx = Math.floor(Math.random() * simplePracticePresets.length);
+      document.getElementById('pracPresetSelect').value = randIdx;
+      loadPracPreset(randIdx);
+    }
+
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const icon = document.getElementById('muteIcon');
+      const text = document.getElementById('muteText');
+      if (simState.soundMuted) {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400"; text.innerText = "Unmute";
+      } else {
+        icon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse"; text.innerText = "Mute"; soundFeedback('click');
+      }
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+      soundFeedback('switch');
+    }
+
+    function openMenuModal(id) { soundFeedback('click'); document.getElementById(`${id}Modal`).classList.remove('hidden'); }
+    function closeMenuModal(id) { soundFeedback('click'); document.getElementById(`${id}Modal`).classList.add('hidden'); }
+
+    function setJccRefineMode(mode) {
+      simState.jccRefineMode = mode;
+      soundFeedback('switch');
+      document.getElementById('jccRefineModeSelect').value = mode;
+      document.getElementById('testJccRefineModeSelect').value = mode;
+      document.getElementById('currentJccModeBadge').innerText = `MODE: ${mode} REFINEMENT`;
+      updateJccPhysics();
+    }
+
+    function setJccPower(p) {
+      simState.jccPower = parseFloat(p);
+      soundFeedback('switch');
+      document.getElementById('jccPowerSelect').value = p;
+      document.getElementById('testJccPowerSelect').value = p;
+      document.getElementById('jccPowerCenterLabel').textContent = `±${simState.jccPower.toFixed(2)}`;
+      updateJccPhysics();
+    }
+
+    function toggleSeLock(enabled) {
+      simState.autoSeLock = enabled;
+      soundFeedback('switch');
+    }
+
+    function flipJccLens() {
+      soundFeedback('flip');
+      simState.flipPosition = simState.flipPosition === 1 ? 2 : 1;
+      
+      const badge = document.getElementById('currentFlipPosBadge');
+      badge.innerText = `POSITION ${simState.flipPosition}`;
+      if (simState.flipPosition === 1) {
+        badge.className = "text-[9px] bg-sky-500 text-white font-extrabold px-2.5 py-0.5 rounded shadow-xs";
+      } else {
+        badge.className = "text-[9px] bg-teal-500 text-white font-extrabold px-2.5 py-0.5 rounded shadow-xs";
+      }
+
+      const svgBox = document.getElementById('jccAssemblyGroup');
+      svgBox.classList.add('jcc-flipping');
+      setTimeout(() => svgBox.classList.remove('jcc-flipping'), 250);
+
+      updateJccPhysics();
+    }
+
+    function adjustTrialAxis(delta) {
+      soundFeedback('dial');
+      let ax = simState.trialAxis + delta;
+      while (ax < 0) ax += 180;
+      while (ax >= 180) ax -= 180;
+      simState.trialAxis = ax;
+
+      document.getElementById('trialAxisSlider').value = ax;
+      document.getElementById('testTrialAxisSlider').value = ax;
+      updateJccPhysics();
+    }
+
+    function adjustTrialCyl(delta) {
+      soundFeedback('dial');
+      let oldCyl = simState.trialCyl;
+      let newCyl = roundToQuarter(Math.min(0, Math.max(-6.00, oldCyl + delta)));
+      let cylDiff = roundToQuarter(newCyl - oldCyl);
+
+      simState.trialCyl = newCyl;
+
+      // 1:2 SE Lock Rule
+      if (simState.autoSeLock && Math.abs(cylDiff) > 0) {
+        simState.trialSph = roundToQuarter(simState.trialSph - (cylDiff / 2));
+      }
+
+      document.getElementById('trialCylSlider').value = newCyl;
+      document.getElementById('testTrialCylSlider').value = newCyl;
+      document.getElementById('trialSphSlider').value = simState.trialSph;
+      document.getElementById('testTrialSphSlider').value = simState.trialSph;
+
+      updateJccPhysics();
+    }
+
+    function adjustTrialSph(delta) {
+      soundFeedback('dial');
+      let newSph = roundToQuarter(Math.min(6.00, Math.max(-10.00, simState.trialSph + delta)));
+      simState.trialSph = newSph;
+
+      document.getElementById('trialSphSlider').value = newSph;
+      document.getElementById('testTrialSphSlider').value = newSph;
+      updateJccPhysics();
+    }
+
+    function slideTrialControl(type) {
+      if (type === 'axis') simState.trialAxis = parseInt(document.getElementById('trialAxisSlider').value);
+      if (type === 'cyl') {
+        let oldCyl = simState.trialCyl;
+        let newCyl = roundToQuarter(parseFloat(document.getElementById('trialCylSlider').value));
+        let cylDiff = roundToQuarter(newCyl - oldCyl);
+        simState.trialCyl = newCyl;
+        if (simState.autoSeLock && Math.abs(cylDiff) > 0) {
+          simState.trialSph = roundToQuarter(simState.trialSph - (cylDiff / 2));
+          document.getElementById('trialSphSlider').value = simState.trialSph;
+        }
+      }
+      if (type === 'sph') simState.trialSph = roundToQuarter(parseFloat(document.getElementById('trialSphSlider').value));
+      updateJccPhysics();
+    }
+
+    function slideTestControl(type) {
+      if (type === 'axis') simState.trialAxis = parseInt(document.getElementById('testTrialAxisSlider').value);
+      if (type === 'cyl') {
+        let oldCyl = simState.trialCyl;
+        let newCyl = roundToQuarter(parseFloat(document.getElementById('testTrialCylSlider').value));
+        let cylDiff = roundToQuarter(newCyl - oldCyl);
+        simState.trialCyl = newCyl;
+        if (simState.autoSeLock && Math.abs(cylDiff) > 0) {
+          simState.trialSph = roundToQuarter(simState.trialSph - (cylDiff / 2));
+          document.getElementById('testTrialSphSlider').value = simState.trialSph;
+        }
+      }
+      if (type === 'sph') simState.trialSph = roundToQuarter(parseFloat(document.getElementById('testTrialSphSlider').value));
+      updateJccPhysics();
+    }
+
+    function updateCustomPracPatient() {
+      let sph = roundToQuarter(parseFloat(document.getElementById('pracTrueSph').value) || -1.50);
+      let cyl = roundToQuarter(parseFloat(document.getElementById('pracTrueCyl').value) || -0.75);
+      let axis = parseInt(document.getElementById('pracTrueAxis').value) || 90;
+      
+      document.getElementById('pracTrueSph').value = sph.toFixed(2);
+      document.getElementById('pracTrueCyl').value = cyl.toFixed(2);
+      
+      simState.practiceTruePatient = { sph, cyl, axis };
+      updateJccPhysics();
+    }
+
+    function autoRefineStep() {
+      soundFeedback('success');
+      const target = simState.mode === 'practice' ? simState.practiceTruePatient : simState.customTestPatient;
+
+      if (simState.jccRefineMode === 'AXIS') {
+        let diff = target.axis - simState.trialAxis;
+        while (diff > 90) diff -= 180;
+        while (diff < -90) diff += 180;
+
+        if (Math.abs(diff) > 15) adjustTrialAxis(diff > 0 ? 15 : -15);
+        else if (Math.abs(diff) > 5) adjustTrialAxis(diff > 0 ? 5 : -5);
+        else adjustTrialAxis(diff);
+      } else {
+        let diffCyl = roundToQuarter(target.cyl - simState.trialCyl);
+        if (Math.abs(diffCyl) >= 0.25) adjustTrialCyl(diffCyl < 0 ? -0.25 : 0.25);
+        else {
+          let diffSph = roundToQuarter(target.sph - simState.trialSph);
+          if (Math.abs(diffSph) >= 0.25) adjustTrialSph(diffSph < 0 ? -0.25 : 0.25);
+        }
+      }
+    }
+
+    function resetSimulator() {
+      soundFeedback('success');
+      if (simState.mode === 'practice') {
+        loadPracPreset(document.getElementById('pracPresetSelect').value || 0);
+      } else {
+        simState.trialSph = -2.00;
+        simState.trialCyl = -1.00;
+        simState.trialAxis = 160;
+        simState.flipPosition = 1;
+
+        document.getElementById('testTrialSphSlider').value = -2.00;
+        document.getElementById('testTrialCylSlider').value = -1.00;
+        document.getElementById('testTrialAxisSlider').value = 160;
+        updateJccPhysics();
+      }
+    }
+
+    function updateJccPhysics() {
+      // Update readouts
+      document.getElementById('readoutTrialAxis').innerText = `${simState.trialAxis}°`;
+      document.getElementById('testReadoutAxis').innerText = `${simState.trialAxis}°`;
+
+      document.getElementById('readoutTrialCyl').innerText = `${simState.trialCyl.toFixed(2)} D`;
+      document.getElementById('testReadoutCyl').innerText = `${simState.trialCyl.toFixed(2)} D`;
+
+      document.getElementById('readoutTrialSph').innerText = `${simState.trialSph.toFixed(2)} D`;
+      document.getElementById('testReadoutSph').innerText = `${simState.trialSph.toFixed(2)} D`;
+
+      const currentSE = (simState.trialSph + (simState.trialCyl / 2)).toFixed(2);
+      document.getElementById('readoutTrialSE').innerText = `SE: ${currentSE} DS`;
+
+      // SVG Rotations
+      // Trial guide line aligns with trialAxis
+      document.getElementById('trialAxisGuideLine').setAttribute('transform', `rotate(${-simState.trialAxis})`);
+      document.getElementById('trialAxisTip').setAttribute('transform', `rotate(${-simState.trialAxis})`);
+
+      // JCC Assembly orientation:
+      // In AXIS mode: Handle shaft is parallel to trial cylinder axis.
+      // In POWER mode: Red/White marks align with trial cylinder axis (Handle at 45° to trial axis).
+      let jccAssemblyRotation = -simState.trialAxis;
+      if (simState.jccRefineMode === 'POWER') {
+        jccAssemblyRotation -= 45; // Shifts dots onto trial axis
+      }
+
+      document.getElementById('jccAssemblyGroup').setAttribute('transform', `rotate(${jccAssemblyRotation})`);
+
+      // Handle flip orientation (Position 1 vs Position 2 reverses red and white axes)
+      const minusCylGroup = document.getElementById('minusCylGroup');
+      const plusCylGroup = document.getElementById('plusCylGroup');
+
+      if (simState.flipPosition === 1) {
+        minusCylGroup.setAttribute('transform', 'rotate(45)');
+        plusCylGroup.setAttribute('transform', 'rotate(-45)');
+      } else {
+        minusCylGroup.setAttribute('transform', 'rotate(-45)');
+        plusCylGroup.setAttribute('transform', 'rotate(45)');
+      }
+
+      document.getElementById('svgPosBannerText').textContent = `LENS POSITION ${simState.flipPosition} ACTIVE`;
+
+      // Calculate Patient Refractive Blur & Subjective Feedback
+      const patient = simState.mode === 'practice' ? simState.practiceTruePatient : simState.customTestPatient;
+      
+      // Calculate clarity blur for Pos 1 and Pos 2
+      const evalPos1 = calcBlurError(patient, simState.trialSph, simState.trialCyl, simState.trialAxis, simState.jccRefineMode, simState.jccPower, 1);
+      const evalPos2 = calcBlurError(patient, simState.trialSph, simState.trialCyl, simState.trialAxis, simState.jccRefineMode, simState.jccPower, 2);
+
+      const currentBlur = simState.flipPosition === 1 ? evalPos1 : evalPos2;
+      document.getElementById('blurStdDev').setAttribute('stdDeviation', Math.min(6.0, currentBlur * 2.2).toFixed(2));
+
+      // Determine Patient Voice Response
+      const blurDiff = evalPos1 - evalPos2; // Negative means Pos 1 is sharper (less blur)
+      let patientResponse = "";
+      let deltaText = "";
+
+      if (Math.abs(blurDiff) < 0.08) {
+        patientResponse = `"Both Position 1 and Position 2 look EQUALLY CLEAR."`;
+        deltaText = "EQUAL CLARITY";
+      } else if (blurDiff < 0) {
+        patientResponse = `"POSITION 1 is clearer and sharper."`;
+        deltaText = `POS 1 CLEARER (|Δ| = ${Math.abs(blurDiff).toFixed(2)})`;
+      } else {
+        patientResponse = `"POSITION 2 is clearer and sharper."`;
+        deltaText = `POS 2 CLEARER (|Δ| = ${Math.abs(blurDiff).toFixed(2)})`;
+      }
+
+      document.getElementById('patientVoiceBubble').innerText = patientResponse;
+      document.getElementById('patientClarityDeltaText').innerText = `CLARITY: ${deltaText}`;
+
+      // Diagnostics & Step Assistant Guidance logic
+      let commentary = "";
+      let actTitle = "";
+      let actDesc = "";
+      let actIcon = "";
+
+      const stepBadge = document.getElementById('currentStepBadge');
+      const flowStep1 = document.getElementById('flowStep1');
+      const flowStep2 = document.getElementById('flowStep2');
+      const flowStep3 = document.getElementById('flowStep3');
+
+      if (simState.jccRefineMode === 'AXIS') {
+        stepBadge.innerText = "PHASE 1: AXIS REFINEMENT";
+        flowStep1.className = "p-2 rounded-lg bg-sky-600 text-white border border-sky-400 font-bold shadow-xs";
+        flowStep2.className = "p-2 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 font-bold";
+        flowStep3.className = "p-2 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 font-bold";
+
+        let axisError = Math.abs(patient.axis - simState.trialAxis) % 180;
+        if (axisError > 90) axisError = 180 - axisError;
+
+        // Calculate angular vector direction to RED dot of the clearer position
+        // Red dot angles in Pos 1: trialAxis + 45. Red dot angles in Pos 2: trialAxis - 45.
+        // If Pos 1 clearer -> rotate towards +45 deg (Clockwise).
+        // If Pos 2 clearer -> rotate towards -45 deg (Counter-Clockwise).
+        if (axisError <= 2.5 || Math.abs(blurDiff) < 0.08) {
+          commentary = "✨ AXIS REFINED! Patient reports both positions equal. Proceed to Power Refinement.";
+          actTitle = "AXIS REFINEMENT COMPLETE!";
+          actDesc = "Both Position 1 and Position 2 are equally clear. <strong>NEXT STEP:</strong> Change <strong>Refinement Mode</strong> dropdown to <strong>'2. Power Refinement'</strong> above.";
+          actIcon = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
+        } else if (blurDiff < 0) { // Pos 1 clearer -> Rotate CLOCKWISE towards Pos 1 Red Dot
+          commentary = "Position 1 clearer. Rotate trial axis CLOCKWISE (+5° or +15°) towards the RED dots of Position 1.";
+          actTitle = "ACTION: ROTATE AXIS CLOCKWISE (+5° ↻)";
+          actDesc = "Position 1 is clearer! <strong>CHASE THE RED:</strong> Click the <strong>'+5° ↻'</strong> or <strong>'+15° ↻'</strong> button to rotate the trial axis CLOCKWISE toward the Red (-) Dots. Then flip JCC lens to compare again.";
+          actIcon = '<i class="fa-solid fa-rotate-right text-rose-400 animate-spin-slow"></i>';
+        } else { // Pos 2 clearer -> Rotate COUNTER-CLOCKWISE towards Pos 2 Red Dot
+          commentary = "Position 2 clearer. Rotate trial axis COUNTER-CLOCKWISE (-5° or -15°) towards the RED dots of Position 2.";
+          actTitle = "ACTION: ROTATE AXIS COUNTER-CLOCKWISE (-5° ↺)";
+          actDesc = "Position 2 is clearer! <strong>CHASE THE RED:</strong> Click the <strong>'-5° ↺'</strong> or <strong>'-15° ↺'</strong> button to rotate the trial axis COUNTER-CLOCKWISE toward the Red (-) Dots. Then flip JCC lens to compare again.";
+          actIcon = '<i class="fa-solid fa-rotate-left text-rose-400 animate-spin-slow"></i>';
+        }
+      } else { // POWER MODE
+        stepBadge.innerText = "PHASE 2: POWER REFINEMENT";
+        flowStep1.className = "p-2 rounded-lg bg-emerald-700/60 text-emerald-200 border border-emerald-600 font-bold";
+        flowStep2.className = "p-2 rounded-lg bg-sky-600 text-white border border-sky-400 font-bold shadow-xs";
+        flowStep3.className = "p-2 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 font-bold";
+
+        let cylError = Math.abs(patient.cyl - simState.trialCyl);
+        if (cylError <= 0.12 || Math.abs(blurDiff) < 0.08) {
+          commentary = "✨ POWER REFINED! Patient reports both positions equal. Finalize prescription.";
+          actTitle = "POWER REFINEMENT COMPLETE!";
+          actDesc = "Both positions are equally clear! Cylinder power is finalized. Proceed to <strong>Assessment Console</strong> to log your final Rx.";
+          actIcon = '<i class="fa-solid fa-award text-amber-400"></i>';
+
+          flowStep3.className = "p-2 rounded-lg bg-emerald-600 text-white border border-emerald-400 font-bold shadow-xs";
+        } else if (simState.trialCyl > patient.cyl) { // Needs MORE minus cyl (e.g. -1.00 D -> -1.25 D)
+          commentary = "Red dot on trial axis is clearer. ADD minus cylinder power (e.g. -0.25 DC).";
+          actTitle = "ACTION: ADD MINUS CYLINDER (-0.25 DC)";
+          actDesc = "The position with the RED dot aligned on the trial axis is clearer. <strong>NEXT STEP:</strong> Click the <strong>'-0.25'</strong> button under Trial Cylinder Power to increase minus cylinder power.";
+          actIcon = '<i class="fa-solid fa-minus text-sky-400"></i>';
+        } else { // Needs LESS minus cyl (e.g. -1.50 D -> -1.25 D)
+          commentary = "White dot on trial axis is clearer. REDUCE minus cylinder power (e.g. +0.25 DC).";
+          actTitle = "ACTION: REDUCE MINUS CYLINDER (+0.25 DC)";
+          actDesc = "The position with the WHITE (+) dot aligned on the trial axis is clearer. <strong>NEXT STEP:</strong> Click the <strong>'+0.25'</strong> button under Trial Cylinder Power to reduce minus cylinder power.";
+          actIcon = '<i class="fa-solid fa-plus text-emerald-400"></i>';
+        }
+      }
+
+      document.getElementById('actionHeaderTitle').innerHTML = actTitle;
+      document.getElementById('actionStepInstruction').innerHTML = actDesc;
+      document.getElementById('actionDirectionIcon').innerHTML = actIcon;
+
+      if (simState.mode === 'practice') {
+        document.getElementById('commentaryText').innerText = commentary;
+      }
+    }
+
+    // Vector Optical Ray-Tracing Blur Calculation
+    function calcBlurError(patient, tSph, tCyl, tAxis, jccMode, jccPower, pos) {
+      // JCC Net Effective Cylinder Vector Addition
+      // Pos 1 vs Pos 2 rotates JCC minus axis by 90°
+      let jccRedAxis = tAxis;
+      if (jccMode === 'AXIS') {
+        jccRedAxis = (pos === 1) ? tAxis + 45 : tAxis - 45;
+      } else {
+        jccRedAxis = (pos === 1) ? tAxis : tAxis + 90;
+      }
+
+      // Convert Patient, Trial, and JCC into Stokes Cylindrical Vector Components (J0, J45, M)
+      // Patient Rx
+      const pRad = (patient.axis * Math.PI) / 180;
+      const pJ0 = -(patient.cyl / 2) * Math.cos(2 * pRad);
+      const pJ45 = -(patient.cyl / 2) * Math.sin(2 * pRad);
+      const pM = patient.sph + (patient.cyl / 2);
+
+      // Trial Rx
+      const tRad = (tAxis * Math.PI) / 180;
+      const tJ0 = -(tCyl / 2) * Math.cos(2 * tRad);
+      const tJ45 = -(tCyl / 2) * Math.sin(2 * tRad);
+      const tM = tSph + (tCyl / 2);
+
+      // JCC Rx (+jccPower DS / -2*jccPower DC x jccRedAxis)
+      const jRad = (jccRedAxis * Math.PI) / 180;
+      const jCyl = -2 * jccPower;
+      const jSph = jccPower;
+      const jJ0 = -(jCyl / 2) * Math.cos(2 * jRad);
+      const jJ45 = -(jCyl / 2) * Math.sin(2 * jRad);
+      const jM = jSph + (jCyl / 2);
+
+      // Total Refraction Error Vector (Patient - Trial - JCC)
+      const errM = pM - (tM + jM);
+      const errJ0 = pJ0 - (tJ0 + jJ0);
+      const errJ45 = pJ45 - (tJ45 + jJ45);
+
+      // Blur metric = sqrt( M^2 + 2*(J0^2 + J45^2) )
+      const blur = Math.sqrt((errM * errM) + 2 * ((errJ0 * errJ0) + (errJ45 * errJ45)));
+      return blur;
+    }
+
+    function changeMode(target) {
+      soundFeedback('switch');
+      simState.mode = target;
+
+      const pracBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      const pracConsole = document.getElementById('practiceControlsCard');
+      const testConsole = document.getElementById('testModeConsole');
+      const scoreCard = document.getElementById('finalScoreCard');
+      
+      if(scoreCard) scoreCard.classList.add('hidden');
+
+      if (target === 'practice') {
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer";
+        pracConsole.classList.remove('hidden');
+        testConsole.classList.add('hidden');
+      } else {
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 hover:bg-slate-900 shadow-xs cursor-pointer";
+        pracConsole.classList.add('hidden');
+        testConsole.classList.remove('hidden');
+
+        // Generate random hidden astigmatic patient (Sph: -4.00 to +2.00 D, Cyl: -0.50 to -3.00 D, Axis: 0 to 180)
+        let genSph = (Math.floor(Math.random() * 25) - 16) * 0.25; // -4.00 to +2.00 DS
+        let genCyl = (Math.floor(Math.random() * 11) - 12) * 0.25; // -0.50 to -3.00 DC
+        let genAxis = Math.floor(Math.random() * 37) * 5;           // 0 to 180 deg
+
+        simState.customTestPatient = { sph: genSph, cyl: genCyl, axis: genAxis };
+        
+        document.getElementById('testSphInput').value = "";
+        document.getElementById('testCylInput').value = "";
+        document.getElementById('testAxisInput').value = "";
+        document.getElementById('diagnosisFeedback').classList.add('hidden');
+        document.getElementById('commentaryText').innerText = "Assessment Active. Perform Axis & Power refinement and record final Rx.";
+        
+        setupTestMcqSuite();
+      }
+      resetSimulator();
+    }
+
+    function setupTestMcqSuite() {
+      simState.selectedQuestions = [...clinicalMcqPool].sort(() => 0.5 - Math.random()).slice(0, 3);
+      const container = document.getElementById('testMcqSuite');
+      container.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const div = document.createElement('div');
+        div.className = "bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs shadow-xs text-slate-900 dark:text-slate-200";
+        div.innerHTML = `
+          <p class="font-extrabold">${idx + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1.5 pt-1">
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="a" class="accent-secondary"> ${q.options.a}</label>
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="b" class="accent-secondary"> ${q.options.b}</label>
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="c" class="accent-secondary"> ${q.options.c}</label>
+          </div>
+          <p id="mcq_${idx}_feedback" class="text-[10px] font-bold hidden mt-1"></p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function submitTestAssessment() {
+      if (simState.mode !== 'test') return;
+
+      const sphIn = document.getElementById('testSphInput').value;
+      const cylIn = document.getElementById('testCylInput').value;
+      const axisIn = document.getElementById('testAxisInput').value;
+      const feedback = document.getElementById('diagnosisFeedback');
+
+      let unanswered = false;
+      const answers = [];
+      simState.selectedQuestions.forEach((q, idx) => {
+        const checked = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+        if (!checked) unanswered = true;
+        else answers.push({ idx, selected: checked.value, correct: q.correct, explanation: q.explanation });
+      });
+
+      if (sphIn === "" || cylIn === "" || axisIn === "" || unanswered) {
+        soundFeedback('warning');
+        feedback.innerHTML = "<i class='fa-solid fa-triangle-exclamation mr-1'></i> Please enter your recorded Sphere, Cylinder, and Axis readings and answer all quiz questions.";
+        feedback.className = "text-[11px] font-extrabold text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 block mt-3 px-3 py-2 rounded-lg animate-pulse";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      feedback.classList.remove('hidden');
+      
+      const target = simState.customTestPatient;
+      const uSph = parseFloat(sphIn);
+      const uCyl = parseFloat(cylIn);
+      const uAxis = parseInt(axisIn);
+
+      const passSph = Math.abs(uSph - target.sph) <= 0.25;
+      const passCyl = Math.abs(uCyl - target.cyl) <= 0.25;
+      
+      let axisDiff = Math.abs(uAxis - target.axis) % 180;
+      if (axisDiff > 90) axisDiff = 180 - axisDiff;
+      const passAxis = axisDiff <= 5;
+
+      if (passSph && passCyl && passAxis) {
+        feedback.innerHTML = `<i class="fa-solid fa-check-circle mr-1"></i> Correct Prescription! Target: ${target.sph.toFixed(2)} DS / ${target.cyl.toFixed(2)} DC x ${target.axis}° (+50 pts)`;
+        feedback.className = "text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 block mt-3 px-3 py-2 rounded-lg";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        feedback.innerHTML = `<i class="fa-solid fa-xmark-circle mr-1"></i> Incorrect Rx. Target was: ${target.sph.toFixed(2)} DS / ${target.cyl.toFixed(2)} DC x ${target.axis}° (+0 pts)`;
+        feedback.className = "text-[11px] font-bold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 block mt-3 px-3 py-2 rounded-lg";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      let correctCount = 0;
+      answers.forEach((ans) => {
+        const box = document.getElementById(`mcq_${ans.idx}_feedback`);
+        box.classList.remove('hidden');
+        if (ans.selected === ans.correct) {
+          box.innerText = `Correct! (+16.6 pts) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+          correctCount++;
+        } else {
+          box.innerText = `Incorrect. (Answer: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-red-600 dark:text-red-400 block mt-1";
+        }
+      });
+      simState.scores.mcqScore = Math.round(correctCount * 16.66);
+
+      const totalScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('assessmentScoreReadout').innerText = `Score: ${totalScore}/100`;
+
+      let card = document.getElementById('finalScoreCard');
+      if (!card) {
+        const parent = document.getElementById('simulationViewport');
+        card = document.createElement('div');
+        card.id = "finalScoreCard";
+        parent.appendChild(card);
+      }
+
+      card.className = "p-5 rounded-3xl text-center space-y-3 transition-all duration-500 mt-4 ";
+      card.innerHTML = `
+        <div class="space-y-1">
+          <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText"></p>
+          <p class="text-xs text-slate-600 dark:text-slate-400" id="finalStatusDescription"></p>
+        </div>
+        <div id="practiceRedirectBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <button onclick="changeMode('practice')" class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+            <i class="fa-solid fa-graduation-cap mr-1"></i> Return to Practice Console
+          </button>
+        </div>
+      `;
+
+      card.classList.remove('hidden');
+      const statTxt = card.querySelector('#finalStatusText');
+      const statDsc = card.querySelector('#finalStatusDescription');
+      const rdrBlk = card.querySelector('#practiceRedirectBlock');
+
+      if (totalScore >= 80) {
+        soundFeedback('success');
+        card.className += "bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 animate-pulse";
+        statTxt.innerText = `PASSED (${totalScore}%)`;
+        statDsc.innerText = "Jackson Cross-Cylinder refinement assessment logged successfully.";
+        rdrBlk.classList.add('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completed.includes('JCC-Refinement')) {
+          completed.push('JCC-Refinement');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        }
+        syncCompletionBadge();
+      } else {
+        soundFeedback('warning');
+        card.className += "bg-red-50 dark:bg-red-950/25 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-300";
+        statTxt.innerText = `FAILED (${totalScore}%)`;
+        statDsc.innerText = "Assessment score falls below the 80% passing criteria standard.";
+        rdrBlk.classList.remove('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        completed = completed.filter(el => el !== 'JCC-Refinement');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        syncCompletionBadge();
+      }
+    }
+
+    function syncCompletionBadge() {
+      const completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completed.includes('JCC-Refinement')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/45 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Parks 3-Step Evaluator</title>
+  
+  <!-- ThreeJS & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <!-- Fonts & Icon Packs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',
+            secondary: '#2563eb',
+            accent: '#0d9488',
+            lightbg: '#f8fafc'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    .dark ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+
+    #three-container { width: 100%; height: 100%; position: relative; cursor: crosshair; }
+
+    .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.8); }
+    .dark .glass { background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(51, 65, 85, 0.8); }
+
+    .active-btn { background-color: #2563eb !important; color: white !important; border-color: #2563eb !important; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+    .active-step { background-color: #f59e0b !important; color: white !important; border-color: #f59e0b !important; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); }
+
+    .cardinal-btn {
+      background: white; border: 1px solid #e2e8f0; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+      cursor: pointer; height: 42px; font-weight: 800; font-size: 11px;
+    }
+    .dark .cardinal-btn { background: #1e293b; border-color: #334155; color: white; }
+    .cardinal-btn:hover { background-color: #f8fafc; border-color: #cbd5e1; transform: translateY(-1px); }
+    .dark .cardinal-btn:hover { background-color: #334155; border-color: #475569; }
+    
+    .eye-badge {
+      position: absolute; padding: 4px 10px; border-radius: 8px; font-weight: 900; font-size: 11px;
+      color: white; z-index: 60; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    /* Parks 3-Step Diagram Styles */
+    .diag-muscle {
+      width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 900; cursor: pointer; transition: all 0.2s; border: 2px solid transparent;
+    }
+    .diag-muscle.active { background-color: #e0f2fe; color: #0284c7; border-color: #bae6fd; }
+    .dark .diag-muscle.active { background-color: #0c4a6e; color: #7dd3fc; border-color: #0284c7; }
+    
+    .diag-muscle.eliminated {
+      background-color: #fee2e2; color: #ef4444; border-color: #fca5a5; opacity: 0.4;
+      text-decoration: line-through; text-decoration-thickness: 2px;
+    }
+    .dark .diag-muscle.eliminated {
+      background-color: #7f1d1d; color: #fca5a5; border-color: #ef4444;
+    }
+
+    .diag-muscle.culprit {
+      background-color: #dcfce7; color: #059669; border-color: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+      transform: scale(1.15); z-index: 10;
+    }
+    .dark .diag-muscle.culprit { background-color: #064e3b; color: #34d399; border-color: #10b981; }
+
+    .head-tilt-indicator { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <!-- AUDIO SYSTEM -->
+  <script>
+    let audioCtx = null;
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+      } catch (e) { console.warn("Audio Context blocked."); }
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click': playAudioTone(600, 'sine', 0.08, 0.04); break;
+        case 'step': playAudioTone(720, 'triangle', 0.1, 0.05); break;
+        case 'warning': playAudioTone(220, 'sawtooth', 0.25, 0.04); break;
+        case 'success': playAudioTone(520, 'sine', 0.1, 0.05); setTimeout(() => playAudioTone(660, 'sine', 0.15, 0.05), 80); break;
+        case 'switch': playAudioTone(380, 'triangle', 0.12, 0.04); break;
+        case 'crossout': playAudioTone(300, 'square', 0.05, 0.02); break;
+      }
+    }
+  </script>
+
+  <!-- HEADER -->
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-opacity duration-300" id="mainHeader">
+    <nav class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="./Ocular-Motility.html" onclick="soundFeedback('switch')" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition shadow-xs">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div>
+          <h1 class="text-md font-extrabold tracking-tight text-slate-900 dark:text-white">
+            SAHS-E-LAB | <span class="text-secondary">Parks 3-Step</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Cyclovertical Palsy Evaluator</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <div class="hidden lg:flex items-center gap-2">
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="toggleDarkMode()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke"></i> Theme
+          </button>
+        </div>
+        
+        <!-- Completion status indicator -->
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="max-w-7xl mx-auto px-6 pt-24 pb-12 flex-1 w-full flex flex-col gap-6 transition-all duration-500" id="workspaceContainer">
+    
+    <!-- MODE TOGGLE CONTROLLER -->
+    <div class="w-full bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-xs transition-colors duration-500 transition-all" id="modeToggleContainer">
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer">
+            <i class="fa-solid fa-chalkboard-user"></i> Practice Mode
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+            <i class="fa-solid fa-vial"></i> Test Mode
+        </button>
+    </div>
+
+    <!-- GRID CONTAINER -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full transition-all duration-500" id="gridContainer">
+      
+      <!-- LEFT PANEL: 3D VIEWPORT, DIAGRAM, AND TEST CONSOLE (7 COLS in Practice, Full in Test) -->
+      <section class="lg:col-span-7 space-y-4" id="leftPanel">
+        
+        <!-- Interactive Eye Canvas Frame -->
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs relative transition-all duration-500">
+          <div class="flex justify-between items-center" id="viewportCardHeader">
+            <span class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <i class="fa-solid fa-head-side-mask"></i> Patient Viewport
+            </span>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-mono text-slate-600 dark:text-slate-300 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 font-bold flex items-center gap-1" id="headTiltLabel">
+                <i class="fa-solid fa-arrows-rotate"></i> Head: Straight
+              </span>
+            </div>
+          </div>
+
+          <!-- Simulated 3D Render Screen -->
+          <div class="bg-slate-950 rounded-2xl relative h-[300px] md:h-[380px] overflow-hidden select-none shadow-inner" id="pupilsScreen">
+            <div id="three-container"></div>
+            
+            <div id="badge-od" class="eye-badge bg-red-500 shadow-red-500/20">OD</div>
+            <div id="badge-os" class="eye-badge bg-emerald-500 shadow-emerald-500/20">OS</div>
+
+            <!-- Crosshair Guide -->
+            <div class="absolute inset-0 pointer-events-none flex items-center justify-center opacity-20">
+              <div class="w-full h-[1px] bg-cyan-400 absolute"></div>
+              <div class="h-full w-[1px] bg-cyan-400 absolute"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Face-Like Diagnostic Diagram (Parks 3-Step Grid) -->
+        <div id="diagramCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+          <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
+            <h4 class="text-xs uppercase font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+              <i class="fa-solid fa-border-all text-secondary"></i> Diagnostic Grid Worksheet
+            </h4>
+            <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Patient's Perspective</span>
+          </div>
+          
+          <div class="flex justify-center items-center gap-8 py-2">
+              <!-- RIGHT EYE (OD) GRID -->
+              <div class="relative w-[140px] h-[140px]">
+                <div class="absolute inset-0 flex items-center justify-center"><div class="w-12 h-12 rounded-full border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-400">OD</div></div>
+                <!-- Top Left (Patient's Right-Nasal) -> IO is up/in -->
+                <div class="absolute top-0 right-0 diag-muscle active" id="diag-RSR" onclick="toggleCrossOut('RSR')">SR</div>
+                <!-- Top Right (Patient's Right-Temporal) -> SR is up/out -->
+                <div class="absolute top-0 left-0 diag-muscle active" id="diag-RIO" onclick="toggleCrossOut('RIO')">IO</div>
+                <!-- Bottom Left -> SO is down/in -->
+                <div class="absolute bottom-0 right-0 diag-muscle active" id="diag-RIR" onclick="toggleCrossOut('RIR')">IR</div>
+                <!-- Bottom Right -> IR is down/out -->
+                <div class="absolute bottom-0 left-0 diag-muscle active" id="diag-RSO" onclick="toggleCrossOut('RSO')">SO</div>
+                <!-- Connecting lines -->
+                <svg class="absolute inset-0 w-full h-full pointer-events-none" style="z-index:-1;">
+                  <line x1="22" y1="22" x2="118" y2="118" stroke="currentColor" class="text-slate-200 dark:text-slate-700" stroke-width="2"/>
+                  <line x1="118" y1="22" x2="22" y2="118" stroke="currentColor" class="text-slate-200 dark:text-slate-700" stroke-width="2"/>
+                </svg>
+              </div>
+
+              <div class="w-px h-24 bg-slate-200 dark:bg-slate-700"></div>
+
+              <!-- LEFT EYE (OS) GRID -->
+              <div class="relative w-[140px] h-[140px]">
+                <div class="absolute inset-0 flex items-center justify-center"><div class="w-12 h-12 rounded-full border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black text-slate-400">OS</div></div>
+                <!-- Top Right (Patient's Left-Nasal) -> IO is up/in -->
+                <div class="absolute top-0 right-0 diag-muscle active" id="diag-LIO" onclick="toggleCrossOut('LIO')">IO</div>
+                <!-- Top Left (Patient's Left-Temporal) -> SR is up/out -->
+                <div class="absolute top-0 left-0 diag-muscle active" id="diag-LSR" onclick="toggleCrossOut('LSR')">SR</div>
+                <!-- Bottom Right -> SO is down/in -->
+                <div class="absolute bottom-0 right-0 diag-muscle active" id="diag-LSO" onclick="toggleCrossOut('LSO')">SO</div>
+                <!-- Bottom Left -> IR is down/out -->
+                <div class="absolute bottom-0 left-0 diag-muscle active" id="diag-LIR" onclick="toggleCrossOut('LIR')">IR</div>
+                <svg class="absolute inset-0 w-full h-full pointer-events-none" style="z-index:-1;">
+                  <line x1="22" y1="22" x2="118" y2="118" stroke="currentColor" class="text-slate-200 dark:text-slate-700" stroke-width="2"/>
+                  <line x1="118" y1="22" x2="22" y2="118" stroke="currentColor" class="text-slate-200 dark:text-slate-700" stroke-width="2"/>
+                </svg>
+              </div>
+          </div>
+          <div class="text-center bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg transition-colors" id="diagramHintWrapper">
+            <p class="text-[10px] text-blue-700 dark:text-blue-300 font-semibold" id="diagramHint">
+              In Practice Mode, the grid automatically crosses out unlikely candidates as you perform the 3 steps.
+            </p>
+          </div>
+        </div>
+
+        <!-- TEST CONSOLE PANEL (Visible in Test Mode only) -->
+        <div id="testConsoleCard" class="hidden bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-xs text-slate-900 dark:text-slate-100 transition-colors duration-500">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div>
+              <h3 class="text-sm font-black text-slate-900 dark:text-white uppercase">Formulate Diagnosis</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Execute the 3 steps, manually cross out muscles on the grid, and evaluate.</p>
+            </div>
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-800" id="liveScoreCard">Overall Score: Unsubmitted</span>
+          </div>
+
+          <div class="space-y-4">
+            
+            <!-- Replicated 3-Step Controls for Test Mode -->
+            <div class="space-y-2">
+              <span class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500">Test Execution Console</span>
+              <div class="space-y-3">
+                <div class="space-y-1.5">
+                  <button onclick="executeStep(1)" id="t-btnStep1" class="w-full py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 flex justify-between px-4 transition hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">
+                    <span>Step 1: Evaluate Primary Gaze</span>
+                    <i class="fa-solid fa-play text-slate-400"></i>
+                  </button>
+                  <div id="t-resultStep1" class="hidden pl-2 text-[10px] font-bold text-secondary bg-blue-50 dark:bg-blue-900/20 py-1.5 px-3 rounded-lg"></div>
+                </div>
+
+                <div class="space-y-1.5">
+                  <div class="flex gap-2">
+                    <button onclick="executeStep(2, 'left')" id="t-btnStep2L" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">
+                      Step 2: Gaze Left
+                    </button>
+                    <button onclick="executeStep(2, 'right')" id="t-btnStep2R" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">
+                      Step 2: Gaze Right
+                    </button>
+                  </div>
+                  <div id="t-resultStep2" class="hidden pl-2 text-[10px] font-bold text-secondary bg-blue-50 dark:bg-blue-900/20 py-1.5 px-3 rounded-lg"></div>
+                </div>
+
+                <div class="space-y-1.5">
+                  <div class="flex gap-2">
+                    <button onclick="executeStep(3, 'left')" id="t-btnStep3L" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex flex-col items-center">
+                      <span>Step 3: Tilt Left</span>
+                    </button>
+                    <button onclick="executeStep(3, 'right')" id="t-btnStep3R" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex flex-col items-center">
+                      <span>Step 3: Tilt Right</span>
+                    </button>
+                  </div>
+                  <div id="t-resultStep3" class="hidden pl-2 text-[10px] font-bold text-secondary bg-blue-50 dark:bg-blue-900/20 py-1.5 px-3 rounded-lg"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Diagnosis formulation dropdown -->
+            <div class="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <label class="text-[10px] uppercase font-black text-slate-900 dark:text-white tracking-wider">Final Clinical Impression</label>
+              <select id="testDiagnosisSelect" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary shadow-xs">
+                <option value="">-- Select Muscle Deficit --</option>
+                <option value="RSR">Right Superior Rectus (RSR)</option>
+                <option value="RIR">Right Inferior Rectus (RIR)</option>
+                <option value="RSO">Right Superior Oblique (RSO)</option>
+                <option value="RIO">Right Inferior Oblique (RIO)</option>
+                <option value="LSR">Left Superior Rectus (LSR)</option>
+                <option value="LIR">Left Inferior Rectus (LIR)</option>
+                <option value="LSO">Left Superior Oblique (LSO)</option>
+                <option value="LIO">Left Inferior Oblique (LIO)</option>
+              </select>
+              <p id="diagnosisFeedback" class="text-[11px] font-bold hidden"></p>
+            </div>
+
+            <!-- MCQ Suite -->
+            <div class="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800" id="testMcqSuite">
+              <p class="text-[10px] uppercase font-extrabold text-slate-500 dark:text-slate-400">Clinical Knowledge Assessment (50% Marks)</p>
+              <div id="dynamicTestMcqs" class="space-y-4"></div>
+            </div>
+          </div>
+
+          <!-- Submit Evaluation button -->
+          <div class="pt-4 border-t border-slate-200 dark:border-slate-800">
+            <button onclick="submitTestEvaluation()" id="btnSubmitTest" class="w-full py-3 bg-secondary hover:bg-blue-700 text-white font-extrabold rounded-xl text-xs transition shadow-md cursor-pointer">
+              Submit Test Evaluation
+            </button>
+          </div>
+        </div>
+
+        <!-- Final status certificate badge -->
+        <div id="finalScoreCard" class="hidden p-5 rounded-2xl text-center space-y-4 shadow-sm border border-slate-200 dark:border-slate-800">
+          <div class="space-y-1">
+            <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText">Status: Unsubmitted</p>
+            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed" id="finalStatusDescription">Score 80% or more to qualify for the departmental lab certificate badge.</p>
+          </div>
+
+          <div id="practiceRedirectionBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+            <p class="text-[11px] text-red-600 dark:text-red-400 font-extrabold leading-normal">
+              Concept Mastery Needed! We highly recommend returning to the guided Practice Mode environment to study the 3-Step mechanics.
+            </p>
+            <button onclick="changeMode('practice')" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer">
+              <i class="fa-solid fa-graduation-cap mr-1"></i> Switch to Practice Mode &amp; Learn
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- RIGHT COLUMN: CONTROL PANEL (5 COLS) -->
+      <section class="lg:col-span-5 space-y-4" id="controlsPanel">
+        
+        <!-- PATHOLOGY SETUP -->
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs transition-colors duration-500" id="setupCard">
+          <div>
+            <h3 class="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-user-doctor text-secondary"></i> Define Patient Pathology
+            </h3>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Select a specific vertical muscle palsy to analyze.</p>
+          </div>
+
+          <div class="space-y-3">
+            <!-- Isolated Eye & Muscle Selectors -->
+            <div id="isolatedSelectors" class="space-y-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div class="space-y-1.5">
+                <label class="text-[10px] font-bold text-slate-600 dark:text-slate-300">1. Affected Eye</label>
+                <div class="flex gap-2">
+                  <button onclick="setIsolatedEye('OD')" id="btnIsolateOD" class="flex-1 py-1.5 rounded-lg text-xs font-bold border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer">Right (OD)</button>
+                  <button onclick="setIsolatedEye('OS')" id="btnIsolateOS" class="flex-1 py-1.5 rounded-lg text-xs font-bold border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer">Left (OS)</button>
+                </div>
+              </div>
+              <div class="space-y-1.5" id="muscleGridContainer">
+                <label class="text-[10px] font-bold text-slate-600 dark:text-slate-300">2. Paralyzed Muscle</label>
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button onclick="setIsolatedMuscle('SR')" id="btnIsolate-SR" class="py-1.5 rounded-lg text-[10px] font-extrabold border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600">Superior Rectus (SR)</button>
+                  <button onclick="setIsolatedMuscle('IR')" id="btnIsolate-IR" class="py-1.5 rounded-lg text-[10px] font-extrabold border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600">Inferior Rectus (IR)</button>
+                  <button onclick="setIsolatedMuscle('SO')" id="btnIsolate-SO" class="py-1.5 rounded-lg text-[10px] font-extrabold border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600">Superior Oblique (SO)</button>
+                  <button onclick="setIsolatedMuscle('IO')" id="btnIsolate-IO" class="py-1.5 rounded-lg text-[10px] font-extrabold border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600">Inferior Oblique (IO)</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PARKS 3-STEP CONTROLLER -->
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs transition-colors duration-500 opacity-50 pointer-events-none" id="parksControlsCard">
+          <div>
+            <h3 class="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-amber-500"></i> Execute Parks 3-Step Test
+            </h3>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5" id="parksInstruct">Select a vertical pathology above to activate the evaluator.</p>
+          </div>
+
+          <div class="space-y-3">
+            <!-- Step 1 -->
+            <div class="space-y-1.5">
+              <button onclick="executeStep(1)" id="btnStep1" class="w-full py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 flex justify-between px-4 transition hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">
+                <span>Step 1: Evaluate Primary Gaze</span>
+                <i class="fa-solid fa-play text-slate-400"></i>
+              </button>
+              <div id="resultStep1" class="hidden pl-2 text-[10px] font-bold text-secondary bg-blue-50 dark:bg-blue-900/20 py-1.5 px-3 rounded-lg"></div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="space-y-1.5">
+              <div class="flex gap-2">
+                <button onclick="executeStep(2, 'left')" id="btnStep2L" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">
+                  Step 2: Gaze Left
+                </button>
+                <button onclick="executeStep(2, 'right')" id="btnStep2R" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">
+                  Step 2: Gaze Right
+                </button>
+              </div>
+              <div id="resultStep2" class="hidden pl-2 text-[10px] font-bold text-secondary bg-blue-50 dark:bg-blue-900/20 py-1.5 px-3 rounded-lg"></div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="space-y-1.5">
+              <div class="flex gap-2">
+                <button onclick="executeStep(3, 'left')" id="btnStep3L" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex flex-col items-center">
+                  <span>Step 3: Tilt Left</span>
+                  <span class="text-[8px] font-medium text-slate-500">(Bielschowsky)</span>
+                </button>
+                <button onclick="executeStep(3, 'right')" id="btnStep3R" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex flex-col items-center">
+                  <span>Step 3: Tilt Right</span>
+                  <span class="text-[8px] font-medium text-slate-500">(Bielschowsky)</span>
+                </button>
+              </div>
+              <div id="resultStep3" class="hidden pl-2 text-[10px] font-bold text-secondary bg-blue-50 dark:bg-blue-900/20 py-1.5 px-3 rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </main>
+
+  <!-- SIMULATION CORE LOGIC -->
+  <script>
+    const simState = {
+      mode: 'practice',          
+      soundMuted: false,         
+      activeEye: null,
+      activeMuscle: null,
+      hasVerticalPalsy: false,
+      headTilt: 0, // radians
+      currentStep: 0, // 0 = none, 1, 2, 3
+      testTargetMuscle: null, 
+      eliminatedMuscles: [],
+      selectedQuestions: [],
+      scores: { diagnosisScore: 0, mcqScore: 0 }
+    };
+
+    const allVerticals = ['RSR', 'RIR', 'RSO', 'RIO', 'LSR', 'LIR', 'LSO', 'LIO'];
+
+    const masterMcqPool = [
+      {
+        id: "q1",
+        question: "What is the primary purpose of the Parks-Bielschowsky 3-Step test?",
+        options: {
+          a: "To diagnose horizontal rectus muscle palsies.",
+          b: "To isolate the paretic muscle in an acquired cyclovertical diplopia.",
+          c: "To test for latent strabismus (phoria) versus manifest strabismus (tropia)."
+        },
+        correct: "b",
+        explanation: "The 3-step test specifically isolates a single weak cyclovertical muscle (oblique or vertical rectus) causing vertical diplopia."
+      },
+      {
+        id: "q2",
+        question: "In Step 1, a patient presents with a Right Hypertropia. Which group of muscles could potentially be weak?",
+        options: {
+          a: "Right depressors (RIR, RSO) or Left elevators (LSR, LIO)",
+          b: "Right elevators (RSR, RIO) or Left depressors (LIR, LSO)",
+          c: "Right adductors (RMR) or Left abductors (LLR)"
+        },
+        correct: "a",
+        explanation: "A Right Hypertropia means the right eye sits higher. This implies the right eye cannot depress normally (weak RIR, RSO) OR the left eye cannot elevate normally (weak LSR, LIO)."
+      },
+      {
+        id: "q3",
+        question: "During Step 2, a Right Hypertropia worsens on Left Gaze. Which subset of muscles are implicated?",
+        options: {
+          a: "Right Obliques (RSO, RIO) or Left Recti (LSR, LIR)",
+          b: "Right Recti (RSR, RIR) or Left Obliques (LSO, LIO)",
+          c: "Right Medial Rectus (RMR) or Left Lateral Rectus (LLR)"
+        },
+        correct: "a",
+        explanation: "On left gaze, the OD adducts (isolating obliques: RSO, RIO) and the OS abducts (isolating recti: LSR, LIR)."
+      },
+      {
+        id: "q4",
+        question: "In Step 3 (Bielschowsky head tilt test), the vertical deviation worsens on Head Tilt to the Right. Which muscles are implicated?",
+        options: {
+          a: "Right extortors (RIR, RIO) or Left intortors (LSR, LSO)",
+          b: "Right intortors (RSR, RSO) or Left extortors (LIR, LIO)",
+          c: "Bilateral Superior Obliques (RSO, LSO)"
+        },
+        correct: "b",
+        explanation: "Tilting the head right causes compensatory intorsion of the right eye and extorsion of the left eye. It isolates Right intortors (RSR, RSO) and Left extortors (LIR, LIO)."
+      },
+      {
+        id: "q5",
+        question: "A patient develops a compensatory head tilt to the Left shoulder. Which cranial nerve palsy is the patient most likely trying to compensate for?",
+        options: {
+          a: "Right CN IV (Trochlear) Palsy",
+          b: "Left CN III (Oculomotor) Palsy",
+          c: "Left CN VI (Abducens) Palsy"
+        },
+        correct: "a",
+        explanation: "Patients with a Right Superior Oblique (CN IV) palsy tilt their head away from the lesion (to the left) to avoid using the paretic right intortor, thereby minimizing diplopia."
+      }
+    ];
+
+    let scene, camera, renderer, controls, raycaster, mouse;
+    let leftEye, rightEye, headGroup;
+    let leftMuscles = {}, rightMuscles = {};
+    let muscleObjects = [];
+    let leftScleraMesh, rightScleraMesh;
+    let leftCorneaMesh, rightCorneaMesh;
+    let leftPupilMesh, rightPupilMesh;
+
+    const muscleInfo = {
+      'MR': { name: 'Medial Rectus', color: 0x9e1a1a },
+      'LR': { name: 'Lateral Rectus', color: 0x9e1a1a },
+      'SR': { name: 'Superior Rectus', color: 0x9e1a1a },
+      'IR': { name: 'Inferior Rectus', color: 0x9e1a1a },
+      'SO': { name: 'Superior Oblique', color: 0x7a1818 },
+      'IO': { name: 'Inferior Oblique', color: 0x7a1818 }
+    };
+
+    // Procedural textures
+    function createScleraTexture() {
+      const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256;
+      const ctx = canvas.getContext('2d'); ctx.fillStyle = '#fefefa'; ctx.fillRect(0, 0, 512, 256);
+      const baseGrad = ctx.createRadialGradient(256, 128, 60, 256, 128, 256);
+      baseGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      baseGrad.addColorStop(0.85, 'rgba(235, 241, 248, 0.45)');
+      ctx.fillStyle = baseGrad; ctx.fillRect(0, 0, 512, 256);
+      ctx.strokeStyle = '#dc2626'; ctx.globalAlpha = 0.35;
+      for (let i = 0; i < 8; i++) {
+        ctx.beginPath(); ctx.lineWidth = 0.5 + Math.random() * 1.0;
+        let x = 120 + Math.random() * 260, y = 30 + Math.random() * 190; ctx.moveTo(x, y);
+        for(let j=0; j<4; j++) { x += (Math.random() - 0.5) * 40; y += (Math.random() - 0.5) * 40; ctx.lineTo(x, y); }
+        ctx.stroke();
+      }
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    function createIrisTexture() {
+      const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024;
+      const ctx = canvas.getContext('2d'); const cx = 512, cy = 512;
+      const grad = ctx.createRadialGradient(cx, cy, 60, cx, cy, 500);
+      grad.addColorStop(0, '#020b14'); grad.addColorStop(0.15, '#4a3610'); 
+      grad.addColorStop(0.4, '#1b3b5e'); grad.addColorStop(0.8, '#10253f'); grad.addColorStop(1, '#050a12');
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, 1024, 1024);
+      ctx.lineWidth = 1.2;
+      for (let i = 0; i < 1200; i++) {
+        const angle = (Math.random() * Math.PI * 2);
+        const rStart = 80 + Math.random() * 60, rEnd = 400 + Math.random() * 90;
+        ctx.beginPath(); ctx.moveTo(cx + Math.cos(angle) * rStart, cy + Math.sin(angle) * rStart);
+        const cp1Angle = angle + (Math.random() - 0.5) * 0.25, cp2Angle = angle + (Math.random() - 0.5) * 0.25;
+        const cp1R = rStart + (rEnd - rStart) * 0.33, cp2R = rStart + (rEnd - rStart) * 0.66;
+        ctx.bezierCurveTo(cx + Math.cos(cp1Angle) * cp1R, cy + Math.sin(cp1Angle) * cp1R, cx + Math.cos(cp2Angle) * cp2R, cy + Math.sin(cp2Angle) * cp2R, cx + Math.cos(angle) * rEnd, cy + Math.sin(angle) * rEnd);
+        const alpha = 0.1 + Math.random() * 0.35;
+        if (Math.random() > 0.75) ctx.strokeStyle = `rgba(220, 240, 255, ${alpha})`;
+        else if (Math.random() > 0.45) ctx.strokeStyle = `rgba(180, 140, 60, ${alpha})`;
+        else ctx.strokeStyle = `rgba(10, 20, 40, ${alpha})`;
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      for (let i = 0; i <= 360; i += 4) {
+        const a = i * Math.PI / 180, r = 200 + Math.sin(i * 12 * Math.PI / 180) * 18 + Math.random() * 12;
+        if (i === 0) ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); else ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      }
+      ctx.closePath(); ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(210, 170, 90, 0.35)'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, 95, 0, Math.PI * 2); ctx.fillStyle = '#010204'; ctx.fill();
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    function createMuscleTexture() {
+      const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 128;
+      const ctx = canvas.getContext('2d'); ctx.fillStyle = '#8f2020'; ctx.fillRect(0, 0, 256, 128);
+      const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(4, 1);
+      return tex;
+    }
+
+    function createEyeUnit(side) {
+      const group = new THREE.Group();
+      const posX = (side === 'R') ? -3.5 : 3.5;
+      group.position.x = posX;
+
+      const sclera = new THREE.Mesh(new THREE.SphereGeometry(1.8, 48, 48), new THREE.MeshStandardMaterial({ map: createScleraTexture(), roughness: 0.15, metalness: 0.05 }));
+      group.add(sclera);
+      if (side === 'L') leftScleraMesh = sclera; else rightScleraMesh = sclera;
+
+      const iris = new THREE.Mesh(new THREE.CircleGeometry(1.0, 64), new THREE.MeshStandardMaterial({ map: createIrisTexture(), roughness: 0.3, metalness: 0.0 }));
+      iris.position.z = 1.77; group.add(iris);
+
+      const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.42, 64), new THREE.MeshBasicMaterial({ color: 0x010204 }));
+      pupil.position.z = 1.78; group.add(pupil);
+      if (side === 'L') leftPupilMesh = pupil; else rightPupilMesh = pupil;
+
+      const cornea = new THREE.Mesh(
+        new THREE.SphereGeometry(1.82, 64, 64, 0, Math.PI*2, 0, 0.95),
+        new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.1, roughness: 0.0, metalness: 0.1, clearcoat: 1.0, clearcoatRoughness: 0.0, transmission: 0.4, ior: 1.376 })
+      );
+      cornea.rotation.x = -Math.PI / 2; group.add(cornea);
+      if (side === 'L') leftCorneaMesh = cornea; else rightCorneaMesh = cornea;
+
+      const muscles = {}; const r = 1.8, originZ = -15;
+      const medX = side === 'R' ? r : -r, latX = side === 'R' ? -r : r; const muscleTex = createMuscleTexture();
+
+      const addM = (id, pts, thick) => {
+        const curve = new THREE.CatmullRomCurve3(pts);
+        const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 30, thick, 8, false), new THREE.MeshStandardMaterial({ map: muscleTex, color: muscleInfo[id].color, roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.8 }));
+        m.userData = { id, side: side === 'L' ? 'OS' : 'OD', originalColor: muscleInfo[id].color };
+        group.add(m); muscles[id] = m; muscleObjects.push(m);
+      };
+
+      addM('MR', [new THREE.Vector3(medX, 0, 0.8), new THREE.Vector3(medX*1.2, 0, -4), new THREE.Vector3(posX*0.4, 0, originZ)], 0.3);
+      addM('LR', [new THREE.Vector3(latX, 0, 0.8), new THREE.Vector3(latX*1.2, 0, -4), new THREE.Vector3(posX*1.6, 0, originZ)], 0.3);
+      addM('SR', [new THREE.Vector3(0, r, 0.8), new THREE.Vector3(0, r+0.4, -4), new THREE.Vector3(posX, 0.8, originZ)], 0.3);
+      addM('IR', [new THREE.Vector3(0, -r, 0.8), new THREE.Vector3(0, -r-0.4, -4), new THREE.Vector3(posX, -0.8, originZ)], 0.3);
+
+      const soX = (side === 'L') ? -1.8 : 1.8;
+      addM('SO', [new THREE.Vector3(side==='L'?0.4:-0.4, r, 1.0), new THREE.Vector3(soX, 2.1, 2), new THREE.Vector3(soX, 2.1, -6)], 0.18);
+      addM('IO', [new THREE.Vector3(side==='L'?0.4:-0.4, -r, 1.0), new THREE.Vector3(0, -2.8, 0), new THREE.Vector3(posX, -2.2, -8)], 0.18);
+
+      return { group, muscles };
+    }
+
+    function init3D() {
+      const container = document.getElementById('three-container');
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(34, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.set(0, 1.2, 16);
+      
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+      
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true; controls.maxDistance = 22; controls.minDistance = 6;
+      controls.target.set(0, 0, 0);
+      
+      raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2(-10, -10);
+      
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+      const keyLight = new THREE.DirectionalLight(0xffffff, 0.9); keyLight.position.set(5, 10, 8); scene.add(keyLight);
+      const catchLight1 = new THREE.PointLight(0xffffff, 1.8, 50); catchLight1.position.set(3, 4, 10); scene.add(catchLight1);
+      const catchLight2 = new THREE.PointLight(0xe0f2fe, 0.7, 50); catchLight2.position.set(-4, -2, 8); scene.add(catchLight2);
+
+      headGroup = new THREE.Group();
+      scene.add(headGroup);
+
+      const OS = createEyeUnit('L'); leftEye = OS.group; leftMuscles = OS.muscles;
+      const OD = createEyeUnit('R'); rightEye = OD.group; rightMuscles = OD.muscles;
+      
+      headGroup.add(leftEye);
+      headGroup.add(rightEye);
+      
+      container.addEventListener('mousemove', (e) => {
+        const rect = container.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      });
+
+      animate();
+    }
+
+    let targetRotL = new THREE.Euler(0, 0, 0);
+    let targetRotR = new THREE.Euler(0, 0, 0);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      
+      headGroup.rotation.z = THREE.MathUtils.lerp(headGroup.rotation.z, simState.headTilt, 0.08);
+
+      const v = 0.12;
+      ['x','y','z'].forEach(ax => {
+        leftEye.rotation[ax] = THREE.MathUtils.lerp(leftEye.rotation[ax], targetRotL[ax], v);
+        rightEye.rotation[ax] = THREE.MathUtils.lerp(rightEye.rotation[ax], targetRotR[ax], v);
+      });
+
+      updateUIOverlays();
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function updateUIOverlays() {
+      const container = document.getElementById('three-container');
+      if (!container) return;
+      const widthHalf = container.clientWidth / 2, heightHalf = container.clientHeight / 2;
+      const vector = new THREE.Vector3();
+      
+      [ {obj: rightEye, id: 'badge-od'}, {obj: leftEye, id: 'badge-os'} ].forEach(e => {
+        const el = document.getElementById(e.id);
+        if (el) {
+          vector.set(0, 2.5, 0); 
+          e.obj.localToWorld(vector); 
+          vector.project(camera);
+          el.style.left = `${(vector.x * widthHalf) + widthHalf}px`;
+          el.style.top = `${-(vector.y * heightHalf) + heightHalf}px`;
+        }
+      });
+    }
+
+    // --- UI & LOGIC FOR PARKS 3-STEP ---
+
+    function setIsolatedEye(eye) {
+      simState.activeEye = eye;
+      const btnOD = document.getElementById('btnIsolateOD');
+      const btnOS = document.getElementById('btnIsolateOS');
+      btnOD.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+      btnOS.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+      
+      if (eye === 'OD') btnOD.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+      else btnOS.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+      
+      soundFeedback('click');
+      evaluatePathologyReadiness();
+      resetSteps();
+    }
+
+    function setIsolatedMuscle(muscle) {
+      simState.activeMuscle = muscle;
+      document.querySelectorAll('button[id^="btnIsolate-"]').forEach(b => {
+        b.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+      });
+      document.getElementById(`btnIsolate-${muscle}`).classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+      
+      simState.hasVerticalPalsy = ['SR', 'IR', 'SO', 'IO'].includes(muscle);
+      soundFeedback('click');
+      evaluatePathologyReadiness();
+      resetSteps();
+    }
+
+    function evaluatePathologyReadiness() {
+      const controlsCard = document.getElementById('parksControlsCard');
+      const instruct = document.getElementById('parksInstruct');
+
+      let ready = false;
+
+      if (simState.mode === 'test') {
+         ready = true;
+         controlsCard.classList.remove('opacity-50', 'pointer-events-none');
+         instruct.innerText = "Observe the 3D model, execute the steps, and cross out muscles on the grid.";
+         return;
+      }
+
+      if (simState.activeEye && simState.activeMuscle) {
+        if (simState.hasVerticalPalsy) {
+          ready = true;
+        } 
+      }
+
+      if (ready) {
+        controlsCard.classList.remove('opacity-50', 'pointer-events-none');
+        instruct.innerText = "Pathology registered. Click Step 1 to begin.";
+      } else {
+        controlsCard.classList.add('opacity-50', 'pointer-events-none');
+        instruct.innerText = "Select a vertical pathology above to activate the evaluator.";
+      }
+    }
+
+    // --- Parks 3-Step Core Simulation Logic ---
+    function resetSteps() {
+      simState.currentStep = 0;
+      simState.headTilt = 0;
+      targetRotL.set(0,0,0);
+      targetRotR.set(0,0,0);
+      document.getElementById('headTiltLabel').innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> Head: Straight`;
+      
+      ['btnStep1', 'btnStep2L', 'btnStep2R', 'btnStep3L', 'btnStep3R',
+       't-btnStep1', 't-btnStep2L', 't-btnStep2R', 't-btnStep3L', 't-btnStep3R'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.remove('active-step');
+      });
+      
+      ['resultStep1', 'resultStep2', 'resultStep3', 't-resultStep1', 't-resultStep2', 't-resultStep3'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) { el.classList.add('hidden'); el.innerText = ""; }
+      });
+      
+      resetDiagram();
+    }
+
+    function getActivePalsy() {
+      if (simState.mode === 'test') return simState.testTargetMuscle; // e.g., 'RSO'
+
+      if (simState.activeEye && simState.activeMuscle) {
+        return simState.activeEye.charAt(0) + simState.activeMuscle; // 'R' + 'SR' = 'RSR'
+      }
+      return null;
+    }
+
+    function executeStep(stepNum, dir = null) {
+      soundFeedback('step');
+      const palsy = getActivePalsy();
+      if (!palsy) return;
+
+      // Base resets
+      simState.headTilt = 0;
+      let lRot = [0,0,0], rRot = [0,0,0];
+      let resText = "";
+
+      ['btnStep1', 'btnStep2L', 'btnStep2R', 'btnStep3L', 'btnStep3R',
+       't-btnStep1', 't-btnStep2L', 't-btnStep2R', 't-btnStep3L', 't-btnStep3R'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.remove('active-step');
+      });
+
+      if (stepNum === 1) {
+        document.getElementById('btnStep1')?.classList.add('active-step');
+        document.getElementById('t-btnStep1')?.classList.add('active-step');
+        document.getElementById('headTiltLabel').innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> Head: Straight`;
+        simState.currentStep = 1;
+
+        if (palsy.includes('SR')) { 
+          if(palsy[0]==='R') { rRot[0] = 0.2; resText = "Right Hypotropia (Left Hypertropia)"; }
+          else { lRot[0] = 0.2; resText = "Left Hypotropia (Right Hypertropia)"; }
+        }
+        else if (palsy.includes('IR')) { 
+          if(palsy[0]==='R') { rRot[0] = -0.2; resText = "Right Hypertropia"; }
+          else { lRot[0] = -0.2; resText = "Left Hypertropia"; }
+        }
+        else if (palsy.includes('SO')) { 
+          if(palsy[0]==='R') { rRot[0] = -0.15; rRot[2] = 0.1; resText = "Right Hypertropia"; }
+          else { lRot[0] = -0.15; lRot[2] = -0.1; resText = "Left Hypertropia"; }
+        }
+        else if (palsy.includes('IO')) { 
+          if(palsy[0]==='R') { rRot[0] = 0.15; rRot[2] = -0.1; resText = "Right Hypotropia (Left Hypertropia)"; }
+          else { lRot[0] = 0.15; lRot[2] = 0.1; resText = "Left Hypotropia (Right Hypertropia)"; }
+        }
+
+        const resEl = document.getElementById('resultStep1');
+        if (resEl) { resEl.innerText = "Observation: " + resText; resEl.classList.remove('hidden'); }
+        const tResEl = document.getElementById('t-resultStep1');
+        if (tResEl) { tResEl.innerText = "Observation: " + resText; tResEl.classList.remove('hidden'); }
+
+        if (simState.mode === 'practice') autoCrossOutStep1(palsy);
+      }
+
+      if (stepNum === 2) {
+        document.getElementById(dir === 'left' ? 'btnStep2L' : 'btnStep2R')?.classList.add('active-step');
+        document.getElementById(dir === 'left' ? 't-btnStep2L' : 't-btnStep2R')?.classList.add('active-step');
+        document.getElementById('headTiltLabel').innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> Head: Straight`;
+        simState.currentStep = 2;
+
+        let worsen = false;
+        
+        if (dir === 'left') {
+          lRot[1] = 0.5; rRot[1] = 0.5;
+          if (palsy === 'RSO' || palsy === 'RIO' || palsy === 'LSR' || palsy === 'LIR') worsen = true;
+        } else {
+          lRot[1] = -0.5; rRot[1] = -0.5;
+          if (palsy === 'RSR' || palsy === 'RIR' || palsy === 'LSO' || palsy === 'LIO') worsen = true;
+        }
+
+        if (worsen) {
+          if (palsy.includes('SR')) { if(palsy[0]==='R') rRot[0] = 0.35; else lRot[0] = 0.35; resText = "Vertical deviation WORSENS."; }
+          if (palsy.includes('IR')) { if(palsy[0]==='R') rRot[0] = -0.35; else lRot[0] = -0.35; resText = "Vertical deviation WORSENS."; }
+          if (palsy.includes('SO')) { if(palsy[0]==='R') rRot[0] = -0.35; else lRot[0] = -0.35; resText = "Vertical deviation WORSENS."; }
+          if (palsy.includes('IO')) { if(palsy[0]==='R') rRot[0] = 0.35; else lRot[0] = 0.35; resText = "Vertical deviation WORSENS."; }
+        } else {
+           resText = "Vertical deviation minimizes / improves.";
+        }
+
+        const resEl = document.getElementById('resultStep2');
+        if (resEl) { resEl.innerText = `On Gaze ${dir.toUpperCase()}: ` + resText; resEl.classList.remove('hidden'); }
+        const tResEl = document.getElementById('t-resultStep2');
+        if (tResEl) { tResEl.innerText = `On Gaze ${dir.toUpperCase()}: ` + resText; tResEl.classList.remove('hidden'); }
+
+        if (simState.mode === 'practice') autoCrossOutStep2(worsen, dir, palsy);
+      }
+
+      if (stepNum === 3) {
+        document.getElementById(dir === 'left' ? 'btnStep3L' : 'btnStep3R')?.classList.add('active-step');
+        document.getElementById(dir === 'left' ? 't-btnStep3L' : 't-btnStep3R')?.classList.add('active-step');
+        simState.currentStep = 3;
+
+        let worsen = false;
+        
+        if (dir === 'left') {
+          simState.headTilt = -Math.PI / 8;
+          document.getElementById('headTiltLabel').innerHTML = `<i class="fa-solid fa-arrow-rotate-left"></i> Head: Tilted Left`;
+          if (palsy === 'LSR' || palsy === 'LSO' || palsy === 'RIO' || palsy === 'RIR') worsen = true;
+        } else {
+          simState.headTilt = Math.PI / 8;
+          document.getElementById('headTiltLabel').innerHTML = `<i class="fa-solid fa-arrow-rotate-right"></i> Head: Tilted Right`;
+          if (palsy === 'RSR' || palsy === 'RSO' || palsy === 'LIO' || palsy === 'LIR') worsen = true;
+        }
+
+        let odCounterRoll = dir === 'left' ? 0.2 : -0.2; 
+        let osCounterRoll = dir === 'left' ? 0.2 : -0.2; 
+        rRot[2] = odCounterRoll;
+        lRot[2] = osCounterRoll;
+
+        if (worsen) {
+           if (palsy === 'RSO' || palsy === 'LSO') { 
+             if (palsy[0] === 'R') { rRot[0] = -0.4; rRot[2] = 0; } else { lRot[0] = -0.4; lRot[2] = 0; }
+             resText = "Pathological UP-SHOOT (Deviation dramatically worsens).";
+           }
+           if (palsy === 'RSR' || palsy === 'LSR') { 
+             if (palsy[0] === 'R') { rRot[0] = 0.4; rRot[2] = 0; } else { lRot[0] = 0.4; lRot[2] = 0; }
+             resText = "Pathological DOWN-SHOOT (Deviation dramatically worsens).";
+           }
+           if (palsy === 'RIO' || palsy === 'LIO') { 
+             if (palsy[0] === 'R') { rRot[0] = 0.4; rRot[2] = 0; } else { lRot[0] = 0.4; lRot[2] = 0; }
+             resText = "Pathological DOWN-SHOOT (Deviation dramatically worsens).";
+           }
+           if (palsy === 'RIR' || palsy === 'LIR') { 
+             if (palsy[0] === 'R') { rRot[0] = -0.4; rRot[2] = 0; } else { lRot[0] = -0.4; lRot[2] = 0; }
+             resText = "Pathological UP-SHOOT (Deviation dramatically worsens).";
+           }
+        } else {
+           resText = "Deviation improves / counter-rolls normally.";
+        }
+
+        const resEl = document.getElementById('resultStep3');
+        if (resEl) { resEl.innerText = `On Tilt ${dir.toUpperCase()}: ` + resText; resEl.classList.remove('hidden'); }
+        const tResEl = document.getElementById('t-resultStep3');
+        if (tResEl) { tResEl.innerText = `On Tilt ${dir.toUpperCase()}: ` + resText; tResEl.classList.remove('hidden'); }
+
+        if (simState.mode === 'practice') {
+          autoCrossOutStep3(worsen, dir, palsy);
+          const finalMatch = document.querySelector('.diag-muscle:not(.eliminated)');
+          if (finalMatch) {
+            finalMatch.classList.add('culprit');
+            const hintWrap = document.getElementById('diagramHintWrapper');
+            document.getElementById('diagramHint').innerText = `Diagnosis Confirmed: ${finalMatch.innerText} Palsy`;
+            hintWrap.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
+            hintWrap.classList.add('bg-emerald-50', 'dark:bg-emerald-900/20', 'border', 'border-emerald-200', 'dark:border-emerald-800');
+            document.getElementById('diagramHint').className = "text-[11px] text-emerald-700 dark:text-emerald-400 font-black";
+            soundFeedback('success');
+          }
+        }
+      }
+
+      targetRotL.set(lRot[0], lRot[1], lRot[2]);
+      targetRotR.set(rRot[0], rRot[1], rRot[2]);
+    }
+
+    // --- Diagram Logic ---
+
+    function resetDiagram() {
+      simState.eliminatedMuscles = [];
+      allVerticals.forEach(m => {
+        const el = document.getElementById(`diag-${m}`);
+        if(el) {
+          el.className = "absolute diag-muscle active";
+          el.style = ""; 
+        }
+      });
+      const hintWrap = document.getElementById('diagramHintWrapper');
+      hintWrap.className = "text-center bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg transition-colors";
+      document.getElementById('diagramHint').className = "text-[10px] text-blue-700 dark:text-blue-300 font-semibold";
+      document.getElementById('diagramHint').innerText = simState.mode === 'practice' 
+        ? "In Practice Mode, the grid automatically crosses out unlikely candidates as you perform the steps."
+        : "In Test Mode, YOU must manually click the muscles to cross them out based on your observation.";
+    }
+
+    function eliminateMuscle(m) {
+      if (!simState.eliminatedMuscles.includes(m)) {
+        simState.eliminatedMuscles.push(m);
+        const el = document.getElementById(`diag-${m}`);
+        if(el) {
+          el.classList.remove('active', 'culprit');
+          el.classList.add('eliminated');
+        }
+      }
+    }
+
+    function toggleCrossOut(m) {
+      if (simState.mode !== 'test') return; 
+      soundFeedback('crossout');
+      const el = document.getElementById(`diag-${m}`);
+      if (!el) return;
+
+      if (simState.eliminatedMuscles.includes(m)) {
+        simState.eliminatedMuscles = simState.eliminatedMuscles.filter(x => x !== m);
+        el.classList.remove('eliminated');
+        el.classList.add('active');
+      } else {
+        simState.eliminatedMuscles.push(m);
+        el.classList.remove('active');
+        el.classList.add('eliminated');
+      }
+    }
+
+    function autoCrossOutStep1(palsy) {
+      const isRightHyper = (palsy === 'RIR' || palsy === 'RSO' || palsy === 'LSR' || palsy === 'LIO');
+      if (isRightHyper) {
+        eliminateMuscle('RSR'); eliminateMuscle('RIO');
+        eliminateMuscle('LIR'); eliminateMuscle('LSO');
+      } else {
+        eliminateMuscle('LSR'); eliminateMuscle('LIO');
+        eliminateMuscle('RIR'); eliminateMuscle('RSO');
+      }
+    }
+
+    function autoCrossOutStep2(worsen, dir, palsy) {
+      if ((dir === 'left' && worsen) || (dir === 'right' && !worsen)) {
+        eliminateMuscle('RSR'); eliminateMuscle('RIR');
+        eliminateMuscle('LSO'); eliminateMuscle('LIO');
+      } else {
+        eliminateMuscle('RSO'); eliminateMuscle('RIO');
+        eliminateMuscle('LSR'); eliminateMuscle('LIR');
+      }
+    }
+
+    function autoCrossOutStep3(worsen, dir, palsy) {
+      if ((dir === 'right' && worsen) || (dir === 'left' && !worsen)) {
+        eliminateMuscle('RIO'); eliminateMuscle('RIR');
+        eliminateMuscle('LSR'); eliminateMuscle('LSO');
+      } else {
+        eliminateMuscle('RSR'); eliminateMuscle('RSO');
+        eliminateMuscle('LIO'); eliminateMuscle('LIR');
+      }
+    }
+
+    // --- Mode Switching & Test Submission ---
+
+    function setupTestQuestions() {
+      const shuffled = [...masterMcqPool].sort(() => 0.5 - Math.random());
+      simState.selectedQuestions = shuffled.slice(0, 5);
+      
+      const mcqContainer = document.getElementById('dynamicTestMcqs');
+      if(!mcqContainer) return;
+      mcqContainer.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, index) => {
+        const questionBlock = document.createElement('div');
+        questionBlock.className = "bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs shadow-xs text-slate-900 dark:text-slate-100 transition-colors";
+        questionBlock.innerHTML = `
+          <p class="font-bold text-slate-900 dark:text-white">${index + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1 mt-2">
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-700 font-semibold transition-colors">
+              <input type="radio" name="mcq_${index}" value="a" class="accent-secondary">
+              <span>${q.options.a}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-700 font-semibold transition-colors">
+              <input type="radio" name="mcq_${index}" value="b" class="accent-secondary">
+              <span>${q.options.b}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-700 font-semibold transition-colors">
+              <input type="radio" name="mcq_${index}" value="c" class="accent-secondary">
+              <span>${q.options.c}</span>
+            </label>
+          </div>
+          <p id="mcq_${index}_feedback" class="text-[10px] font-bold hidden mt-2"></p>
+        `;
+        mcqContainer.appendChild(questionBlock);
+      });
+    }
+
+    function syncLocalSyncBadge() {
+      const completedList = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completedList.includes('Park-3-Step')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+
+    function changeMode(targetMode) {
+      soundFeedback('switch');
+      simState.mode = targetMode;
+
+      const practiceBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      
+      const workspaceContainer = document.getElementById('workspaceContainer');
+      const gridContainer = document.getElementById('gridContainer');
+      const controlsPanel = document.getElementById('controlsPanel');
+      const testConsoleCard = document.getElementById('testConsoleCard');
+      const finalScoreCard = document.getElementById('finalScoreCard');
+
+      resetSteps();
+      document.getElementById('diagnosisFeedback').classList.add('hidden');
+      if (finalScoreCard) finalScoreCard.classList.add('hidden');
+      document.getElementById('liveScoreCard').innerText = "Overall Score: Unsubmitted";
+
+      if (targetMode === 'practice') {
+        workspaceContainer.className = "max-w-7xl mx-auto px-6 pt-24 pb-12 flex-1 w-full flex flex-col gap-6 transition-all duration-500";
+        gridContainer.className = "grid grid-cols-1 lg:grid-cols-12 gap-6 w-full transition-all duration-500";
+
+        practiceBtn.className = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        testBtn.className = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer";
+        
+        controlsPanel.classList.remove('hidden');
+        testConsoleCard.classList.add('hidden');
+        
+        document.querySelectorAll('button[id^="btnIsolate-"]').forEach(b => {
+          b.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+        });
+        document.getElementById('btnIsolateOD').classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+        document.getElementById('btnIsolateOS').classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+        
+        simState.activeEye = null;
+        simState.activeMuscle = null;
+        simState.hasVerticalPalsy = false;
+        
+        evaluatePathologyReadiness();
+      } else {
+        workspaceContainer.className = "max-w-3xl mx-auto px-4 pt-24 pb-12 flex-1 w-full flex flex-col items-stretch gap-6 transition-all duration-500";
+        gridContainer.className = "flex flex-col w-full gap-6 transition-all duration-500";
+
+        testBtn.className = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        practiceBtn.className = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-800 text-slate-400 hover:bg-slate-900 shadow-xs cursor-pointer";
+        
+        controlsPanel.classList.add('hidden');
+        testConsoleCard.classList.remove('hidden');
+        
+        simState.testTargetMuscle = allVerticals[Math.floor(Math.random() * allVerticals.length)];
+        
+        document.getElementById('testDiagnosisSelect').value = "";
+        simState.scores.diagnosisScore = 0;
+        simState.scores.mcqScore = 0;
+        setupTestQuestions();
+        
+        setTimeout(() => executeStep(1), 100);
+      }
+    }
+
+    function submitTestEvaluation() {
+      if (simState.mode !== 'test') return;
+
+      const userSel = document.getElementById('testDiagnosisSelect').value;
+      const feedback = document.getElementById('diagnosisFeedback');
+      
+      let unanswered = false;
+      const userAnswers = [];
+
+      simState.selectedQuestions.forEach((q, index) => {
+        const checked = document.querySelector(`input[name="mcq_${index}"]:checked`);
+        if (!checked) {
+          unanswered = true;
+        } else {
+          userAnswers.push({
+            index: index,
+            selected: checked.value,
+            correct: q.correct,
+            explanation: q.explanation
+          });
+        }
+      });
+
+      if (!userSel || unanswered) {
+        soundFeedback('warning');
+        feedback.innerText = "Please select your clinical diagnosis and answer all 5 questions before submitting.";
+        feedback.className = "text-[11px] font-extrabold text-red-600 block mt-3 bg-red-50 dark:bg-red-950/30 p-2 rounded-lg border border-red-200 dark:border-red-900";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      feedback.classList.remove('hidden');
+      if (userSel === simState.testTargetMuscle) {
+        feedback.innerText = `Correct Diagnosis! (+50 pts) Accurate isolation of ${simState.testTargetMuscle} palsy.`;
+        feedback.className = "text-[11px] font-extrabold text-emerald-700 dark:text-emerald-400 block mt-3 bg-emerald-50 dark:bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900";
+        simState.scores.diagnosisScore = 50;
+
+        resetDiagram();
+        allVerticals.forEach(m => { if(m !== userSel) eliminateMuscle(m); });
+        document.getElementById(`diag-${userSel}`).classList.add('culprit');
+      } else {
+        feedback.innerText = `Incorrect Diagnosis. (+0 pts) You selected ${userSel}, but the true pathology was ${simState.testTargetMuscle}.`;
+        feedback.className = "text-[11px] font-extrabold text-red-700 dark:text-red-400 block mt-3 bg-red-50 dark:bg-red-950/30 p-2.5 rounded-lg border border-red-200 dark:border-red-900";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      // MCQ Evaluation
+      let correctCount = 0;
+      userAnswers.forEach((ans) => {
+        const feedbackEl = document.getElementById(`mcq_${ans.index}_feedback`);
+        feedbackEl.classList.remove('hidden');
+        if (ans.selected === ans.correct) {
+          feedbackEl.innerText = `Correct! (+10 pts) — ${ans.explanation}`;
+          feedbackEl.className = "text-[10px] font-bold text-emerald-600 block mt-2";
+          correctCount++;
+        } else {
+          feedbackEl.innerText = `Incorrect. (Correct: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+          feedbackEl.className = "text-[10px] font-bold text-red-600 block mt-2";
+        }
+      });
+      simState.scores.mcqScore = correctCount * 10;
+
+      const absoluteScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('liveScoreCard').innerText = `Overall Score: ${absoluteScore}/100`;
+
+      const resultCard = document.getElementById('finalScoreCard');
+      const statusText = document.getElementById('finalStatusText');
+      const statusDesc = document.getElementById('finalStatusDescription');
+      const practiceRedirBlock = document.getElementById('practiceRedirectionBlock');
+
+      resultCard.classList.remove('hidden');
+      if (absoluteScore >= 80) {
+        soundFeedback('success');
+        resultCard.className = "p-5 rounded-2xl text-center space-y-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-300 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 animate-pulse mt-4";
+        statusText.innerText = `Status: PASSED (${absoluteScore}%)`;
+        statusDesc.innerText = "Excellent binocular diagnostic evaluation! Milestone successfully registered in the departmental database.";
+        practiceRedirBlock.classList.add('hidden');
+
+        let completedList = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completedList.includes('Park-3-Step')) {
+          completedList.push('Park-3-Step');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completedList));
+        }
+        syncLocalSyncBadge();
+      } else {
+        soundFeedback('warning');
+        resultCard.className = "p-5 rounded-2xl text-center space-y-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-300 mt-4";
+        statusText.innerText = `Status: FAILED (${absoluteScore}%)`;
+        statusDesc.innerText = "Score is below the 80% passing threshold. Please return to practice mode to master the 3-Step mechanics.";
+        practiceRedirBlock.classList.remove('hidden');
+        
+        let completedList = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        completedList = completedList.filter(item => item !== 'Park-3-Step');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completedList));
+        syncLocalSyncBadge();
+      }
+    }
+
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const muteIcon = document.getElementById('muteIcon');
+      const muteText = document.getElementById('muteText');
+      if (simState.soundMuted) {
+        muteIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+        muteText.innerText = "Unmute";
+      } else {
+        muteIcon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse";
+        muteText.innerText = "Mute";
+        soundFeedback('click');
+      }
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+      soundFeedback('click');
+    }
+
+    window.onload = function() {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      init3D();
+      syncLocalSyncBadge();
+    };
+
+    window.onresize = () => {
+      const c = document.getElementById('three-container');
+      if (c && camera && renderer) {
+        camera.aspect = c.clientWidth / c.clientHeight; 
+        camera.updateProjectionMatrix();
+        renderer.setSize(c.clientWidth, c.clientHeight);
+      }
+    };
+  </script>
+</body>
+</html>

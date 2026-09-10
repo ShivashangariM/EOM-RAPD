@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Clinical PD Measurement Lab</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',
+            secondary: '#0284c7',
+            accent: '#0d9488',
+            lightbg: '#f8fafc',
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            lcd: ['Share Tech Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    .dark ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    ::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+    /* Custom Input Sliders */
+    input[type=range] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      height: 20px; width: 20px;
+      border-radius: 50%;
+      background: #0284c7;
+      cursor: pointer;
+      margin-top: -8px;
+      box-shadow: 0 0 10px rgba(2, 132, 199, 0.5);
+      border: 2px solid #ffffff;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      appearance: none;
+      width: 100%; height: 4px;
+      cursor: pointer;
+      background: #cbd5e1;
+      border-radius: 2px;
+    }
+    .dark input[type=range]::-webkit-slider-runnable-track {
+      background: #334155;
+    }
+
+    /* Pupillometer Eyepiece Darkroom Viewport */
+    .pupillometer-bg {
+      background: radial-gradient(circle at center, #1b2430 0%, #0c1017 65%, #030508 100%);
+      box-shadow: inset 0 0 60px rgba(0,0,0,0.95);
+    }
+
+    /* Device Casing Gradient (Matching Video Instrument) */
+    .pupillometer-device-casing {
+      background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 45%, #94a3b8 100%);
+      box-shadow: 0 20px 35px -5px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.8);
+    }
+    .dark .pupillometer-device-casing {
+      background: linear-gradient(180deg, #334155 0%, #1e293b 45%, #0f172a 100%);
+      box-shadow: 0 20px 35px -5px rgba(0, 0, 0, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.15);
+    }
+
+    /* LCD Screen Display Window */
+    .lcd-screen-box {
+      background: #090d16;
+      border: 2px solid #334155;
+      box-shadow: inset 0 0 12px rgba(0,0,0,0.9);
+    }
+
+    /* Reticle Glow Filter */
+    .reticle-glow-od {
+      filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.9));
+    }
+    .reticle-glow-os {
+      filter: drop-shadow(0 0 3px rgba(14, 165, 233, 0.9));
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <script>
+    let audioCtx = null;
+    
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("AudioContext blocked or unsupported.");
+      }
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click': playAudioTone(720, 'sine', 0.08, 0.04); break;
+        case 'dial': playAudioTone(300, 'triangle', 0.04, 0.02); break;
+        case 'warning': playAudioTone(190, 'sawtooth', 0.25, 0.05); break;
+        case 'success':
+          playAudioTone(520, 'sine', 0.1, 0.05);
+          setTimeout(() => playAudioTone(640, 'sine', 0.15, 0.05), 80);
+          break;
+        case 'switch': playAudioTone(380, 'triangle', 0.12, 0.04); break;
+      }
+    }
+  </script>
+
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-500">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="Refraction.html" class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hover:bg-slate-800 transition cursor-pointer">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </a>
+        <div class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hidden sm:flex">
+          <i class="fa-solid fa-ruler-horizontal text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+            SAHS-E-LAB | <span class="text-secondary">Clinical PD Measurement Lab</span>
+            <span class="bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-sky-200 dark:border-sky-900">v3.4 CLINICAL EXACT</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-extrabold">Digital Pupillometer Device &amp; Corneal Reflex Alignment</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+          <button onclick="toggleDarkMode()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke text-sky-600 dark:text-sky-400"></i>
+          </button>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-4 sm:px-6 pt-24 pb-12 gap-6">
+    
+    <!-- LEFT COLUMN: Physical Digital Pupillometer Device & Viewport -->
+    <section class="lg:w-[58%] space-y-4" id="simulationViewport">
+      
+      <!-- PUPILLOMETER DEVICE CASING (MATCHING THE VIDEO INSTRUMENT) -->
+      <div class="pupillometer-device-casing p-5 rounded-3xl border border-slate-300 dark:border-slate-700 space-y-4 shadow-2xl relative transition-all duration-500">
+        
+        <!-- Forehead Rest Metal Wire Frame Guard (Top of Pupillometer) -->
+        <div class="flex justify-center -mt-8 mb-1">
+          <div class="w-48 h-6 border-t-4 border-x-4 border-slate-400 dark:border-slate-500 rounded-t-2xl shadow-sm flex items-center justify-between px-3">
+            <span class="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500"></span>
+            <span class="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Patient Forehead Rest</span>
+            <span class="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500"></span>
+          </div>
+        </div>
+
+        <!-- LCD Screen Unit Header (RIGHT | PD | LEFT) -->
+        <div class="lcd-screen-box p-3.5 rounded-2xl border-2 border-slate-700 space-y-2">
+          <div class="grid grid-cols-3 gap-2 text-center font-mono">
+            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800 space-y-0.5">
+              <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">RIGHT</span>
+              <span id="lcdRight" class="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-lcd tracking-widest block">32.0</span>
+            </div>
+            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800 space-y-0.5">
+              <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">PD</span>
+              <span id="lcdTotal" class="text-2xl sm:text-3xl font-extrabold text-sky-400 font-lcd tracking-widest block">64.0</span>
+            </div>
+            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800 space-y-0.5">
+              <span class="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">LEFT</span>
+              <span id="lcdLeft" class="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-lcd tracking-widest block">32.0</span>
+            </div>
+          </div>
+          <div class="flex justify-between items-center text-[9px] font-mono px-1">
+            <span class="text-amber-400 font-bold flex items-center gap-1" id="lcdDistanceMode">
+              <i class="fa-solid fa-bullseye"></i> TARGET: DISTANCE ($\infty$)
+            </span>
+            <span class="text-slate-400 font-bold uppercase" id="lcdEyeMode">MODE: OU BINOCULAR</span>
+          </div>
+        </div>
+
+        <!-- Physical Hairline Sliders & Mode Controls on Pupillometer Casing -->
+        <div class="bg-slate-200/80 dark:bg-slate-800/80 p-3.5 rounded-2xl border border-slate-300 dark:border-slate-700 space-y-3">
+          <div class="flex justify-between items-center text-[10px] font-black uppercase text-slate-600 dark:text-slate-300">
+            <span><i class="fa-solid fa-sliders text-rose-500 mr-1"></i> R Reticle Lever</span>
+            <span><i class="fa-solid fa-sliders text-sky-500 mr-1"></i> L Reticle Lever</span>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="flex items-center gap-2">
+              <button onclick="stepControl('od', -0.5)" class="w-7 h-7 rounded-lg bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 font-extrabold text-xs cursor-pointer">-</button>
+              <input type="range" id="deviceOdSlider" min="24" max="40" step="0.25" value="32.0" oninput="slideDeviceControl('od')" class="w-full">
+              <button onclick="stepControl('od', 0.5)" class="w-7 h-7 rounded-lg bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 font-extrabold text-xs cursor-pointer">+</button>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="stepControl('os', -0.5)" class="w-7 h-7 rounded-lg bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 font-extrabold text-xs cursor-pointer">-</button>
+              <input type="range" id="deviceOsSlider" min="24" max="40" step="0.25" value="32.0" oninput="slideDeviceControl('os')" class="w-full">
+              <button onclick="stepControl('os', 0.5)" class="w-7 h-7 rounded-lg bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 font-extrabold text-xs cursor-pointer">+</button>
+            </div>
+          </div>
+
+          <!-- On-Device Buttons & Rotary Target Distance Dial -->
+          <div class="grid grid-cols-3 gap-3 items-center pt-1 border-t border-slate-300 dark:border-slate-700">
+            <!-- Eye Selection Mode Buttons -->
+            <div class="col-span-2 flex items-center gap-1.5">
+              <button onclick="setEyeMode('OU')" id="deviceBtnOU" class="flex-1 py-1.5 rounded-lg text-[10px] font-black bg-sky-600 text-white shadow-xs transition cursor-pointer">OU</button>
+              <button onclick="setEyeMode('OD')" id="deviceBtnOD" class="flex-1 py-1.5 rounded-lg text-[10px] font-black bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-400 transition cursor-pointer">OD</button>
+              <button onclick="setEyeMode('OS')" id="deviceBtnOS" class="flex-1 py-1.5 rounded-lg text-[10px] font-black bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-400 transition cursor-pointer">OS</button>
+            </div>
+
+            <!-- Rotary Distance Selector Knob -->
+            <div class="flex flex-col items-center justify-center">
+              <span class="text-[8px] font-black uppercase text-slate-500 dark:text-slate-400 mb-0.5">Dist Dial Knob</span>
+              <button onclick="cycleDistanceDial()" class="w-10 h-10 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 border-2 border-slate-400 dark:border-slate-600 shadow-md flex items-center justify-center hover:scale-105 transition cursor-pointer active:rotate-45" title="Click to rotate fixation target distance knob">
+                <div class="w-1 h-4 bg-slate-700 dark:bg-slate-200 rounded-full -mt-2"></div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clinician Eyepiece Darkroom Viewport -->
+        <div class="pupillometer-bg rounded-3xl mx-auto relative flex items-center justify-center overflow-hidden shadow-2xl border-[8px] border-slate-800 dark:border-slate-950 select-none w-full" style="height: 310px;" id="pupillometerBox">
+          
+          <svg viewBox="-200 -100 400 200" class="w-full h-full" id="pupillometerSvg">
+            <defs>
+              <!-- Iris Pattern Gradients -->
+              <radialGradient id="irisPatternOD" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#1b4d3e" />
+                <stop offset="40%" stop-color="#2a7a63" />
+                <stop offset="85%" stop-color="#143b2f" />
+                <stop offset="100%" stop-color="#0a1d17" />
+              </radialGradient>
+              <radialGradient id="irisPatternOS" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#1b4d3e" />
+                <stop offset="40%" stop-color="#2a7a63" />
+                <stop offset="85%" stop-color="#143b2f" />
+                <stop offset="100%" stop-color="#0a1d17" />
+              </radialGradient>
+              <radialGradient id="pupilCore" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#000000" />
+                <stop offset="85%" stop-color="#050505" />
+                <stop offset="100%" stop-color="#111111" />
+              </radialGradient>
+            </defs>
+
+            <!-- Midline Nasal Bridge Reference Line -->
+            <g stroke="#334155" stroke-width="1" stroke-dasharray="4 4" opacity="0.6">
+              <line x1="0" y1="-90" x2="0" y2="90" />
+              <text x="3" y="-80" fill="#64748b" font-size="7" font-weight="extrabold">MIDLINE (0)</text>
+            </g>
+
+            <!-- Bridge Support Nose Pad Shadow -->
+            <path d="M-12 -20 Q0 -35 12 -20 L15 30 Q0 45 -15 30 Z" fill="#1e293b" opacity="0.3" />
+
+            <!-- RIGHT EYE (OD) GROUP - Displayed on Viewer's Left (Patient Right Eye) -->
+            <g id="groupOD" transform="translate(-64, 0)">
+              <!-- Sclera -->
+              <ellipse cx="0" cy="0" rx="42" ry="26" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+              <!-- Sclera vascular details -->
+              <path d="M-38 0 Q-28 -5 -20 -2" stroke="#fca5a5" stroke-width="0.5" fill="none" opacity="0.5" />
+              <path d="M-36 6 Q-28 10 -18 4" stroke="#fca5a5" stroke-width="0.5" fill="none" opacity="0.5" />
+              <!-- Iris -->
+              <ellipse id="irisOD" cx="0" cy="0" rx="20" ry="20" fill="url(#irisPatternOD)" stroke="#0f172a" stroke-width="1" />
+              <!-- Pupil -->
+              <circle id="pupilOD" cx="0" cy="0" r="7" fill="url(#pupilCore)" />
+              <!-- Corneal Light Reflex (Pinpoint Reflection from Pupillometer LED) -->
+              <circle id="reflexOD" cx="0" cy="0" r="1.5" fill="#ffffff" filter="drop-shadow(0 0 2px #ffffff)" />
+              <circle id="reflexGlowOD" cx="0" cy="0" r="3" fill="#ffffff" opacity="0.3" />
+              <!-- Label -->
+              <text x="0" y="38" text-anchor="middle" fill="#ef4444" font-size="8" font-weight="extrabold">PATIENT OD (RIGHT)</text>
+            </g>
+
+            <!-- LEFT EYE (OS) GROUP - Displayed on Viewer's Right (Patient Left Eye) -->
+            <g id="groupOS" transform="translate(64, 0)">
+              <!-- Sclera -->
+              <ellipse cx="0" cy="0" rx="42" ry="26" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+              <!-- Sclera vascular details -->
+              <path d="M38 0 Q28 -5 20 -2" stroke="#fca5a5" stroke-width="0.5" fill="none" opacity="0.5" />
+              <path d="M36 6 Q28 10 18 4" stroke="#fca5a5" stroke-width="0.5" fill="none" opacity="0.5" />
+              <!-- Iris -->
+              <ellipse id="irisOS" cx="0" cy="0" rx="20" ry="20" fill="url(#irisPatternOS)" stroke="#0f172a" stroke-width="1" />
+              <!-- Pupil -->
+              <circle id="pupilOS" cx="0" cy="0" r="7" fill="url(#pupilCore)" />
+              <!-- Corneal Light Reflex -->
+              <circle id="reflexOS" cx="0" cy="0" r="1.5" fill="#ffffff" filter="drop-shadow(0 0 2px #ffffff)" />
+              <circle id="reflexGlowOS" cx="0" cy="0" r="3" fill="#ffffff" opacity="0.3" />
+              <!-- Label -->
+              <text x="0" y="38" text-anchor="middle" fill="#0ea5e9" font-size="8" font-weight="extrabold">PATIENT OS (LEFT)</text>
+            </g>
+
+            <!-- OCCLUDER SHUTTERS (For Monocular Measurements) -->
+            <rect id="occluderOD" x="-115" y="-55" width="90" height="110" fill="#090d16" opacity="0" rx="12" />
+            <rect id="occluderOS" x="25" y="-55" width="90" height="110" fill="#090d16" opacity="0" rx="12" />
+
+            <!-- ADJUSTABLE ALIGNMENT RETICLE HAIR LINES -->
+            <!-- OD Reticle (Red Line) -->
+            <g id="reticleOD" transform="translate(-64, 0)" class="reticle-glow-od">
+              <line x1="0" y1="-65" x2="0" y2="65" stroke="#ef4444" stroke-width="1.8" />
+              <polygon points="0,-65 -4,-73 4,-73" fill="#ef4444" />
+              <polygon points="0,65 -4,73 4,73" fill="#ef4444" />
+            </g>
+
+            <!-- OS Reticle (Sky Blue Line) -->
+            <g id="reticleOS" transform="translate(64, 0)" class="reticle-glow-os">
+              <line x1="0" y1="-65" x2="0" y2="65" stroke="#0ea5e9" stroke-width="1.8" />
+              <polygon points="0,-65 -4,-73 4,-73" fill="#0ea5e9" />
+              <polygon points="0,65 -4,73 4,73" fill="#0ea5e9" />
+            </g>
+
+            <!-- Millimeter Ruler Scale Overlay -->
+            <g stroke="#475569" stroke-width="0.8" opacity="0.7">
+              <line x1="-120" y1="-60" x2="120" y2="-60" />
+              <!-- Ruler ticks every 5mm -->
+              <path d="M-120 -60 v-6 M-100 -60 v-6 M-80 -60 v-6 M-60 -60 v-8 M-40 -60 v-6 M-20 -60 v-6 M0 -60 v-10 M20 -60 v-6 M40 -60 v-6 M60 -60 v-8 M80 -60 v-6 M100 -60 v-6 M120 -60 v-6" />
+            </g>
+
+          </svg>
+
+        </div>
+
+        <div class="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2.5 px-4 z-10 rounded-xl mt-4 font-mono">
+          <div class="flex justify-center items-center gap-2 max-w-lg mx-auto">
+            <span class="text-[8px] bg-sky-100 dark:bg-sky-950 text-secondary border border-sky-200 dark:border-sky-800 font-black tracking-widest uppercase px-1.5 py-0.5 rounded flex-shrink-0 animate-pulse">Diagnostics Feed</span>
+            <p id="commentaryText" class="text-[10px] text-slate-600 dark:text-slate-300 truncate font-bold text-center flex-1">Align vertical hair lines directly over the corneal light reflex for OD and OS.</p>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: Interactive Control Knobs & Assessment -->
+    <section class="lg:w-[42%] space-y-4">
+      
+      <!-- Mode Switching Tabs (Practice vs Assessment) -->
+      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-3xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-xs">
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-chalkboard-user"></i> Practice Mode
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-vial"></i> Assessment
+        </button>
+      </div>
+
+      <!-- PRACTICE CONTROLS CARD -->
+      <div id="practiceControlsCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-2">
+          <div>
+            <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-secondary"></i> Patient Anatomical Setup
+            </h3>
+            <p class="text-[10px] text-slate-400 font-bold">Configure true patient PD (24.0 to 40.0 mm monocular)</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="autoAlignReticles()" class="px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 border border-sky-300 dark:bg-sky-950/20 dark:border-sky-900 rounded-xl text-[10px] font-black text-secondary transition flex items-center gap-1 cursor-pointer">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Align
+            </button>
+            <button onclick="resetSimulator()" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-300 dark:bg-rose-950/20 dark:border-rose-900 rounded-xl text-[10px] font-black text-rose-600 dark:text-rose-400 transition flex items-center gap-1 cursor-pointer">
+              <i class="fa-solid fa-arrow-rotate-left"></i> Reset
+            </button>
+          </div>
+        </div>
+
+        <!-- Dropdowns: Eye Selection & Working Distance -->
+        <div class="grid grid-cols-2 gap-3 pt-1">
+          <div>
+            <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">
+              <i class="fa-solid fa-eye text-secondary mr-1"></i> Eye Mode / Occluder
+            </label>
+            <select id="eyeSelectDropdown" onchange="handleEyeSelectChange(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary cursor-pointer">
+              <option value="OU">OU (Binocular Both Eyes)</option>
+              <option value="OD">OD (Monocular Right Eye)</option>
+              <option value="OS">OS (Monocular Left Eye)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">
+              <i class="fa-solid fa-arrows-to-eye text-amber-500 mr-1"></i> Target Distance
+            </label>
+            <select id="targetDistanceDropdown" onchange="handleDistanceChange(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary cursor-pointer">
+              <option value="infinity" selected>Infinity (∞) - Distance PD</option>
+              <option value="200">2.0 Meters</option>
+              <option value="100">1.0 Meter</option>
+              <option value="65">65 cm (Intermediate)</option>
+              <option value="50">50 cm</option>
+              <option value="40">40 cm (Near PD Standard)</option>
+              <option value="35">35 cm</option>
+              <option value="30">30 cm (Close Near)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Custom Patient Target Inputs -->
+        <div class="grid grid-cols-2 gap-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div>
+            <label class="text-[9px] uppercase font-black text-rose-500 block mb-1">Patient True OD PD (mm)</label>
+            <input type="number" id="pracTrueODInput" min="24" max="40" step="0.5" value="32.0" onchange="updateCustomPracPatient()" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary text-center">
+          </div>
+          <div>
+            <label class="text-[9px] uppercase font-black text-sky-500 block mb-1">Patient True OS PD (mm)</label>
+            <input type="number" id="pracTrueOSInput" min="24" max="40" step="0.5" value="32.0" onchange="updateCustomPracPatient()" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary text-center">
+          </div>
+        </div>
+
+        <!-- OD Hair Line Reticle Slider -->
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-rose-500 tracking-widest"><i class="fa-solid fa-sliders"></i> Right Eye (OD) Hair Line Reticle</span>
+            <span class="text-[9px] font-bold text-slate-400 font-mono" id="sliderValOD">32.00 mm</span>
+          </div>
+          <div class="flex items-center gap-3 pt-1">
+            <button onclick="stepControl('od', -0.5)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">-</button>
+            <input type="range" id="odReticleSlider" min="24" max="40" step="0.25" value="32.0" oninput="slideControl('od')" class="w-full">
+            <button onclick="stepControl('od', 0.5)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">+</button>
+          </div>
+        </div>
+
+        <!-- OS Hair Line Reticle Slider -->
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-sky-500 tracking-widest"><i class="fa-solid fa-sliders"></i> Left Eye (OS) Hair Line Reticle</span>
+            <span class="text-[9px] font-bold text-slate-400 font-mono" id="sliderValOS">32.00 mm</span>
+          </div>
+          <div class="flex items-center gap-3 pt-1">
+            <button onclick="stepControl('os', -0.5)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">-</button>
+            <input type="range" id="osReticleSlider" min="24" max="40" step="0.25" value="32.0" oninput="slideControl('os')" class="w-full">
+            <button onclick="stepControl('os', 0.5)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">+</button>
+          </div>
+        </div>
+
+        <!-- Procedure Guide Box -->
+        <div id="beginnerInstructionCard" class="p-3.5 bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900 rounded-2xl text-[11px] space-y-2">
+          <span class="font-extrabold text-secondary uppercase tracking-widest text-[9px] block flex items-center gap-1">
+            <i class="fa-solid fa-lightbulb text-amber-500 animate-pulse"></i> Clinical Pupillometry Protocol Guide
+          </span>
+          <p class="text-slate-600 dark:text-slate-400 leading-relaxed">
+            1. Select target distance (<strong>Distance $\infty$</strong> for Far PD; <strong>40 cm</strong> for Near PD).<br>
+            2. For Monocular PD, select <strong>OD</strong> or <strong>OS</strong> to slide the internal occluded shutter.<br>
+            3. Adjust the <strong>OD Hair Line</strong> lever until the red reticle splits the white corneal pinpoint reflex on the right eye.<br>
+            4. Adjust the <strong>OS Hair Line</strong> lever until the blue reticle splits the corneal reflex on the left eye.<br>
+            5. Note convergence effect: Near PD is typically <strong>3.0 to 4.0 mm less</strong> than Distance PD due to accommodation.
+          </p>
+        </div>
+      </div>
+
+      <!-- TEST / ASSESSMENT CONSOLE -->
+      <div id="testModeConsole" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Verification Board</h3>
+            <p class="text-[10px] text-slate-600 dark:text-slate-400">Align reticles on the unknown patient eyes and record your final readings.</p>
+          </div>
+          <span id="assessmentScoreReadout" class="text-xs font-black bg-slate-100 dark:bg-slate-800 border border-slate-300 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">Score: Unsubmitted</span>
+        </div>
+
+        <div class="space-y-3">
+          <!-- Dropdowns in Test Mode -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">
+                <i class="fa-solid fa-eye text-secondary mr-1"></i> Eye Mode
+              </label>
+              <select id="testEyeSelectDropdown" onchange="handleEyeSelectChange(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary cursor-pointer">
+                <option value="OU">OU (Binocular Both Eyes)</option>
+                <option value="OD">OD (Monocular Right Eye)</option>
+                <option value="OS">OS (Monocular Left Eye)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">
+                <i class="fa-solid fa-arrows-to-eye text-amber-500 mr-1"></i> Target Distance
+              </label>
+              <select id="testTargetDistanceDropdown" onchange="handleDistanceChange(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary cursor-pointer">
+                <option value="infinity">Infinity (∞) - Distance PD</option>
+                <option value="40">40 cm (Near PD)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Test Mode Reticle Sliders -->
+          <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+              <span class="text-[9px] font-black uppercase text-rose-500 tracking-widest"><i class="fa-solid fa-sliders"></i> Right Eye (OD) Hair Line Reticle</span>
+            </div>
+            <div class="flex items-center gap-3 pt-1">
+              <button onclick="stepControl('od', -0.5)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">-</button>
+              <input type="range" id="testOdReticleSlider" min="24" max="40" step="0.25" value="32.0" oninput="slideTestControl('od')" class="w-full">
+              <button onclick="stepControl('od', 0.5)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">+</button>
+            </div>
+          </div>
+
+          <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+              <span class="text-[9px] font-black uppercase text-sky-500 tracking-widest"><i class="fa-solid fa-sliders"></i> Left Eye (OS) Hair Line Reticle</span>
+            </div>
+            <div class="flex items-center gap-3 pt-1">
+              <button onclick="stepControl('os', -0.5)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">-</button>
+              <input type="range" id="testOsReticleSlider" min="24" max="40" step="0.25" value="32.0" oninput="slideTestControl('os')" class="w-full">
+              <button onclick="stepControl('os', 0.5)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">+</button>
+            </div>
+          </div>
+
+          <!-- Recorded Measurement Entry Fields -->
+          <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div>
+              <label class="text-[9px] uppercase font-black text-rose-500 block mb-1">OD Monocular (mm)</label>
+              <input type="number" id="testODInput" step="0.5" placeholder="32.0" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-secondary text-center">
+            </div>
+            <div>
+              <label class="text-[9px] uppercase font-black text-sky-500 block mb-1">OS Monocular (mm)</label>
+              <input type="number" id="testOSInput" step="0.5" placeholder="32.0" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-secondary text-center">
+            </div>
+            <div>
+              <label class="text-[9px] uppercase font-black text-emerald-500 block mb-1">Total Binocular (mm)</label>
+              <input type="number" id="testOUInput" step="0.5" placeholder="64.0" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-secondary text-center">
+            </div>
+          </div>
+        </div>
+        <div id="diagnosisFeedback" class="text-[11px] font-bold hidden px-3 py-2 rounded-lg"></div>
+
+        <div class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-900">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block">Pupillometry Quiz (50% Marks)</span>
+          <div id="testMcqSuite" class="space-y-4"></div>
+        </div>
+
+        <button onclick="submitTestAssessment()" class="w-full py-3 bg-secondary text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+          Submit PD Measurements &amp; Assessment Profile
+        </button>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- About Modal -->
+  <div id="aboutModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-ruler-horizontal text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">About PD Measurement Lab</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Refraction &amp; Ophthalmic Dispensing Unit</p>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        This simulation models clinical pupillometry using digital corneal light reflex alignment (Victorin method / Pupillometer). It calculates monocular right (OD), monocular left (OS), total binocular (OU) pupillary distances, and accommodation-convergence shifts at working distances from infinity down to 30 cm.
+      </p>
+    </div>
+  </div>
+
+  <!-- Reference Modal -->
+  <div id="referenceModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">Clinical References (AAO / Dispensing Guidelines)</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Pupillometry Standard Rules</p>
+        </div>
+      </div>
+      <div class="space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+        <p><strong>1. Monocular vs Binocular PD:</strong> Monocular PDs measure the distance from facial midline (nose bridge) to each corneal light reflex individually. Binocular PD = $\text{PD}_{\text{OD}} + \text{PD}_{\text{OS}}$.</p>
+        <p><strong>2. Distance vs Near PD Shift:</strong> When fixating a near object (e.g. at 40 cm), the eyes converge. Near PD is typically **3.0 to 4.0 mm less** than Distance PD.</p>
+        <p><strong>3. Corneal Reflex (Victorin Method):</strong> Aligning reticle hair lines with corneal light reflections (Purkinje Image I) avoids error caused by pupil asymmetry or visual axis decentration.</p>
+        <p><strong>4. Asymmetry Significance:</strong> Asymmetric monocular PDs (e.g., OD 31.0 mm / OS 34.0 mm) must be dispensed with monocular centration to prevent unwanted induced vertical or horizontal prism.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const clinicalMcqPool = [
+      {
+        question: "Why is measuring monocular PD preferable to measuring total binocular PD when fitting progressive lenses?",
+        options: { 
+          a: "Most human faces are slightly asymmetric, requiring individual optical centration for each eye", 
+          b: "Monocular PD is always exactly half of the total binocular PD", 
+          c: "Binocular PD cannot be measured at near working distances" 
+        },
+        correct: "a",
+        explanation: "Facial asymmetry is common. Independent monocular PD measurements ensure the optical center of each lens aligns perfectly with each individual eye."
+      },
+      {
+        question: "By approximately how much does binocular Pupillary Distance decrease when a patient shifts fixation from distance (infinity) to a 40 cm reading distance?",
+        options: { a: "0.5 mm to 1.0 mm", b: "3.0 mm to 4.0 mm", c: "8.0 mm to 10.0 mm" },
+        correct: "b",
+        explanation: "Due to ocular convergence at 40 cm accommodation distance, total binocular PD decreases by approximately 3.0 to 4.0 mm."
+      },
+      {
+        question: "What optical landmark is aligned with the pupillometer reticle in the corneal light reflex (Victorin) method?",
+        options: { a: "The outer scleral limbus", b: "The first Purkinje image (white corneal pinpoint reflection)", c: "The temporal edge of the pupil" },
+        correct: "b",
+        explanation: "The Pupillometer aligns reticles over the first Purkinje reflection (corneal light reflex) representing the visual axis."
+      },
+      {
+        question: "If a patient's monocular distance PDs are OD 31.5 mm and OS 34.5 mm, what is their total binocular distance PD?",
+        options: { a: "66.0 mm", b: "63.0 mm", c: "69.0 mm" },
+        correct: "a",
+        explanation: "Total Binocular PD = OD + OS = 31.5 mm + 34.5 mm = 66.0 mm."
+      }
+    ];
+
+    const targetDistanceSequence = ['infinity', '200', '100', '65', '50', '40', '35', '30'];
+
+    const simState = {
+      mode: 'practice',
+      soundMuted: false,
+      eyeSelection: 'OU', // OU, OD, OS
+      workingDistance: 'infinity', // infinity, 200, 100, 65, 50, 40, 35, 30
+      
+      // True Patient Parameters (Distance Monocular PDs)
+      practiceTruePatient: { od: 32.0, os: 32.0 },
+      customTestPatient: { od: 32.0, os: 32.0, testDistance: '40' },
+      
+      // User Reticle Slider Values
+      userOD: 32.0,
+      userOS: 32.0,
+      
+      selectedQuestions: [],
+      scores: { diagnosisScore: 0, mcqScore: 0 }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      syncCompletionBadge();
+      resetSimulator();
+    });
+
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const icon = document.getElementById('muteIcon');
+      const text = document.getElementById('muteText');
+      if (simState.soundMuted) {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400"; text.innerText = "Unmute";
+      } else {
+        icon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse"; text.innerText = "Mute"; soundFeedback('click');
+      }
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+      soundFeedback('switch');
+    }
+
+    function openMenuModal(id) { soundFeedback('click'); document.getElementById(`${id}Modal`).classList.remove('hidden'); }
+    function closeMenuModal(id) { soundFeedback('click'); document.getElementById(`${id}Modal`).classList.add('hidden'); }
+
+    function setEyeMode(mode) {
+      simState.eyeSelection = mode;
+      soundFeedback('switch');
+
+      document.getElementById('eyeSelectDropdown').value = mode;
+      document.getElementById('testEyeSelectDropdown').value = mode;
+
+      updatePupillometerPhysics();
+    }
+
+    function cycleDistanceDial() {
+      soundFeedback('dial');
+      let idx = targetDistanceSequence.indexOf(simState.workingDistance);
+      idx = (idx + 1) % targetDistanceSequence.length;
+      let nextDist = targetDistanceSequence[idx];
+
+      simState.workingDistance = nextDist;
+      document.getElementById('targetDistanceDropdown').value = nextDist;
+      document.getElementById('testTargetDistanceDropdown').value = nextDist;
+
+      updatePupillometerPhysics();
+    }
+
+    function handleEyeSelectChange(el) {
+      simState.eyeSelection = el.value;
+      soundFeedback('switch');
+      
+      document.getElementById('eyeSelectDropdown').value = el.value;
+      document.getElementById('testEyeSelectDropdown').value = el.value;
+      
+      updatePupillometerPhysics();
+    }
+
+    function handleDistanceChange(el) {
+      simState.workingDistance = el.value;
+      soundFeedback('switch');
+
+      document.getElementById('targetDistanceDropdown').value = el.value;
+      document.getElementById('testTargetDistanceDropdown').value = el.value;
+
+      updatePupillometerPhysics();
+    }
+
+    function stepControl(eye, amt) {
+      soundFeedback('dial');
+      let slider;
+      if (simState.mode === 'test') {
+        slider = eye === 'od' ? document.getElementById('testOdReticleSlider') : document.getElementById('testOsReticleSlider');
+      } else {
+        slider = eye === 'od' ? document.getElementById('odReticleSlider') : document.getElementById('osReticleSlider');
+      }
+
+      if (!slider) return;
+      let val = parseFloat(slider.value) + amt;
+      if (val > 40) val = 40; if (val < 24) val = 24;
+      slider.value = val;
+
+      if (simState.mode === 'test') slideTestControl(eye);
+      else slideControl(eye);
+    }
+
+    function slideControl(eye) {
+      if (eye === 'od') simState.userOD = parseFloat(document.getElementById('odReticleSlider').value);
+      if (eye === 'os') simState.userOS = parseFloat(document.getElementById('osReticleSlider').value);
+      updatePupillometerPhysics();
+    }
+
+    function slideTestControl(eye) {
+      if (eye === 'od') simState.userOD = parseFloat(document.getElementById('testOdReticleSlider').value);
+      if (eye === 'os') simState.userOS = parseFloat(document.getElementById('testOsReticleSlider').value);
+      updatePupillometerPhysics();
+    }
+
+    function slideDeviceControl(eye) {
+      if (eye === 'od') {
+        const val = parseFloat(document.getElementById('deviceOdSlider').value);
+        simState.userOD = val;
+        document.getElementById('odReticleSlider').value = val;
+        document.getElementById('testOdReticleSlider').value = val;
+      }
+      if (eye === 'os') {
+        const val = parseFloat(document.getElementById('deviceOsSlider').value);
+        simState.userOS = val;
+        document.getElementById('osReticleSlider').value = val;
+        document.getElementById('testOsReticleSlider').value = val;
+      }
+      updatePupillometerPhysics();
+    }
+
+    function updateCustomPracPatient() {
+      let od = parseFloat(document.getElementById('pracTrueODInput').value) || 32.0;
+      let os = parseFloat(document.getElementById('pracTrueOSInput').value) || 32.0;
+      simState.practiceTruePatient = { od, os };
+      updatePupillometerPhysics();
+    }
+
+    function autoAlignReticles() {
+      soundFeedback('success');
+      const target = simState.mode === 'practice' ? simState.practiceTruePatient : simState.customTestPatient;
+      const convShift = calculateConvergenceShift(target);
+
+      simState.userOD = convShift.od;
+      simState.userOS = convShift.os;
+
+      document.getElementById('odReticleSlider').value = convShift.od;
+      document.getElementById('osReticleSlider').value = convShift.os;
+      document.getElementById('testOdReticleSlider').value = convShift.od;
+      document.getElementById('testOsReticleSlider').value = convShift.os;
+      document.getElementById('deviceOdSlider').value = convShift.od;
+      document.getElementById('deviceOsSlider').value = convShift.os;
+
+      updatePupillometerPhysics();
+    }
+
+    function calculateConvergenceShift(patient) {
+      if (simState.workingDistance === 'infinity') {
+        return { od: patient.od, os: patient.os };
+      }
+      
+      const distCm = parseFloat(simState.workingDistance);
+      // Clinical convergence shift approximation: Shift = (Monocular PD * 2.7 cm) / (Dist cm + 2.7 cm)
+      const shiftOD = (patient.od * 2.7) / (distCm + 2.7);
+      const shiftOS = (patient.os * 2.7) / (distCm + 2.7);
+
+      return {
+        od: Math.round((patient.od - shiftOD) * 4) / 4,
+        os: Math.round((patient.os - shiftOS) * 4) / 4
+      };
+    }
+
+    function resetSimulator() {
+      soundFeedback('success');
+      simState.userOD = 32.0;
+      simState.userOS = 32.0;
+
+      document.getElementById('odReticleSlider').value = 32.0;
+      document.getElementById('osReticleSlider').value = 32.0;
+      document.getElementById('testOdReticleSlider').value = 32.0;
+      document.getElementById('testOsReticleSlider').value = 32.0;
+      document.getElementById('deviceOdSlider').value = 32.0;
+      document.getElementById('deviceOsSlider').value = 32.0;
+
+      if (simState.mode === 'practice') {
+        document.getElementById('pracTrueODInput').value = "32.0";
+        document.getElementById('pracTrueOSInput').value = "32.0";
+        simState.practiceTruePatient = { od: 32.0, os: 32.0 };
+      }
+
+      updatePupillometerPhysics();
+    }
+
+    function updatePupillometerPhysics() {
+      const patient = simState.mode === 'practice' ? simState.practiceTruePatient : simState.customTestPatient;
+      const convShift = calculateConvergenceShift(patient);
+
+      // SVG Eye Translations
+      const svgPosX_OD = -(convShift.od * 2);
+      const svgPosX_OS = (convShift.os * 2);
+
+      document.getElementById('groupOD').setAttribute('transform', `translate(${svgPosX_OD}, 0)`);
+      document.getElementById('groupOS').setAttribute('transform', `translate(${svgPosX_OS}, 0)`);
+
+      // Occluder Shutters Opacity
+      const occOD = document.getElementById('occluderOD');
+      const occOS = document.getElementById('occluderOS');
+
+      if (simState.eyeSelection === 'OD') {
+        occOD.setAttribute('opacity', '0');
+        occOS.setAttribute('opacity', '0.92');
+      } else if (simState.eyeSelection === 'OS') {
+        occOD.setAttribute('opacity', '0.92');
+        occOS.setAttribute('opacity', '0');
+      } else {
+        occOD.setAttribute('opacity', '0');
+        occOS.setAttribute('opacity', '0');
+      }
+
+      // User Hair Line Reticle SVG Positions
+      const userSvgOD = -(simState.userOD * 2);
+      const userSvgOS = (simState.userOS * 2);
+
+      document.getElementById('reticleOD').setAttribute('transform', `translate(${userSvgOD}, 0)`);
+      document.getElementById('reticleOS').setAttribute('transform', `translate(${userSvgOS}, 0)`);
+
+      // LCD Display Reads
+      document.getElementById('lcdRight').innerText = simState.userOD.toFixed(1);
+      document.getElementById('lcdLeft').innerText = simState.userOS.toFixed(1);
+      
+      const totalOU = (simState.userOD + simState.userOS).toFixed(1);
+      document.getElementById('lcdTotal').innerText = totalOU;
+
+      document.getElementById('sliderValOD').innerText = `${simState.userOD.toFixed(2)} mm`;
+      document.getElementById('sliderValOS').innerText = `${simState.userOS.toFixed(2)} mm`;
+
+      // Update Device Buttons Styling
+      const btnOU = document.getElementById('deviceBtnOU');
+      const btnOD = document.getElementById('deviceBtnOD');
+      const btnOS = document.getElementById('deviceBtnOS');
+
+      const activeClass = "flex-1 py-1.5 rounded-lg text-[10px] font-black bg-sky-600 text-white shadow-xs transition cursor-pointer";
+      const inactiveClass = "flex-1 py-1.5 rounded-lg text-[10px] font-black bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-400 transition cursor-pointer";
+
+      btnOU.className = simState.eyeSelection === 'OU' ? activeClass : inactiveClass;
+      btnOD.className = simState.eyeSelection === 'OD' ? activeClass : inactiveClass;
+      btnOS.className = simState.eyeSelection === 'OS' ? activeClass : inactiveClass;
+
+      document.getElementById('lcdEyeMode').innerText = `MODE: ${simState.eyeSelection}`;
+      document.getElementById('lcdDistanceMode').innerHTML = `<i class="fa-solid fa-bullseye"></i> TARGET: ${simState.workingDistance === 'infinity' ? 'DISTANCE (∞)' : simState.workingDistance + ' CM'}`;
+
+      // Sync device sliders
+      document.getElementById('deviceOdSlider').value = simState.userOD;
+      document.getElementById('deviceOsSlider').value = simState.userOS;
+
+      // Alignment Feedback Analysis
+      const odErr = Math.abs(simState.userOD - convShift.od);
+      const osErr = Math.abs(simState.userOS - convShift.os);
+
+      let commentary = "";
+      if (odErr <= 0.25 && osErr <= 0.25) {
+        commentary = `✨ PERFECT ALIGNMENT! Monocular PDs: OD ${convShift.od.toFixed(1)} mm / OS ${convShift.os.toFixed(1)} mm (Total OU: ${(convShift.od + convShift.os).toFixed(1)} mm).`;
+      } else if (odErr > 0.25 && osErr <= 0.25) {
+        commentary = "OD (Right) reticle misaligned with corneal light reflex. Adjust OD reticle lever.";
+      } else if (osErr > 0.25 && odErr <= 0.25) {
+        commentary = "OS (Left) reticle misaligned with corneal light reflex. Adjust OS reticle lever.";
+      } else {
+        commentary = "Align red reticle lever over OD reflex and blue reticle lever over OS reflex.";
+      }
+
+      if (simState.mode === 'practice') {
+        document.getElementById('commentaryText').innerText = commentary;
+      }
+    }
+
+    function changeMode(target) {
+      soundFeedback('switch');
+      simState.mode = target;
+
+      const pracBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      const pracConsole = document.getElementById('practiceControlsCard');
+      const testConsole = document.getElementById('testModeConsole');
+      const scoreCard = document.getElementById('finalScoreCard');
+      
+      if(scoreCard) scoreCard.classList.add('hidden');
+
+      if (target === 'practice') {
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer";
+        pracConsole.classList.remove('hidden');
+        testConsole.classList.add('hidden');
+      } else {
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 hover:bg-slate-900 shadow-xs cursor-pointer";
+        pracConsole.classList.add('hidden');
+        testConsole.classList.remove('hidden');
+
+        // Generate random hidden patient profile (Monocular PDs: 28.0 to 36.0 mm)
+        let genOD = (Math.floor(Math.random() * 17) + 56) * 0.5; // 28.0 to 36.0 mm
+        let genOS = (Math.floor(Math.random() * 17) + 56) * 0.5; // 28.0 to 36.0 mm
+        let testDist = Math.random() > 0.5 ? 'infinity' : '40';
+
+        simState.customTestPatient = { od: genOD, os: genOS, testDistance: testDist };
+        simState.workingDistance = testDist;
+        document.getElementById('testTargetDistanceDropdown').value = testDist;
+        document.getElementById('targetDistanceDropdown').value = testDist;
+
+        document.getElementById('testODInput').value = "";
+        document.getElementById('testOSInput').value = "";
+        document.getElementById('testOUInput').value = "";
+        document.getElementById('diagnosisFeedback').classList.add('hidden');
+        document.getElementById('commentaryText').innerText = `Assessment Active. Target: ${testDist === 'infinity' ? 'Infinity' : '40 cm'}. Record OD, OS, and Binocular PD.`;
+        
+        setupTestMcqSuite();
+      }
+      resetSimulator();
+    }
+
+    function setupTestMcqSuite() {
+      simState.selectedQuestions = [...clinicalMcqPool].sort(() => 0.5 - Math.random()).slice(0, 3);
+      const container = document.getElementById('testMcqSuite');
+      container.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const div = document.createElement('div');
+        div.className = "bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs shadow-xs text-slate-900 dark:text-slate-200";
+        div.innerHTML = `
+          <p class="font-extrabold">${idx + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1.5 pt-1">
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="a" class="accent-secondary"> ${q.options.a}</label>
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="b" class="accent-secondary"> ${q.options.b}</label>
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="c" class="accent-secondary"> ${q.options.c}</label>
+          </div>
+          <p id="mcq_${idx}_feedback" class="text-[10px] font-bold hidden mt-1"></p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function submitTestAssessment() {
+      if (simState.mode !== 'test') return;
+
+      const odIn = document.getElementById('testODInput').value;
+      const osIn = document.getElementById('testOSInput').value;
+      const ouIn = document.getElementById('testOUInput').value;
+      const feedback = document.getElementById('diagnosisFeedback');
+
+      let unanswered = false;
+      const answers = [];
+      simState.selectedQuestions.forEach((q, idx) => {
+        const checked = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+        if (!checked) unanswered = true;
+        else answers.push({ idx, selected: checked.value, correct: q.correct, explanation: q.explanation });
+      });
+
+      if (odIn === "" || osIn === "" || ouIn === "" || unanswered) {
+        soundFeedback('warning');
+        feedback.innerHTML = "<i class='fa-solid fa-triangle-exclamation mr-1'></i> Please enter your recorded OD, OS, and Binocular OU values and answer all quiz questions.";
+        feedback.className = "text-[11px] font-extrabold text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 block mt-3 px-3 py-2 rounded-lg animate-pulse";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      feedback.classList.remove('hidden');
+      
+      const target = simState.customTestPatient;
+      const convShift = calculateConvergenceShift(target);
+
+      const uOD = parseFloat(odIn);
+      const uOS = parseFloat(osIn);
+      const uOU = parseFloat(ouIn);
+
+      const passOD = Math.abs(uOD - convShift.od) <= 0.5;
+      const passOS = Math.abs(uOS - convShift.os) <= 0.5;
+      const passOU = Math.abs(uOU - (convShift.od + convShift.os)) <= 0.5;
+
+      if (passOD && passOS && passOU) {
+        feedback.innerHTML = `<i class="fa-solid fa-check-circle mr-1"></i> Correct PD Measurements! Target: OD ${convShift.od.toFixed(1)} / OS ${convShift.os.toFixed(1)} / OU ${(convShift.od + convShift.os).toFixed(1)} mm (+50 pts)`;
+        feedback.className = "text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 block mt-3 px-3 py-2 rounded-lg";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        feedback.innerHTML = `<i class="fa-solid fa-xmark-circle mr-1"></i> Incorrect. Expected: OD ${convShift.od.toFixed(1)} / OS ${convShift.os.toFixed(1)} / OU ${(convShift.od + convShift.os).toFixed(1)} mm (+0 pts)`;
+        feedback.className = "text-[11px] font-bold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 block mt-3 px-3 py-2 rounded-lg";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      let correctCount = 0;
+      answers.forEach((ans) => {
+        const box = document.getElementById(`mcq_${ans.idx}_feedback`);
+        box.classList.remove('hidden');
+        if (ans.selected === ans.correct) {
+          box.innerText = `Correct! (+16.6 pts) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+          correctCount++;
+        } else {
+          box.innerText = `Incorrect. (Answer: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-red-600 dark:text-red-400 block mt-1";
+        }
+      });
+      simState.scores.mcqScore = Math.round(correctCount * 16.66);
+
+      const totalScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('assessmentScoreReadout').innerText = `Score: ${totalScore}/100`;
+
+      let card = document.getElementById('finalScoreCard');
+      if (!card) {
+        const parent = document.getElementById('simulationViewport');
+        card = document.createElement('div');
+        card.id = "finalScoreCard";
+        parent.appendChild(card);
+      }
+
+      card.className = "p-5 rounded-3xl text-center space-y-3 transition-all duration-500 mt-4 ";
+      card.innerHTML = `
+        <div class="space-y-1">
+          <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText"></p>
+          <p class="text-xs text-slate-600 dark:text-slate-400" id="finalStatusDescription"></p>
+        </div>
+        <div id="practiceRedirectBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <button onclick="changeMode('practice')" class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+            <i class="fa-solid fa-graduation-cap mr-1"></i> Return to Practice Console
+          </button>
+        </div>
+      `;
+
+      card.classList.remove('hidden');
+      const statTxt = card.querySelector('#finalStatusText');
+      const statDsc = card.querySelector('#finalStatusDescription');
+      const rdrBlk = card.querySelector('#practiceRedirectBlock');
+
+      if (totalScore >= 80) {
+        soundFeedback('success');
+        card.className += "bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 animate-pulse";
+        statTxt.innerText = `PASSED (${totalScore}%)`;
+        statDsc.innerText = "Pupillometry measurement verification assessment logged successfully.";
+        rdrBlk.classList.add('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completed.includes('PD-Measurement')) {
+          completed.push('PD-Measurement');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        }
+        syncCompletionBadge();
+      } else {
+        soundFeedback('warning');
+        card.className += "bg-red-50 dark:bg-red-950/25 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-300";
+        statTxt.innerText = `FAILED (${totalScore}%)`;
+        statDsc.innerText = "Assessment score falls below the 80% passing criteria standard.";
+        rdrBlk.classList.remove('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        completed = completed.filter(el => el !== 'PD-Measurement');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        syncCompletionBadge();
+      }
+    }
+
+    function syncCompletionBadge() {
+      const completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completed.includes('PD-Measurement')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/45 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+  </script>
+</body>
+</html>

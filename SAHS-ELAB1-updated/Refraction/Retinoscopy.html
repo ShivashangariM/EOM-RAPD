@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Clinical Retinoscopy Lab</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a', secondary: '#0284c7', accent: '#0d9488'
+          },
+          fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    .dark ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    ::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+    /* Custom Input Sliders */
+    input[type=range].clinical-slider {
+      -webkit-appearance: none; width: 100%; background: transparent;
+    }
+    input[type=range].clinical-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #0284c7; cursor: pointer; margin-top: -8px; box-shadow: 0 0 10px rgba(2, 132, 199, 0.5); border: 2px solid #ffffff;
+    }
+    input[type=range].clinical-slider::-webkit-slider-runnable-track {
+      width: 100%; height: 4px; cursor: pointer; background: #cbd5e1; border-radius: 2px;
+    }
+    .dark input[type=range].clinical-slider::-webkit-slider-runnable-track { background: #334155; }
+
+    /* 3D Keeler Hardware Realistic Styling */
+    .keeler-cylinder {
+      background: linear-gradient(90deg, #020617 0%, #334155 20%, #1e293b 50%, #0f172a 80%, #020617 100%);
+      box-shadow: inset -5px 0 15px rgba(0,0,0,0.9), inset 5px 0 10px rgba(255,255,255,0.1), 0 15px 30px rgba(0,0,0,0.5);
+    }
+    .keeler-collar {
+      background: repeating-linear-gradient(90deg, #0f172a 0px, #334155 2px, #0f172a 4px);
+      box-shadow: inset 0 2px 3px rgba(255,255,255,0.3), inset 0 -3px 4px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.5);
+      border-top: 1px solid #94a3b8; border-bottom: 2px solid #020617;
+    }
+    .keeler-sleeve {
+      background: linear-gradient(90deg, #0f172a 0%, #475569 25%, #1e293b 50%, #334155 75%, #020617 100%);
+      box-shadow: inset -4px 0 12px rgba(0,0,0,0.9), inset 4px 0 10px rgba(255,255,255,0.2), 0 8px 15px rgba(0,0,0,0.6);
+      border-top: 1px solid #cbd5e1; border-bottom: 2px solid #020617;
+    }
+    .keeler-rib {
+      background: rgba(0,0,0,0.7); border-bottom: 1px solid rgba(255,255,255,0.2); height: 2px; width: 100%; margin: 2px 0;
+    }
+    .keeler-blue-ring {
+      background: linear-gradient(90deg, #0284c7 0%, #38bdf8 25%, #0284c7 50%, #38bdf8 80%, #0369a1 100%);
+      height: 4px; width: 100%; box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+    }
+    .sleeve-transition { transition: top 0.15s ease; }
+
+    .viewport-darkroom {
+      background: radial-gradient(circle at center, #141b2d 0%, #030712 100%);
+    }
+    .eye-iris {
+      background: radial-gradient(circle at center, #2e1f15 0%, #0f0a05 100%);
+    }
+    
+    .face-streak-beam {
+      mix-blend-mode: screen;
+      pointer-events: none;
+    }
+    .internal-reflex-glow {
+      mix-blend-mode: plus-lighter;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <script>
+    let audioCtx = null;
+    let halogenOsc = null;
+    let halogenGain = null;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function toggleHalogenHum(isOn) {
+      if (simState.soundMuted) isOn = false;
+      try {
+        initAudio();
+        if (isOn) {
+          if (!halogenOsc) {
+            halogenOsc = audioCtx.createOscillator();
+            halogenGain = audioCtx.createGain();
+            halogenOsc.connect(halogenGain);
+            halogenGain.connect(audioCtx.destination);
+            halogenOsc.type = 'sine';
+            halogenOsc.frequency.setValueAtTime(60, audioCtx.currentTime); 
+            halogenGain.gain.setValueAtTime(0.012, audioCtx.currentTime);
+            halogenOsc.start();
+          }
+        } else {
+          if (halogenOsc) {
+            halogenOsc.stop(); halogenOsc.disconnect(); halogenOsc = null;
+          }
+        }
+      } catch(e){}
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click': playTone(800, 'triangle', 0.05, 0.03); break;
+        case 'slide': playTone(340, 'square', 0.06, 0.015); break;
+        case 'lens': playTone(1100, 'sine', 0.04, 0.025); break;
+        case 'warning': playTone(190, 'sawtooth', 0.25, 0.05); break;
+        case 'success': playTone(520, 'sine', 0.1, 0.05); setTimeout(() => playTone(640, 'sine', 0.15, 0.05), 80); break;
+        case 'power': playTone(160, 'sawtooth', 0.18, 0.07); break;
+      }
+    }
+  </script>
+
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-500">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="Refraction.html" class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hover:bg-slate-800 transition cursor-pointer">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </a>
+        <div class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hidden sm:flex">
+          <i class="fa-solid fa-bolt text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+            SAHS-E-LAB | <span class="text-secondary">Retinoscopy Lab</span>
+            <span class="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900">v5.0 PRO</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-extrabold">Omnidirectional Spatial Translation</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+          <button onclick="toggleDarkMode()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke text-sky-600 dark:text-sky-400"></i>
+          </button>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-4 sm:px-6 pt-24 pb-12 gap-6">
+    
+    <section class="lg:w-[55%] flex flex-col gap-4 font-mono">
+      
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs relative transition-all duration-500 flex-1 flex flex-col">
+        <div class="flex justify-between items-center z-20 relative">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Free Omnidirectional Darkroom Viewport</span>
+          <div class="flex gap-2">
+            <div id="pickDropBadge" class="text-[9px] font-black uppercase bg-amber-500 text-slate-950 px-2 py-0.5 rounded shadow-sm border border-amber-400">PARKED</div>
+            <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700">
+              <span class="relative flex h-2 w-2">
+                <span id="lightStatusPing" class="absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-75"></span>
+                <span id="lightStatusDot" class="relative inline-flex rounded-full h-2 w-2 bg-slate-500"></span>
+              </span>
+              <span id="lightStatusText" class="text-[9px] font-black uppercase text-slate-500">Power Off</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex-1 flex flex-col items-center justify-center min-h-[380px] relative overflow-hidden rounded-2xl viewport-darkroom border border-slate-200 dark:border-slate-800 shadow-inner select-none cursor-pointer" id="sweepContainer">
+          
+          <svg viewBox="-160 -160 320 320" class="w-full h-full max-w-[420px] max-h-[420px] drop-shadow-2xl absolute inset-0 m-auto pointer-events-none">
+            <defs>
+              <clipPath id="pupil-clip"><circle cx="0" cy="0" r="32" /></clipPath>
+              <clipPath id="eye-clip"><path d="M-130 0 Q 0 -90 130 0 Q 0 90 -130 0 Z" /></clipPath>
+              <radialGradient id="fundus-glow">
+                <stop offset="0%" stop-color="#f97316"/>
+                <stop offset="75%" stop-color="#b45309"/>
+                <stop offset="100%" stop-color="#451a03"/>
+              </radialGradient>
+              <radialGradient id="iris-matrix">
+                <stop offset="0%" stop-color="#3b2d23"/>
+                <stop offset="85%" stop-color="#1c0f07"/>
+                <stop offset="100%" stop-color="#0a0500"/>
+              </radialGradient>
+            </defs>
+            
+            <g clip-path="url(#eye-clip)">
+              <rect x="-150" y="-100" width="300" height="200" fill="#f8fafc" />
+              <path d="M-130 0 Q 0 -90 130 0 Q 0 90 -130 0 Z" fill="none" stroke="#94a3b8" stroke-width="8" opacity="0.4" />
+              <circle cx="0" cy="0" r="55" fill="url(#iris-matrix)" stroke="#0a0500" stroke-width="3"/>
+              <circle cx="0" cy="0" r="32" fill="url(#fundus-glow)" stroke="#000000" stroke-width="2.5" />
+              
+              <g clip-path="url(#pupil-clip)">
+                <g id="pupilReflex" transform="translate(0, 0) rotate(90)" class="internal-reflex-glow" style="opacity: 0;">
+                  <rect id="reflexWidthBase" x="-18" y="-60" width="36" height="120" fill="rgba(249, 115, 22, 0.75)" />
+                  <rect id="reflexWidthCore" x="-5" y="-60" width="10" height="120" fill="rgba(254, 240, 138, 0.9)" />
+                </g>
+              </g>
+              <circle cx="10" cy="-10" r="2.5" fill="rgba(255, 255, 255, 0.4)" filter="blur(0.5px)"/>
+            </g>
+
+            <path d="M-130 0 Q 0 -90 130 0 Q 0 90 -130 0 Z" fill="none" stroke="#1e293b" stroke-width="4" />
+
+            <g id="trialFrameGraphic" transform="translate(0,0)">
+              <circle cx="0" cy="0" r="120" fill="none" stroke="#334155" stroke-width="12" />
+              <circle cx="0" cy="0" r="114" fill="none" stroke="#cbd5e1" stroke-width="2" />
+              <g stroke="#94a3b8" stroke-width="2">
+                 <line x1="-126" y1="0" x2="-114" y2="0" /><line x1="114" y1="0" x2="126" y2="0" /><line x1="0" y1="-126" x2="0" y2="-114" /> 
+              </g>
+
+              <g fill="#f1f5f9" font-size="12" font-weight="bold" font-family="monospace" text-anchor="middle" dominant-baseline="central">
+                 <text x="140" y="0">0</text><text x="0" y="-138">90</text><text x="-140" y="0">180</text>
+              </g>
+
+              <g id="trialFrameAxisLine" transform="rotate(0)">
+                 <circle cx="0" cy="0" r="110" fill="none" stroke="rgba(14,165,233,0.2)" stroke-width="4" />
+                 <line x1="-114" y1="0" x2="-90" y2="0" stroke="#0ea5e9" stroke-width="4" stroke-linecap="round" />
+                 <line x1="114" y1="0" x2="90" y2="0" stroke="#0ea5e9" stroke-width="4" stroke-linecap="round" />
+              </g>
+
+              <g transform="translate(0, 138)">
+                <rect x="-85" y="-12" width="170" height="24" fill="rgba(15,23,42,0.85)" rx="6" stroke="#334155" stroke-width="1"/>
+                <text id="svgLensText" x="0" y="0" fill="#38bdf8" font-size="11" font-weight="bold" font-family="monospace" text-anchor="middle" dominant-baseline="central">Sph: +0.00 | Cyl: +0.00</text>
+              </g>
+            </g>
+
+            <g id="faceStreak" transform="translate(0, 0) rotate(90)" class="face-streak-beam" style="opacity: 0;">
+              <rect x="-16" y="-160" width="32" height="320" fill="rgba(254, 243, 199, 0.15)" />
+              <rect x="-4" y="-160" width="8" height="320" fill="rgba(255, 255, 255, 0.45)" />
+            </g>
+          </svg>
+
+          <div id="hudUserPrompt" class="absolute bottom-3 left-1/2 -translate-x-1/2 text-[9px] font-bold bg-slate-950/85 text-slate-200 border border-slate-800 rounded-full px-4 py-2 flex items-center gap-2 shadow-xl z-30 transition-all">
+            <i class="fa-solid fa-hand-pointer text-amber-400 animate-bounce"></i>
+            <span id="hudPromptText">Double-Click/Double-Tap here to PICK UP the retinoscope</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs relative transition-all duration-500">
+        <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">3D Keeler Professional Hardware Setup</span>
+        
+        <div class="flex items-center justify-center gap-10">
+          <div class="w-16 h-56 keeler-cylinder rounded-lg relative flex flex-col items-center z-10 border border-slate-800">
+            <div class="w-20 h-10 keeler-collar rounded shadow-md cursor-ew-resize mt-3 flex items-center justify-center group relative z-20" id="collarHardware" onmousedown="startCollarDrag(event)">
+              <div class="w-full h-1 bg-slate-950/80 absolute top-1/2 -translate-y-1/2"></div>
+              <div class="w-1.5 h-[85%] bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.9)] absolute" id="collarMark"></div>
+            </div>
+            <div class="w-full flex-1 relative mt-2 mb-2 bg-slate-950 border-x border-slate-900 rounded-sm overflow-hidden shadow-[inset_0_0_10px_rgba(0,0,0,1)]">
+              <div class="absolute top-0 bottom-0 w-1.5 bg-black left-1/2 -translate-x-1/2 rounded"></div>
+              <div class="w-18 h-16 keeler-sleeve rounded-md absolute left-1/2 -translate-x-1/2 cursor-ns-resize flex flex-col items-center justify-between py-1 sleeve-transition z-30" id="sleeveHardware" onmousedown="startSleeveDrag(event)" style="top: 0%;">
+                <div class="keeler-blue-ring mt-0.5"></div>
+                <div class="w-[85%] keeler-rib"></div>
+                <div class="w-[85%] keeler-rib"></div>
+                <div class="w-[85%] keeler-rib"></div>
+                <div class="keeler-blue-ring mb-0.5"></div>
+              </div>
+            </div>
+            <button onclick="toggleRetinoscopePower()" class="w-[90%] h-10 bg-slate-800 hover:bg-slate-700 border-t border-slate-600 rounded-b-lg mb-1 flex items-center justify-center cursor-pointer transition shadow-[inset_0_-5px_10px_rgba(0,0,0,0.8)] z-20" id="powerBtnHardware">
+              <i class="fa-solid fa-power-off text-slate-500 text-sm drop-shadow-md" id="powerIconHardware"></i>
+            </button>
+          </div>
+
+          <div class="flex flex-col gap-3 flex-1 max-w-[200px]">
+            <div class="bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 flex justify-between items-center shadow-inner">
+              <span class="text-[9px] font-black text-slate-500 uppercase">Power</span>
+              <span class="text-xs font-bold text-red-500 font-mono" id="lcdPower">OFF</span>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 flex justify-between items-center shadow-inner">
+              <span class="text-[9px] font-black text-slate-500 uppercase">Sleeve Mode</span>
+              <span class="text-[10px] font-bold text-sky-600 font-mono text-right" id="lcdSleeve">UP<br>(Plano)</span>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 flex justify-between items-center shadow-inner">
+              <span class="text-[9px] font-black text-slate-500 uppercase">Collar Streak</span>
+              <span class="text-xs font-bold text-teal-500 font-mono" id="lcdAxis">090°</span>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 flex justify-between items-center shadow-inner">
+              <span class="text-[9px] font-black text-slate-500 uppercase">Scan Meridian</span>
+              <span class="text-xs font-bold text-purple-500 font-mono" id="lcdMeridian">180°</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="lg:w-[45%] space-y-4">
+      
+      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-3xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-xs">
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-chalkboard-user"></i> Practice Mode
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-vial"></i> Assessment
+        </button>
+      </div>
+
+      <div id="practiceControlsCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-2">
+          <div>
+            <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-user-injured text-amber-500"></i> Patient Target Rx (Hidden Parameter)
+            </h3>
+          </div>
+          <button onclick="randomizePracticeRx()" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 dark:bg-amber-950/20 dark:border-amber-900 rounded-xl text-[10px] font-black text-amber-600 dark:text-amber-400 transition flex items-center gap-1 cursor-pointer">
+            <i class="fa-solid fa-dice"></i> Randomize
+          </button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 pt-1">
+          <div>
+            <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Target Sph</label>
+            <input type="text" id="pracSphInput" value="+1.50" onchange="handlePresetChange(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary text-center">
+          </div>
+          <div>
+            <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Target Cyl</label>
+            <input type="text" id="pracCylInput" value="-1.00" onchange="handlePresetChange(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary text-center">
+          </div>
+          <div>
+            <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Target Axis</label>
+            <input type="number" id="pracAxisInput" min="0" max="180" step="1" value="180" onchange="updateCustomPracLens()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary text-center">
+          </div>
+        </div>
+        <div id="practiceWarning" class="hidden p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-[10px] font-bold text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation animate-pulse text-sm"></i>
+          <span>Warning: Standard optical retinoscopy requires Minus-Cylinder form format parameters.</span>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
+          <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-glasses text-secondary"></i> Trial Frame Lens Calibration
+          </h3>
+          <button onclick="toggleWD()" id="wdBtn" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded text-[9px] font-black text-slate-600 dark:text-slate-300 transition shadow-sm">
+            WD: 67cm (1.50 D)
+          </button>
+        </div>
+
+        <div class="space-y-4 pt-1">
+          <div class="space-y-1">
+            <div class="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest">
+              <span>Trial Sphere Lens (DS)</span>
+              <span id="labelTrialSph" class="text-secondary font-mono font-black text-sm">+0.00</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="stepTrialSph(-0.25)" class="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold transition shadow-sm">-</button>
+              <input type="range" id="trialSphSlider" min="-20" max="20" step="0.25" value="0" oninput="slideTrialSph()" class="clinical-slider">
+              <button onclick="stepTrialSph(0.25)" class="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold transition shadow-sm">+</button>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest">
+              <span>Trial Cylinder Lens (DC)</span>
+              <span id="labelTrialCyl" class="text-secondary font-mono font-black text-sm">+0.00</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="stepTrialCyl(-0.25)" class="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold transition shadow-sm">-</button>
+              <input type="range" id="trialCylSlider" min="-20" max="20" step="0.25" value="0" oninput="slideTrialCyl()" class="clinical-slider">
+              <button onclick="stepTrialCyl(0.25)" class="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold transition shadow-sm">+</button>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest">
+              <span>Trial Cylinder Axis (°)</span>
+              <span id="labelTrialAxis" class="text-secondary font-mono font-black text-sm">180°</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="stepTrialAxis(-1)" class="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold transition shadow-sm"><i class="fa-solid fa-rotate-left"></i></button>
+              <input type="range" id="trialAxisSlider" min="0" max="180" step="1" value="180" oninput="slideTrialAxis()" class="clinical-slider">
+              <button onclick="stepTrialAxis(1)" class="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-bold transition shadow-sm"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[10px] flex items-center justify-between mt-2 shadow-inner">
+          <span class="font-bold text-slate-500">Gross Retinoscopy Rx:</span>
+          <span class="font-black text-slate-800 dark:text-white font-mono text-xs" id="readoutGross">+0.00 / +0.00 x 180</span>
+        </div>
+        <div class="p-3 bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900/60 rounded-xl text-[10px] flex items-center justify-between shadow-inner">
+          <span class="font-bold text-secondary">Net Refraction (Gross - WD):</span>
+          <span class="font-black text-sky-700 dark:text-sky-300 font-mono text-xs" id="readoutNet">-1.50 / +0.00 x 180</span>
+        </div>
+      </div>
+
+      <div id="testModeConsole" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Verification Board</h3>
+            <p class="text-[10px] text-slate-600 dark:text-slate-400">Calculate NET Rx and submit.</p>
+          </div>
+          <span id="assessmentScoreReadout" class="text-xs font-black bg-slate-100 dark:bg-slate-800 border border-slate-300 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">Score: Unsubmitted</span>
+        </div>
+
+        <div id="diagnosisFeedback" class="text-[11px] font-bold hidden px-3 py-2 rounded-lg"></div>
+
+        <div class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block">Retinoscopy Quiz (50% Marks)</span>
+          <div id="testMcqSuite" class="space-y-4"></div>
+        </div>
+
+        <button onclick="submitTestAssessment()" class="w-full py-3 bg-secondary text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+          Submit Net Rx &amp; Assessment Profile
+        </button>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    // --- STATE CONFIGURATION ---
+    const simState = {
+      mode: 'practice', soundMuted: false, lightOn: false,
+      sleeve: 'up', streakAxis: 90, 
+      sweepXPos: 0, sweepYPos: 0, // Omnidirectional coordinates saved independently
+      wdDiopters: 1.50, 
+      isPickedUp: false, 
+      
+      patientRx: { s: 1.50, c: -1.00, a: 180 }, 
+      trialLens: { s: 0.00, c: 0.00, a: 180 },  
+
+      lastWarningCyl: null, selectedQuestions: [],
+      scores: { diagnosisScore: 0, mcqScore: 0 },
+      dragState: { type: null, startY: 0, startX: 0, initialVal: 0 }
+    };
+
+    const clinicalMcqPool = [
+      {
+        question: "When using a Keeler streak retinoscope with the sleeve UP (Plano Mirror effect), an 'AGAINST' motion indicates:",
+        options: { a: "The eye is hyperopic.", b: "The eye has more minus power than the working distance lens.", c: "The eye is perfectly neutralized." },
+        correct: "b",
+        explanation: "With a plano mirror, 'AGAINST' motion means the patient's far point is between the examiner and the patient, indicating myopia greater than the working distance dioptric equivalent."
+      },
+      {
+        question: "If you push the retinoscope sleeve DOWN, engaging the Concave Mirror effect, what happens to the reflex motion?",
+        options: { a: "It stops moving entirely.", b: "It moves twice as fast.", c: "The motion reverses direction (e.g., 'WITH' becomes 'AGAINST')." },
+        correct: "c",
+        explanation: "The concave mirror effect crosses the light rays before they reach the patient's eye, physically reversing the motion of the streak on the retina."
+      },
+      {
+        question: "As you add trial lenses and approach neutrality, how does the physical appearance of the reflex change?",
+        options: { a: "It becomes thinner, dimmer, and slower.", b: "It breaks into two distinct lines.", c: "It becomes thicker, brighter, and faster." },
+        correct: "c",
+        explanation: "As the far point moves closer to the examiner's peephole, the reflex magnification increases, appearing wider, moving much faster, and reflecting more light (brighter)."
+      },
+      {
+        question: "If your streak is oriented vertically (90°), which principal meridian of the eye are you actively refracting when you sweep horizontally?",
+        options: { a: "The 90° meridian.", b: "The 180° meridian.", c: "Both simultaneously." },
+        correct: "b",
+        explanation: "You always refract the meridian perpendicular to the streak. A vertical streak sweeps horizontally, assessing the refractive power along the horizontal (180°) meridian."
+      }
+    ];
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      syncCompletionBadge();
+      setupMouseTracking();
+      updateReadouts();
+      executeOpticsEngine();
+    });
+
+    // --- UTILS ---
+    function formatDiopter(el) {
+      if (!el.value && el.value !== "0") return;
+      let val = parseFloat(el.value);
+      if (isNaN(val)) { el.value = ""; return; }
+      el.value = (val > 0 ? '+' : '') + val.toFixed(2);
+    }
+
+    // --- HARDWARE DRAG HANDLERS (3D KEELER) ---
+    function toggleRetinoscopePower() {
+      soundFeedback('power');
+      simState.lightOn = !simState.lightOn;
+      
+      const pBtn = document.getElementById('powerBtnHardware');
+      const pIcon = document.getElementById('powerIconHardware');
+      const lText = document.getElementById('lightStatusText');
+      const lPing = document.getElementById('lightStatusPing');
+      const lDot = document.getElementById('lightStatusDot');
+      const lcdPow = document.getElementById('lcdPower');
+
+      if (simState.lightOn) {
+        pBtn.classList.replace('bg-slate-800', 'bg-emerald-900');
+        pIcon.classList.replace('text-slate-500', 'text-emerald-400');
+        lText.innerText = "Power On"; lText.className = "text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400";
+        lPing.classList.replace('bg-slate-400', 'bg-emerald-400'); lPing.classList.remove('hidden');
+        lDot.classList.replace('bg-slate-500', 'bg-emerald-500');
+        lcdPow.innerText = "ON"; lcdPow.classList.replace('text-red-500', 'text-emerald-500');
+        toggleHalogenHum(true);
+      } else {
+        pBtn.classList.replace('bg-emerald-900', 'bg-slate-800');
+        pIcon.classList.replace('text-emerald-400', 'text-slate-500');
+        lText.innerText = "Power Off"; lText.className = "text-[9px] font-black uppercase text-slate-500";
+        lPing.classList.replace('bg-emerald-400', 'bg-slate-400'); lPing.classList.add('hidden');
+        lDot.classList.replace('bg-slate-500', 'bg-slate-600');
+        lcdPow.innerText = "OFF"; lcdPow.classList.replace('text-emerald-500', 'text-red-500');
+        
+        if(simState.isPickedUp) togglePickDrop();
+        toggleHalogenHum(false);
+      }
+      executeOpticsEngine();
+    }
+
+    function startSleeveDrag(e) {
+      simState.dragState.type = 'sleeve';
+      simState.dragState.startY = e.clientY;
+      simState.dragState.initialVal = simState.sleeve === 'up' ? 0 : 100;
+      document.addEventListener('mousemove', onDrag);
+      document.addEventListener('mouseup', stopDrag);
+    }
+
+    function startCollarDrag(e) {
+      simState.dragState.type = 'collar';
+      simState.dragState.startX = e.clientX;
+      simState.dragState.initialVal = simState.streakAxis;
+      document.addEventListener('mousemove', onDrag);
+      document.addEventListener('mouseup', stopDrag);
+    }
+
+    function onDrag(e) {
+      if (simState.dragState.type === 'sleeve') {
+        let deltaY = e.clientY - simState.dragState.startY;
+        let pct = simState.dragState.initialVal + (deltaY / 50) * 100;
+        if (pct < 0) pct = 0; if (pct > 100) pct = 100;
+        
+        if (pct < 50 && simState.sleeve !== 'up') {
+          simState.sleeve = 'up';
+          document.getElementById('sleeveHardware').style.top = '0%';
+          document.getElementById('lcdSleeve').innerHTML = "UP<br>(Plano)";
+          soundFeedback('slide'); executeOpticsEngine();
+        } else if (pct >= 50 && simState.sleeve !== 'down') {
+          simState.sleeve = 'down';
+          document.getElementById('sleeveHardware').style.top = '60%';
+          document.getElementById('lcdSleeve').innerHTML = "DOWN<br>(Concave)";
+          soundFeedback('slide'); executeOpticsEngine();
+        }
+      } 
+      else if (simState.dragState.type === 'collar') {
+        let deltaX = e.clientX - simState.dragState.startX;
+        let newAxis = Math.round(simState.dragState.initialVal + (deltaX / 2));
+        newAxis = ((newAxis % 180) + 180) % 180; 
+        
+        if (newAxis !== simState.streakAxis) {
+          if (newAxis % 10 === 0) soundFeedback('click');
+          simState.streakAxis = newAxis;
+          document.getElementById('lcdAxis').innerText = `${simState.streakAxis.toString().padStart(3, '0')}°`;
+          
+          let meridian = (simState.streakAxis + 90) % 180;
+          document.getElementById('lcdMeridian').innerText = `${meridian.toString().padStart(3, '0')}°`;
+          document.getElementById('collarMark').style.transform = `translateX(${((simState.streakAxis/180)*24)-12}px)`;
+          executeOpticsEngine();
+        }
+      }
+    }
+
+    function stopDrag() {
+      simState.dragState.type = null;
+      document.removeEventListener('mousemove', onDrag);
+      document.removeEventListener('mouseup', stopDrag);
+    }
+
+    // --- TRIAL LENS CALIBRATION ENGINE ---
+    function stepTrialSph(amt) {
+      soundFeedback('lens');
+      let p = parseFloat(document.getElementById('trialSphSlider').value) + amt;
+      if(p > 20) p = 20; if(p < -20) p = -20;
+      document.getElementById('trialSphSlider').value = p; slideTrialSph();
+    }
+    function slideTrialSph() {
+      simState.trialLens.s = parseFloat(document.getElementById('trialSphSlider').value);
+      updateReadouts(); executeOpticsEngine();
+    }
+
+    function stepTrialCyl(amt) {
+      soundFeedback('lens');
+      let p = parseFloat(document.getElementById('trialCylSlider').value) + amt;
+      if(p > 20) p = 20; if(p < -20) p = -20;
+      document.getElementById('trialCylSlider').value = p; slideTrialCyl();
+    }
+    function slideTrialCyl() {
+      simState.trialLens.c = parseFloat(document.getElementById('trialCylSlider').value);
+      updateReadouts(); executeOpticsEngine();
+    }
+
+    function stepTrialAxis(amt) {
+      soundFeedback('lens');
+      let a = parseInt(document.getElementById('trialAxisSlider').value) + amt;
+      if(a > 180) a = 0; if(a < 0) a = 180;
+      document.getElementById('trialAxisSlider').value = a; slideTrialAxis();
+    }
+    function slideTrialAxis() {
+      simState.trialLens.a = parseInt(document.getElementById('trialAxisSlider').value);
+      updateReadouts(); executeOpticsEngine();
+    }
+
+    function toggleWD() {
+      soundFeedback('click');
+      if (simState.wdDiopters === 1.50) {
+        simState.wdDiopters = 2.00;
+        document.getElementById('wdBtn').innerText = "WD: 50cm (2.00 D)";
+      } else {
+        simState.wdDiopters = 1.50;
+        document.getElementById('wdBtn').innerText = "WD: 67cm (1.50 D)";
+      }
+      updateReadouts(); executeOpticsEngine();
+    }
+
+    function updateReadouts() {
+      const ts = simState.trialLens.s;
+      const tc = simState.trialLens.c;
+      const ta = simState.trialLens.a;
+      
+      document.getElementById('labelTrialSph').innerText = (ts>0?'+':'') + ts.toFixed(2);
+      document.getElementById('labelTrialCyl').innerText = (tc>0?'+':'') + tc.toFixed(2);
+      document.getElementById('labelTrialAxis').innerText = ta + '°';
+
+      document.getElementById('trialFrameAxisLine').setAttribute('transform', `rotate(${-ta})`);
+      document.getElementById('svgLensText').textContent = `Sph: ${(ts>0?'+':'')+ts.toFixed(2)} | Cyl: ${(tc>0?'+':'')+tc.toFixed(2)}`;
+
+      const grossStr = `${(ts>0?'+':'')+ts.toFixed(2)} / ${(tc>0?'+':'')+tc.toFixed(2)} x ${ta.toString().padStart(3,'0')}`;
+      document.getElementById('readoutGross').innerText = grossStr;
+
+      const ns = ts - simState.wdDiopters;
+      const netStr = `${(ns>0?'+':'')+ns.toFixed(2)} / ${(tc>0?'+':'')+tc.toFixed(2)} x ${ta.toString().padStart(3,'0')}`;
+      document.getElementById('readoutNet').innerText = netStr;
+    }
+
+    function handlePresetChange(el) {
+      formatDiopter(el); updateCustomPracLens();
+    }
+    function updateCustomPracLens() {
+      let s = parseFloat(document.getElementById('pracSphInput').value) || 0;
+      let c = parseFloat(document.getElementById('pracCylInput').value) || 0;
+      let a = parseInt(document.getElementById('pracAxisInput').value) || 0;
+      simState.patientRx = { s, c, a };
+
+      const warningDiv = document.getElementById('practiceWarning');
+      if (c > 0) {
+        warningDiv.classList.remove('hidden');
+        if (simState.lastWarningCyl !== c) { soundFeedback('warning'); simState.lastWarningCyl = c; }
+      } else {
+        warningDiv.classList.add('hidden'); simState.lastWarningCyl = null;
+      }
+      executeOpticsEngine();
+    }
+
+    function randomizePracticeRx() {
+      soundFeedback('success');
+      document.getElementById('pracSphInput').value = ((Math.floor(Math.random() * 81) - 40) * 0.25).toFixed(2);
+      document.getElementById('pracCylInput').value = ((Math.floor(Math.random() * 33) - 32) * 0.25).toFixed(2);
+      document.getElementById('pracAxisInput').value = Math.floor(Math.random() * 37) * 5;
+      formatDiopter(document.getElementById('pracSphInput'));
+      formatDiopter(document.getElementById('pracCylInput'));
+      updateCustomPracLens();
+    }
+
+    // --- OMNIDIRECTIONAL SPATIAL INTERACTION ---
+    function togglePickDrop() {
+      if(!simState.lightOn) {
+        soundFeedback('warning'); return;
+      }
+      simState.isPickedUp = !simState.isPickedUp;
+      soundFeedback('success');
+
+      const badge = document.getElementById('pickDropBadge');
+      const promptText = document.getElementById('hudPromptText');
+      const container = document.getElementById('sweepContainer');
+
+      if (simState.isPickedUp) {
+        badge.innerText = "ACTIVE";
+        badge.className = "text-[9px] font-black uppercase bg-emerald-500 text-white px-2 py-0.5 rounded shadow-sm border border-emerald-400 animate-pulse";
+        promptText.innerText = "Double-Click/Double-Tap to PARK (Drop) the instrument";
+        container.classList.add('border-emerald-500', 'dark:border-emerald-500');
+        container.classList.remove('border-slate-200', 'dark:border-slate-800');
+      } else {
+        badge.innerText = "PARKED";
+        badge.className = "text-[9px] font-black uppercase bg-amber-500 text-slate-950 px-2 py-0.5 rounded shadow-sm border border-amber-400";
+        promptText.innerText = "Double-Click/Double-Tap here to PICK UP the retinoscope";
+        container.classList.remove('border-emerald-500', 'dark:border-emerald-500');
+        container.classList.add('border-slate-200', 'dark:border-slate-800');
+      }
+    }
+
+    function setupMouseTracking() {
+      const container = document.getElementById('sweepContainer');
+      
+      container.addEventListener('dblclick', (e) => {
+        e.preventDefault(); togglePickDrop();
+      });
+
+      let lastTap = 0;
+      container.addEventListener('touchend', (e) => {
+        let currentTime = new Date().getTime();
+        let tapLength = currentTime - lastTap;
+        if (tapLength < 300 && tapLength > 0) {
+          e.preventDefault(); togglePickDrop();
+        }
+        lastTap = currentTime;
+      });
+
+      // Omnidirectional mouse interaction mapping
+      container.addEventListener('mousemove', (e) => {
+        if (!simState.lightOn || !simState.isPickedUp) return;
+        const rect = container.getBoundingClientRect();
+        
+        // Track absolute horizontal and vertical positions across all directions independently
+        simState.sweepXPos = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        simState.sweepYPos = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+        
+        executeOpticsEngine();
+      });
+
+      // Omnidirectional touch support for tablets/mobile devices
+      container.addEventListener('touchmove', (e) => {
+        if (!simState.lightOn || !simState.isPickedUp || e.touches.length === 0) return;
+        const rect = container.getBoundingClientRect();
+        let touch = e.touches[0];
+
+        simState.sweepXPos = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+        simState.sweepYPos = ((touch.clientY - rect.top) / rect.height) * 2 - 1;
+        
+        executeOpticsEngine();
+      });
+    }
+
+    function executeOpticsEngine() {
+      const faceStreak = document.getElementById('faceStreak');
+      const pupilReflex = document.getElementById('pupilReflex');
+      const reflexWidthBase = document.getElementById('reflexWidthBase');
+      const reflexWidthCore = document.getElementById('reflexWidthCore');
+
+      if (!simState.lightOn) {
+        faceStreak.style.opacity = 0; pupilReflex.style.opacity = 0; return;
+      }
+
+      faceStreak.style.opacity = 1;
+      
+      // Calculate 2D positional offsets in pixels based on omnidirectional tracking coordinates
+      const pxX = simState.sweepXPos * 75;
+      const pxY = simState.sweepYPos * 75;
+      
+      // Translate external beam smoothly across all grid sectors
+      faceStreak.setAttribute('transform', `translate(${pxX}, ${pxY}) rotate(${simState.streakAxis})`);
+
+      // Project coordinates onto scan meridian to calculate appropriate reflex vector
+      const sweepAngleRad = (simState.streakAxis - 90) * Math.PI / 180;
+      const projectedSweepVal = simState.sweepXPos * Math.cos(sweepAngleRad) + simState.sweepYPos * Math.sin(sweepAngleRad);
+      const sweepPixels = projectedSweepVal * 65;
+
+      const sweepMeridian = (simState.streakAxis + 90) % 180;
+      const pPatient = calcMeridianPower(simState.patientRx, sweepMeridian);
+      const pTrial = calcMeridianPower(simState.trialLens, sweepMeridian);
+      
+      const netTrial = pTrial - simState.wdDiopters;
+      const deficit = pPatient + netTrial; 
+
+      let motion = 'neutral';
+      if (Math.abs(deficit) <= 0.22) motion = 'neutral';
+      else if (deficit > 0) motion = 'against'; 
+      else motion = 'with';                     
+
+      if (simState.sleeve === 'down' && motion !== 'neutral') {
+        motion = motion === 'with' ? 'against' : 'with';
+      }
+
+      const mag = Math.abs(deficit);
+      let reflexWidth = 32; let speedRatio = 1; let brightness = 1;
+
+      if (motion === 'neutral') {
+        reflexWidth = 95; speedRatio = 0; brightness = 1.0;
+      } else {
+        reflexWidth = Math.max(7, 32 - mag * 4.5); 
+        speedRatio = Math.max(0.12, 1 - mag * 0.14); 
+        brightness = Math.max(0.35, 1 - mag * 0.08);  
+      }
+
+      let skewAngle = 0;
+      if (Math.abs(simState.patientRx.c) > 0) {
+        let a1 = simState.patientRx.a;
+        let a2 = (a1 + 90) % 180;
+        let sa = simState.streakAxis % 180;
+        let d1 = a1 - sa; if (d1 > 90) d1 -= 180; if (d1 < -90) d1 += 180;
+        let d2 = a2 - sa; if (d2 > 90) d2 -= 180; if (d2 < -90) d2 += 180;
+        let delta = Math.abs(d1) < Math.abs(d2) ? d1 : d2;
+        let skewFactor = 1 - Math.exp(-Math.abs(simState.patientRx.c));
+        skewAngle = delta * skewFactor;
+      }
+
+      pupilReflex.style.opacity = brightness;
+      reflexWidthBase.setAttribute('width', reflexWidth);
+      reflexWidthBase.setAttribute('x', -reflexWidth/2);
+      reflexWidthCore.setAttribute('width', reflexWidth/3);
+      reflexWidthCore.setAttribute('x', -(reflexWidth/3)/2);
+      
+      let reflexSweepPixels = 0;
+      if (motion !== 'neutral') {
+        let dir = motion === 'with' ? 1 : -1;
+        reflexSweepPixels = sweepPixels * speedRatio * dir;
+      }
+      
+      pupilReflex.setAttribute('transform', `translate(${reflexSweepPixels}, 0) rotate(${simState.streakAxis + skewAngle})`);
+    }
+
+    function calcMeridianPower(rx, targetMeridian) {
+      let angleDiffRad = (targetMeridian - rx.a) * (Math.PI / 180);
+      return rx.s + rx.c * Math.pow(Math.sin(angleDiffRad), 2);
+    }
+
+    // --- ASSESSMENT GRADING ---
+    function changeMode(target) {
+      soundFeedback('switch');
+      simState.mode = target;
+
+      const pracBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      const pracConsole = document.getElementById('practiceControlsCard');
+      const testConsole = document.getElementById('testModeConsole');
+      
+      if (target === 'practice') {
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer";
+        pracConsole.classList.remove('hidden');
+        testConsole.classList.add('hidden');
+        simState.patientRx = { s: 1.50, c: -1.00, a: 180 };
+        document.getElementById('pracSphInput').value = "+1.50";
+        document.getElementById('pracCylInput').value = "-1.00";
+        document.getElementById('pracAxisInput').value = "180";
+      } else {
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 hover:bg-slate-900 shadow-xs cursor-pointer";
+        pracConsole.classList.add('hidden');
+        testConsole.classList.remove('hidden');
+
+        let generatedSph = (Math.floor(Math.random() * 41) - 20) * 0.25; 
+        let generatedCyl = (Math.floor(Math.random() * 17) - 16) * 0.25; 
+        let generatedAxis = Math.floor(Math.random() * 37) * 5;          
+        simState.patientRx = { s: generatedSph, c: generatedCyl, a: generatedAxis };
+        
+        document.getElementById('diagnosisFeedback').classList.add('hidden');
+        setupTestMcqSuite();
+      }
+      
+      simState.trialLens = { s: 0, c: 0, a: 180 };
+      document.getElementById('trialSphSlider').value = 0;
+      document.getElementById('trialCylSlider').value = 0;
+      document.getElementById('trialAxisSlider').value = 180;
+      if (simState.isPickedUp) togglePickDrop(); 
+      updateReadouts(); executeOpticsEngine();
+    }
+
+    function setupTestMcqSuite() {
+      simState.selectedQuestions = [...clinicalMcqPool].sort(() => 0.5 - Math.random()).slice(0, 3);
+      const container = document.getElementById('testMcqSuite');
+      container.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const div = document.createElement('div');
+        div.className = "bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs shadow-xs text-slate-900 dark:text-slate-200";
+        div.innerHTML = `
+          <p class="font-extrabold">${idx + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1.5 pt-1">
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="a" class="accent-secondary"> ${q.options.a}</label>
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="b" class="accent-secondary"> ${q.options.b}</label>
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="c" class="accent-secondary"> ${q.options.c}</label>
+          </div>
+          <p id="mcq_${idx}_feedback" class="text-[10px] font-bold hidden mt-1"></p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function submitTestAssessment() {
+      if (simState.mode !== 'test') return;
+      const feedback = document.getElementById('diagnosisFeedback');
+      let unanswered = false;
+      const answers = [];
+      simState.selectedQuestions.forEach((q, idx) => {
+        const checked = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+        if (!checked) unanswered = true;
+        else answers.push({ idx, selected: checked.value, correct: q.correct, explanation: q.explanation });
+      });
+
+      if (unanswered) {
+        soundFeedback('warning');
+        feedback.innerHTML = "<i class='fa-solid fa-triangle-exclamation mr-1'></i> Complete all quiz entries.";
+        feedback.className = "text-[11px] font-extrabold text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 block mt-3 px-3 py-2 rounded-lg animate-pulse";
+        feedback.classList.remove('hidden'); return;
+      }
+
+      feedback.classList.remove('hidden');
+      const target = simState.patientRx;
+      const netS = simState.trialLens.s - simState.wdDiopters;
+      const netC = simState.trialLens.c;
+      const netA = simState.trialLens.a;
+
+      const userTargetS = -netS;
+      const userTargetC = -netC;
+
+      const passSph = Math.abs(userTargetS - target.s) <= 0.25;
+      const passCyl = Math.abs(userTargetC - target.c) <= 0.25;
+      let axisDiff = Math.abs(netA - target.a) % 180;
+      if (axisDiff > 90) axisDiff = 180 - axisDiff;
+      const passAxis = target.c === 0 || axisDiff <= 5;
+
+      const tSph = target.s + target.c; const tCyl = -target.c;
+      let tAxis = (target.a + 90) % 180; if (tAxis === 0 && target.c !== 0) tAxis = 180;
+      const passTSph = Math.abs(userTargetS - tSph) <= 0.25;
+      const passTCyl = Math.abs(userTargetC - tCyl) <= 0.25;
+      let axisDiffT = Math.abs(netA - tAxis) % 180; if (axisDiffT > 90) axisDiffT = 180 - axisDiffT;
+      const passTAxis = target.c === 0 || axisDiffT <= 5;
+
+      if (passTSph && passTCyl && passTAxis && target.c !== 0) {
+        soundFeedback('warning');
+        feedback.innerHTML = "<i class='fa-solid fa-rotate mr-1'></i> <strong>Correct neutralization, but in Plus-Cylinder form!</strong><br>Standard optics protocols require Minus-Cylinder form. Please transpose your trial lenses and re-submit.";
+        feedback.className = "text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 block mt-3 px-3 py-2 rounded-lg animate-pulse";
+        return; 
+      }
+
+      if (passSph && passCyl && passAxis) {
+        feedback.innerHTML = `<i class="fa-solid fa-check-circle mr-1"></i> Correct Neutralization! Target Rx: ${(target.s > 0 ? '+' : '') + target.s.toFixed(2)} DS / ${(target.c > 0 ? '+' : '') + target.c.toFixed(2)} DC x ${target.a.toString().padStart(3,'0')}° (+50 pts)`;
+        feedback.className = "text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 block mt-3 px-3 py-2 rounded-lg";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        feedback.innerHTML = `<i class="fa-solid fa-xmark-circle mr-1"></i> Incorrect. Target Rx was: ${(target.s > 0 ? '+' : '') + target.s.toFixed(2)} DS / ${(target.c > 0 ? '+' : '') + target.c.toFixed(2)} DC x ${target.a.toString().padStart(3,'0')}° (+0 pts)`;
+        feedback.className = "text-[11px] font-bold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 block mt-3 px-3 py-2 rounded-lg";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      let correctCount = 0;
+      answers.forEach((ans) => {
+        const box = document.getElementById(`mcq_${ans.idx}_feedback`);
+        box.classList.remove('hidden');
+        if (ans.selected === ans.correct) {
+          box.innerText = `Correct! (+16.6 pts) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+          correctCount++;
+        } else {
+          box.innerText = `Incorrect. (Answer: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-red-600 dark:text-red-400 block mt-1";
+        }
+      });
+      simState.scores.mcqScore = Math.round(correctCount * 16.66);
+
+      const totalScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('assessmentScoreReadout').innerText = `Score: ${totalScore}/100`;
+
+      let card = document.getElementById('finalScoreCard');
+      if (!card) {
+        card = document.createElement('div'); card.id = "finalScoreCard";
+        document.getElementById('testModeConsole').appendChild(card);
+      }
+      card.className = "bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-3 mt-4";
+      card.innerHTML = `
+        <div>
+          <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText"></p>
+          <p class="text-xs text-slate-600 dark:text-slate-400" id="finalStatusDescription"></p>
+        </div>
+        <div id="practiceRedirectBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <button onclick="changeMode('practice')" class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+            <i class="fa-solid fa-graduation-cap mr-1"></i> Return to Practice Console
+          </button>
+        </div>
+      `;
+
+      const statTxt = card.querySelector('#finalStatusText');
+      const statDsc = card.querySelector('#finalStatusDescription');
+      const rdrBlk = card.querySelector('#practiceRedirectBlock');
+
+      if (totalScore >= 80) {
+        soundFeedback('success');
+        card.className += " bg-emerald-50 dark:bg-emerald-950/25 border-emerald-300 text-emerald-800 dark:text-emerald-400 animate-pulse";
+        statTxt.innerText = `PASSED (${totalScore}%)`; statDsc.innerText = "Objective Retinoscopy verification profile saved successfully.";
+        rdrBlk.classList.add('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completed.includes('Retinoscopy')) { completed.push('Retinoscopy'); localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed)); }
+        syncCompletionBadge();
+      } else {
+        soundFeedback('warning');
+        card.className += " bg-red-50 dark:bg-red-950/25 border-red-200 text-red-800 dark:text-red-400";
+        statTxt.innerText = `FAILED (${totalScore}%)`; statDsc.innerText = "Score sits below passing requirements. Review mirror motion rules.";
+        rdrBlk.classList.remove('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        completed = completed.filter(el => el !== 'Retinoscopy'); localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        syncCompletionBadge();
+      }
+    }
+
+    function openMenuModal(modalId) { soundFeedback('click'); document.getElementById(`${modalId}Modal`).classList.remove('hidden'); }
+    function closeMenuModal(modalId) { soundFeedback('click'); document.getElementById(`${modalId}Modal`).classList.add('hidden'); }
+    function toggleDarkMode() { const isDark = document.documentElement.classList.toggle('dark'); localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light'); soundFeedback('switch'); }
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const icon = document.getElementById('muteIcon'); const text = document.getElementById('muteText');
+      if (simState.soundMuted) {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400"; text.innerText = "Unmute"; toggleHalogenHum(false);
+      } else {
+        icon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse"; text.innerText = "Mute"; soundFeedback('click'); if (simState.lightOn) toggleHalogenHum(true);
+      }
+    }
+    function syncCompletionBadge() {
+      const completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completed.includes('Retinoscopy')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/45 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+  </script>
+
+  <div id="aboutModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-bolt text-lg"></i></div>
+        <div><h3 class="text-sm font-bold text-slate-900 dark:text-white">About Retinoscopy Lab</h3><p class="text-[10px] text-slate-600 dark:text-slate-400">Refraction Unit</p></div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">Advanced educational module simulating objective streak retinoscopy, containing spatial 2D pickup-and-lock tracking controls alongside integrated rotatable trial frames.</p>
+    </div>
+  </div>
+
+  <div id="referenceModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+        <div><h3 class="text-sm font-bold text-slate-900 dark:text-white">Clinical References</h3><p class="text-[10px] text-slate-600 dark:text-slate-400">AAO Retinoscopy Guidelines</p></div>
+      </div>
+      <div class="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+        <p><strong>The Break Phenomenon:</strong> Skew errors reveal off-axis positions. Rotate collar dial to match principal astigmatic lines completely before reading.</p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

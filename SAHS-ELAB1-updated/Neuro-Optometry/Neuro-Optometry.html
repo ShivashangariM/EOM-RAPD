@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Neuro-Optometry Department Hub</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',    /* Slate 900 */
+            secondary: '#0284c7',  /* Sky 600 */
+            accent: '#0d9488',     /* Teal 600 */
+            lightbg: '#f8fafc',    /* Slate 50 */
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #0284c7;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    .dark .glass {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+    }
+    
+    path.neural-path {
+        transition: stroke 0.3s ease, filter 0.3s ease, opacity 0.3s ease;
+    }
+    
+    @keyframes action-potential {
+      to {
+        stroke-dashoffset: -24;
+      }
+    }
+    .flow-signal {
+      stroke-dasharray: 4 8;
+      animation: action-potential 0.6s linear infinite;
+    }
+    
+    @keyframes pulse-lesion {
+      0%, 100% { filter: drop-shadow(0 0 2px #ef4444); transform: scale(1); }
+      50% { filter: drop-shadow(0 0 8px #ef4444); transform: scale(1.1); }
+    }
+    .lesion-node:hover {
+      animation: pulse-lesion 1s infinite;
+      fill: #ef4444 !important;
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <script>
+    let audioCtx = null;
+    const hubState = {
+      soundMuted: false
+    };
+
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.12, vol = 0.05) {
+      if (hubState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("Audio Context blocked or unsupported by browser.");
+      }
+    }
+  </script>
+
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-opacity duration-300" id="mainHeader">
+    <nav class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="../index.html" onclick="playAudioTone(400, 'sine')" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition shadow-xs">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div>
+          <h1 class="text-md font-extrabold tracking-tight text-slate-900 dark:text-white">
+            SAHS-E-LAB | <span class="text-secondary">RAPD Swing Lab</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Relative Afferent Pupillary Defect Simulator</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <div class="hidden lg:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+        </div>
+
+        <div class="relative lg:hidden">
+          <button onclick="toggleMobileDropdown()" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </button>
+          <div id="mobileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 py-2">
+            <button onclick="openMenuModal('about'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-info text-secondary w-4 text-center"></i> About Us
+            </button>
+            <button onclick="toggleMute(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i id="mobileMuteIcon" class="fa-solid fa-volume-high text-teal-600 w-4 text-center"></i> <span id="mobileMuteText">Mute Sound</span>
+            </button>
+            <button onclick="openMenuModal('reference'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-book-bookmark text-amber-500 w-4 text-center"></i> Reference
+            </button>
+            <button onclick="toggleDarkMode(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-moon text-indigo-600 w-4 text-center"></i> Theme Toggle
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+  
+  <main class="max-w-7xl mx-auto px-6 pt-24 pb-12 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- LEFT PANEL: CENTRAL BIG 3D DIAGNOSTIC VIEWER (8 COLS) -->
+    <section class="lg:col-span-8 space-y-4">
+      
+      <div class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-xs transition-colors duration-500">
+        <h2 class="text-xl font-black text-slate-900 dark:text-white">Afferent-Efferent Neuromuscular Diagnostics</h2>
+        <p class="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">
+          The Neuro-Optometry department evaluates pupillary light reflexes (PLR), relative afferent pupillary defects (RAPD), extraocular cranial nerve palsies ($\text{CN III, IV, VI}$), hemianopic field lesions, and subjective diplopia anomalies.
+        </p>
+      </div>
+
+      <!-- MASTER VIEWER CONTAINER -->
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-500 flex flex-col min-h-[850px]">
+        
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100 dark:border-slate-800/60 shrink-0">
+          <div>
+            <h3 class="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-vr-cardboard text-secondary"></i> Interactive 3D Clinical Models
+            </h3>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Select a model to view high-fidelity neuro-ophthalmic tracts and reflex arcs.</p>
+          </div>
+          
+          <div class="relative shrink-0">
+            <select id="modelSelector" onchange="switchPathwayMode(this.value)" class="appearance-none bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white px-4 py-2.5 pr-10 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-secondary transition-all w-full sm:w-auto">
+              <option value="visual">1. Visual Pathway Lesions</option>
+              <option value="plr">2. Afferent/Efferent (PLR) Circuit</option>
+            </select>
+            <i class="fa-solid fa-chevron-down absolute right-3.5 top-3 text-slate-400 pointer-events-none text-[10px]"></i>
+          </div>
+        </div>
+
+        <!-- VIEWER AREA -->
+        <div id="viewerContainer" class="relative flex-1 w-full mt-4 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col items-center justify-center p-4">
+          
+          <!-- Tooltip Element for Dynamic Names & Lesions -->
+          <div id="svgTooltip" class="absolute hidden z-[100] bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-900 text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-xl pointer-events-none transform -translate-x-1/2 -translate-y-full mt-[-10px] whitespace-nowrap transition-all duration-200 opacity-0 scale-95" style="transition-property: opacity, transform;"></div>
+
+          <div class="absolute inset-0 pointer-events-none opacity-[0.04] dark:opacity-[0.06]" style="background-image: radial-gradient(#0284c7 1px, transparent 1px); background-size: 20px 20px;"></div>
+
+          <!-- COMMON SVG DEFS -->
+          <svg class="absolute w-0 h-0">
+            <defs>
+              <radialGradient id="eye3DLeft" cx="30%" cy="30%" r="70%">
+                <stop offset="0%" stop-color="#ffffff" />
+                <stop offset="80%" stop-color="#e2e8f0" />
+                <stop offset="100%" stop-color="#94a3b8" />
+              </radialGradient>
+              <radialGradient id="eye3DRight" cx="30%" cy="30%" r="70%">
+                <stop offset="0%" stop-color="#ffffff" />
+                <stop offset="80%" stop-color="#e2e8f0" />
+                <stop offset="100%" stop-color="#94a3b8" />
+              </radialGradient>
+              <filter id="glowBlue" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+              <filter id="glowRed" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+              <filter id="dropShadow" x="-10%" y="-10%" width="130%" height="130%">
+                <feDropShadow dx="2" dy="4" stdDeviation="3" flood-opacity="0.15" />
+              </filter>
+            </defs>
+          </svg>
+
+          <!-- ========================================== -->
+          <!-- MODE 1: VISUAL PATHWAY LESIONS             -->
+          <!-- ========================================== -->
+          <div id="mode-visual" class="w-full h-full flex flex-col md:flex-row gap-6 transition-opacity duration-500">
+            
+            <div class="flex-1 flex flex-col items-center justify-center relative">
+              <span class="absolute top-2 left-2 text-[9px] uppercase font-extrabold text-slate-400 dark:text-slate-500 bg-white/50 dark:bg-slate-900/50 px-2 py-1 rounded backdrop-blur-sm z-10 pointer-events-none">Sensory Tract Map</span>
+              
+              <svg class="w-full max-w-[420px] h-auto drop-shadow-md" viewBox="0 0 400 450" xmlns="http://www.w3.org/2000/svg">
+                <!-- Occipital Lobe Group -->
+                <g class="cursor-pointer hover:opacity-80 transition-opacity" onmouseenter="showHoverTooltip(event, 'Occipital Lobe (Visual Cortex Region)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 200 430 C 50 430, 20 280, 80 160 C 100 120, 160 110, 195 110 L 200 110 L 205 110 C 240 110, 300 120, 320 160 C 380 280, 350 430, 200 430 Z" fill="#cbd5e1" opacity="0.15" class="dark:fill-slate-700 pointer-events-none"/>
+                    <path d="M 200 110 L 200 430" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4 4" opacity="0.3" class="dark:stroke-slate-600 pointer-events-none"/>
+                    <text x="200" y="415" font-family="sans-serif" font-size="9" font-weight="bold" fill="#94a3b8" text-anchor="middle" class="dark:fill-slate-500 uppercase tracking-widest pointer-events-none">Occipital Lobe (V1)</text>
+                    <!-- Oversized Transparent Hitbox to guarantee tooltip firing -->
+                    <path d="M 200 430 C 50 430, 20 280, 80 160 C 100 120, 160 110, 195 110 L 200 110 L 205 110 C 240 110, 300 120, 320 160 C 380 280, 350 430, 200 430 Z" fill="rgba(255,255,255,0)" pointer-events="all"/>
+                </g>
+
+                <!-- Left Optic Radiations Group -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Optic Radiations')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 130 270 C 100 320, 120 380, 170 390" stroke="#cbd5e1" stroke-dasharray="4,4" stroke-width="5" fill="none" class="dark:stroke-slate-600 pointer-events-none"/>
+                    <path d="M 135 268 C 110 300, 140 370, 180 380" stroke="#cbd5e1" stroke-dasharray="4,4" stroke-width="5" fill="none" class="dark:stroke-slate-600 pointer-events-none"/>
+                    <path d="M 140 266 C 130 290, 150 360, 190 370" stroke="#cbd5e1" stroke-dasharray="4,4" stroke-width="5" fill="none" class="dark:stroke-slate-600 pointer-events-none"/>
+                    <!-- Invisible wide hitbox -->
+                    <path d="M 135 268 C 100 320, 140 380, 180 390" stroke="rgba(255,255,255,0)" stroke-width="40" fill="none" pointer-events="all"/>
+                </g>
+
+                <!-- Right Optic Radiations Group -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Optic Radiations (Meyer\'s Loop)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 270 270 C 300 320, 280 380, 230 390" stroke="#cbd5e1" stroke-dasharray="4,4" stroke-width="5" fill="none" class="dark:stroke-slate-600 pointer-events-none"/>
+                    <path d="M 265 268 C 290 300, 260 370, 220 380" stroke="#cbd5e1" stroke-dasharray="4,4" stroke-width="5" fill="none" class="dark:stroke-slate-600 pointer-events-none"/>
+                    <path d="M 260 266 C 270 290, 250 360, 210 370" stroke="#cbd5e1" stroke-dasharray="4,4" stroke-width="5" fill="none" class="dark:stroke-slate-600 pointer-events-none"/>
+                    <!-- Invisible wide hitbox -->
+                    <path d="M 265 268 C 300 320, 260 380, 220 390" stroke="rgba(255,255,255,0)" stroke-width="40" fill="none" pointer-events="all"/>
+                </g>
+
+                <!-- Visual Cortex V1 Group -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Primary Visual Cortex (V1)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 160 385 C 180 400, 220 400, 240 385" stroke="#475569" stroke-width="16" stroke-linecap="round" fill="none" class="dark:stroke-slate-600 pointer-events-none" filter="url(#dropShadow)"/>
+                    <!-- Invisible wide hitbox -->
+                    <path d="M 160 385 C 180 400, 220 400, 240 385" stroke="rgba(255,255,255,0)" stroke-width="40" stroke-linecap="round" fill="none" pointer-events="all"/>
+                </g>
+
+                <!-- Left Optic Tract Group -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Optic Tract')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 180 175 C 160 190, 140 220, 130 250" stroke="#cbd5e1" stroke-width="10" stroke-linecap="round" fill="none" class="dark:stroke-slate-700 pointer-events-none" filter="url(#dropShadow)"/>
+                    <!-- Invisible wide hitbox -->
+                    <path d="M 180 175 C 160 190, 140 220, 130 250" stroke="rgba(255,255,255,0)" stroke-width="30" stroke-linecap="round" fill="none" pointer-events="all"/>
+                </g>
+
+                <!-- Right Optic Tract Group -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Optic Tract')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 220 175 C 240 190, 260 220, 270 250" stroke="#cbd5e1" stroke-width="10" stroke-linecap="round" fill="none" class="dark:stroke-slate-700 pointer-events-none" filter="url(#dropShadow)"/>
+                    <!-- Invisible wide hitbox -->
+                    <path d="M 220 175 C 240 190, 260 220, 270 250" stroke="rgba(255,255,255,0)" stroke-width="30" stroke-linecap="round" fill="none" pointer-events="all"/>
+                </g>
+
+                <!-- Optic Chiasm Group -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Optic Chiasm (Decussation Point)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 180 160 C 190 170, 210 170, 220 160" stroke="#94a3b8" stroke-width="14" stroke-linecap="round" fill="none" class="dark:stroke-slate-600 pointer-events-none" filter="url(#dropShadow)"/>
+                    <path d="M 180 160 Q 200 165 220 175" stroke="#3b82f6" stroke-width="2" fill="none" opacity="0.5" class="pointer-events-none"/>
+                    <path d="M 220 160 Q 200 165 180 175" stroke="#3b82f6" stroke-width="2" fill="none" opacity="0.5" class="pointer-events-none"/>
+                    <!-- Invisible wide hitbox -->
+                    <path d="M 175 160 C 190 180, 210 180, 225 160" stroke="rgba(255,255,255,0)" stroke-width="40" stroke-linecap="round" fill="none" pointer-events="all"/>
+                </g>
+
+                <!-- Left Optic Nerve Group -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Optic Nerve (CN II)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 120 78 C 120 110, 160 130, 180 160" stroke="#cbd5e1" stroke-width="10" stroke-linecap="round" fill="none" class="dark:stroke-slate-700 pointer-events-none" filter="url(#dropShadow)"/>
+                    <!-- Invisible wide hitbox -->
+                    <path d="M 120 78 C 120 110, 160 130, 180 160" stroke="rgba(255,255,255,0)" stroke-width="30" stroke-linecap="round" fill="none" pointer-events="all"/>
+                </g>
+
+                <!-- Right Optic Nerve Group -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Optic Nerve (CN II)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 280 78 C 280 110, 240 130, 220 160" stroke="#cbd5e1" stroke-width="10" stroke-linecap="round" fill="none" class="dark:stroke-slate-700 pointer-events-none" filter="url(#dropShadow)"/>
+                    <!-- Invisible wide hitbox -->
+                    <path d="M 280 78 C 280 110, 240 130, 220 160" stroke="rgba(255,255,255,0)" stroke-width="30" stroke-linecap="round" fill="none" pointer-events="all"/>
+                </g>
+
+                <!-- Left LGN Group -->
+                <g class="cursor-pointer hover:opacity-80 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Lateral Geniculate Nucleus (LGN)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 120 250 C 110 260, 130 275, 145 260 C 150 250, 130 240, 120 250 Z" fill="#64748b" class="dark:fill-slate-500 pointer-events-none" filter="url(#dropShadow)"/>
+                    <text x="110" y="260" font-family="sans-serif" font-size="9" font-weight="bold" fill="#475569" text-anchor="end" class="dark:fill-slate-400 pointer-events-none">LGN</text>
+                    <!-- Hitbox on top -->
+                    <circle cx="127" cy="255" r="28" fill="rgba(255,255,255,0)" pointer-events="all"/>
+                </g>
+                
+                <!-- Right LGN Group -->
+                <g class="cursor-pointer hover:opacity-80 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Lateral Geniculate Nucleus (LGN)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 280 250 C 290 260, 270 275, 255 260 C 250 250, 270 240, 280 250 Z" fill="#64748b" class="dark:fill-slate-500 pointer-events-none" filter="url(#dropShadow)"/>
+                    <text x="290" y="260" font-family="sans-serif" font-size="9" font-weight="bold" fill="#475569" text-anchor="start" class="dark:fill-slate-400 pointer-events-none">LGN</text>
+                    <!-- Hitbox on top -->
+                    <circle cx="273" cy="255" r="28" fill="rgba(255,255,255,0)" pointer-events="all"/>
+                </g>
+
+                <!-- Left Eye Group -->
+                <g class="cursor-pointer hover:opacity-90 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Eye Globe (Oculus Sinister - OS)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <circle cx="120" cy="50" r="30" fill="url(#eye3DLeft)" stroke="#94a3b8" stroke-width="1.5" class="dark:stroke-slate-700 pointer-events-none" filter="url(#dropShadow)"/>
+                    <circle cx="120" cy="50" r="14" fill="#0284c7" opacity="0.2" class="pointer-events-none" />
+                    <text x="120" y="12" font-family="sans-serif" font-size="10" font-weight="bold" fill="#475569" text-anchor="middle" class="dark:fill-slate-400 pointer-events-none">OS</text>
+                    <!-- Hitbox -->
+                    <circle cx="120" cy="50" r="34" fill="rgba(255,255,255,0)" pointer-events="all"/>
+                </g>
+
+                <!-- Left Pupil Node -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Pupil')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <circle cx="120" cy="50" r="6" id="leftPupilNode" fill="#0f172a" class="transition-all duration-300 dark:fill-white pointer-events-none" />
+                    <circle cx="120" cy="50" r="15" fill="rgba(255,255,255,0)" pointer-events="all" />
+                </g>
+
+                <!-- Right Eye Group -->
+                <g class="cursor-pointer hover:opacity-90 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Eye Globe (Oculus Dexter - OD)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <circle cx="280" cy="50" r="30" fill="url(#eye3DRight)" stroke="#94a3b8" stroke-width="1.5" class="dark:stroke-slate-700 pointer-events-none" filter="url(#dropShadow)"/>
+                    <circle cx="280" cy="50" r="14" fill="#0284c7" opacity="0.2" class="pointer-events-none" />
+                    <text x="280" y="12" font-family="sans-serif" font-size="10" font-weight="bold" fill="#475569" text-anchor="middle" class="dark:fill-slate-400 pointer-events-none">OD</text>
+                    <!-- Hitbox -->
+                    <circle cx="280" cy="50" r="34" fill="rgba(255,255,255,0)" pointer-events="all"/>
+                </g>
+
+                <!-- Right Pupil Node -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Pupil')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <circle cx="280" cy="50" r="6" id="rightPupilNode" fill="#0f172a" class="transition-all duration-300 dark:fill-white pointer-events-none" />
+                    <circle cx="280" cy="50" r="15" fill="rgba(255,255,255,0)" pointer-events="all" />
+                </g>
+
+                <!-- ================== LESION MARKERS ================== -->
+                <g class="cursor-pointer" onmouseenter="showHoverTooltip(event, 'Lesion A: Left Optic Nerve Lesion')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()" onclick="showPathology('optic_nerve_l', event)">
+                    <circle cx="145" cy="115" r="14" fill="#0d9488" class="lesion-node transition-all transform origin-center shadow-lg dark:fill-teal-500 pointer-events-none" />
+                    <text x="145" y="119" font-family="sans-serif" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle" class="pointer-events-none">A</text>
+                    <circle cx="145" cy="115" r="24" fill="rgba(255,255,255,0)" pointer-events="all" /> <!-- Hitbox -->
+                </g>
+
+                <g class="cursor-pointer" onmouseenter="showHoverTooltip(event, 'Lesion B: Optic Chiasm Lesion')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()" onclick="showPathology('chiasm', event)">
+                    <circle cx="200" cy="165" r="14" fill="#0d9488" class="lesion-node transition-all transform origin-center shadow-lg dark:fill-teal-500 pointer-events-none" />
+                    <text x="200" y="169" font-family="sans-serif" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle" class="pointer-events-none">B</text>
+                    <circle cx="200" cy="165" r="24" fill="rgba(255,255,255,0)" pointer-events="all" />
+                </g>
+
+                <g class="cursor-pointer" onmouseenter="showHoverTooltip(event, 'Lesion C: Right Optic Tract Lesion')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()" onclick="showPathology('optic_tract_r', event)">
+                    <circle cx="255" cy="215" r="14" fill="#0d9488" class="lesion-node transition-all transform origin-center shadow-lg dark:fill-teal-500 pointer-events-none" />
+                    <text x="255" y="219" font-family="sans-serif" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle" class="pointer-events-none">C</text>
+                    <circle cx="255" cy="215" r="24" fill="rgba(255,255,255,0)" pointer-events="all" />
+                </g>
+
+                <g class="cursor-pointer" onmouseenter="showHoverTooltip(event, 'Lesion D: Right Meyer\'s Loop (Radiations)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()" onclick="showPathology('radiation_r', event)">
+                    <circle cx="295" cy="315" r="14" fill="#0d9488" class="lesion-node transition-all transform origin-center shadow-lg dark:fill-teal-500 pointer-events-none" />
+                    <text x="295" y="319" font-family="sans-serif" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle" class="pointer-events-none">D</text>
+                    <circle cx="295" cy="315" r="24" fill="rgba(255,255,255,0)" pointer-events="all" />
+                </g>
+
+                <g class="cursor-pointer" onmouseenter="showHoverTooltip(event, 'Lesion E: Right Visual Cortex Lesion')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()" onclick="showPathology('cortex_r', event)">
+                    <circle cx="225" cy="385" r="14" fill="#0d9488" class="lesion-node transition-all transform origin-center shadow-lg dark:fill-teal-500 pointer-events-none" />
+                    <text x="225" y="389" font-family="sans-serif" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle" class="pointer-events-none">E</text>
+                    <circle cx="225" cy="385" r="24" fill="rgba(255,255,255,0)" pointer-events="all" />
+                </g>
+              </svg>
+            </div>
+
+            <div class="w-full md:w-64 flex flex-col gap-4 border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 pt-4 md:pt-0 md:pl-6 shrink-0">
+              <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex flex-col justify-center shadow-sm">
+                <span class="text-[9px] uppercase font-extrabold text-secondary dark:text-sky-400 tracking-widest"><i class="fa-solid fa-stethoscope"></i> Diagnosis Detail</span>
+                <p class="text-sm font-black text-slate-800 dark:text-slate-100 mt-2 leading-tight" id="pathologyTitle">Hover & Select a marker (A-E)</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed" id="pathologyDesc">Click any teal lesion node on the 3D map to observe campimetric scotomas and localized pupillary reactions.</p>
+              </div>
+
+              <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex flex-col items-center shadow-sm flex-1">
+                <span class="text-[9px] uppercase font-extrabold text-slate-400 dark:text-slate-500 mb-4 tracking-widest text-center">Patient Visual Field (Campimetry)</span>
+                
+                <div class="flex gap-6 w-full justify-center my-auto">
+                  <div class="flex flex-col items-center">
+                    <p class="text-[10px] text-slate-600 dark:text-slate-300 font-bold mb-2">Left Eye (OS)</p>
+                    <div class="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 relative overflow-hidden border-2 border-slate-300 dark:border-slate-600 shadow-inner" id="leftFieldDisc">
+                      <div class="absolute top-1/2 left-0 w-full h-[1px] bg-slate-300 dark:bg-slate-600 z-10"></div>
+                      <div class="absolute left-1/2 top-0 w-[1px] h-full bg-slate-300 dark:bg-slate-600 z-10"></div>
+                      <div class="absolute inset-0 bg-slate-900/90 dark:bg-black/90 opacity-0 transition-all duration-500 z-20" id="leftFieldMask"></div>
+                    </div>
+                  </div>
+
+                  <div class="flex flex-col items-center">
+                    <p class="text-[10px] text-slate-600 dark:text-slate-300 font-bold mb-2">Right Eye (OD)</p>
+                    <div class="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 relative overflow-hidden border-2 border-slate-300 dark:border-slate-600 shadow-inner" id="rightFieldDisc">
+                      <div class="absolute top-1/2 left-0 w-full h-[1px] bg-slate-300 dark:bg-slate-600 z-10"></div>
+                      <div class="absolute left-1/2 top-0 w-[1px] h-full bg-slate-300 dark:bg-slate-600 z-10"></div>
+                      <div class="absolute inset-0 bg-slate-900/90 dark:bg-black/90 opacity-0 transition-all duration-500 z-20" id="rightFieldMask"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-6 flex justify-center gap-4 text-[10px] text-slate-500 dark:text-slate-400 font-semibold w-full bg-slate-50 dark:bg-slate-950 p-2 rounded-lg">
+                  <div class="flex items-center gap-1.5">
+                    <div class="w-3 h-3 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600"></div>
+                    <span>Intact</span>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <div class="w-3 h-3 rounded-full bg-slate-900 dark:bg-black"></div>
+                    <span>Anopsia</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ========================================== -->
+          <!-- MODE 2: PLR CIRCUIT (AFFERENT/EFFERENT)    -->
+          <!-- ========================================== -->
+          <div id="mode-plr" class="hidden w-full h-full flex flex-col transition-opacity duration-500">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full z-10 p-2">
+              <div class="flex items-center gap-2 bg-white/80 dark:bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm backdrop-blur-md shrink-0">
+                <div id="plrStatusDot" class="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 transition-colors duration-300"></div>
+                <p id="plrFeedback" class="text-[10px] text-slate-600 dark:text-slate-300 font-mono font-bold">Awaiting sensory input...</p>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="simulatePLR('left')" class="px-4 py-2 rounded-xl bg-slate-800 dark:bg-white hover:bg-slate-700 dark:hover:bg-slate-100 text-[11px] font-extrabold text-white dark:text-slate-900 transition border border-transparent shadow-md flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-bolt text-amber-400"></i> Stimulate OS
+                </button>
+                <button onclick="simulatePLR('right')" class="px-4 py-2 rounded-xl bg-slate-800 dark:bg-white hover:bg-slate-700 dark:hover:bg-slate-100 text-[11px] font-extrabold text-white dark:text-slate-900 transition border border-transparent shadow-md flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-bolt text-amber-400"></i> Stimulate OD
+                </button>
+              </div>
+            </div>
+            
+            <div class="flex-1 w-full flex items-center justify-center relative">
+              <svg viewBox="0 0 450 360" class="w-full max-w-[520px] h-auto drop-shadow-sm" id="plrSvg">
+                
+                <!-- Midbrain -->
+                <g class="cursor-pointer hover:opacity-80 transition-opacity" onmouseenter="showHoverTooltip(event, 'Dorsal Midbrain (Superior Colliculus Region)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 180 210 Q 225 190 270 210 Q 295 255 270 300 Q 225 320 180 300 Q 155 255 180 210 Z" fill="#cbd5e1" opacity="0.15" class="dark:fill-slate-700 pointer-events-none"/>
+                    <text x="225" y="315" font-family="sans-serif" font-size="9" font-weight="bold" fill="#94a3b8" text-anchor="middle" class="dark:fill-slate-600 uppercase tracking-widest pointer-events-none">Midbrain</text>
+                    <path d="M 180 210 Q 225 190 270 210 Q 295 255 270 300 Q 225 320 180 300 Q 155 255 180 210 Z" fill="rgba(255,255,255,0)" pointer-events="all"/>
+                </g>
+
+                <!-- Left Afferent Nerves -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Afferent Tract (CN II) carrying sensory light signal')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path id="aff-l-temp" class="neural-path pointer-events-none" d="M 95 85 Q 135 150 190 235" fill="none" stroke="#3b82f6" stroke-width="6" stroke-linecap="round" opacity="0.2"/>
+                    <path id="aff-l-temp-flow" d="M 95 85 Q 135 150 190 235" fill="none" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" opacity="0" class="pointer-events-none"/>
+                    <path id="aff-l-nasal" class="neural-path pointer-events-none" d="M 125 85 Q 165 120 225 160 Q 245 180 260 235" fill="none" stroke="#3b82f6" stroke-width="6" stroke-linecap="round" opacity="0.2"/>
+                    <path id="aff-l-nasal-flow" d="M 125 85 Q 165 120 225 160 Q 245 180 260 235" fill="none" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" opacity="0" class="pointer-events-none"/>
+                    
+                    <path d="M 95 85 Q 135 150 190 235" fill="none" stroke="rgba(255,255,255,0)" stroke-width="25" stroke-linecap="round" pointer-events="all"/>
+                    <path d="M 125 85 Q 165 120 225 160 Q 245 180 260 235" fill="none" stroke="rgba(255,255,255,0)" stroke-width="25" stroke-linecap="round" pointer-events="all"/>
+                </g>
+
+                <!-- Right Afferent Nerves -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Afferent Tract (CN II) carrying sensory light signal')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path id="aff-r-nasal" class="neural-path pointer-events-none" d="M 325 85 Q 285 120 225 160 Q 205 180 190 235" fill="none" stroke="#3b82f6" stroke-width="6" stroke-linecap="round" opacity="0.2"/>
+                    <path id="aff-r-nasal-flow" d="M 325 85 Q 285 120 225 160 Q 205 180 190 235" fill="none" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" opacity="0" class="pointer-events-none"/>
+                    <path id="aff-r-temp" class="neural-path pointer-events-none" d="M 355 85 Q 315 150 260 235" fill="none" stroke="#3b82f6" stroke-width="6" stroke-linecap="round" opacity="0.2"/>
+                    <path id="aff-r-temp-flow" d="M 355 85 Q 315 150 260 235" fill="none" stroke="#60a5fa" stroke-width="4" stroke-linecap="round" opacity="0" class="pointer-events-none"/>
+                    
+                    <path d="M 325 85 Q 285 120 225 160 Q 205 180 190 235" fill="none" stroke="rgba(255,255,255,0)" stroke-width="25" stroke-linecap="round" pointer-events="all"/>
+                    <path d="M 355 85 Q 315 150 260 235" fill="none" stroke="rgba(255,255,255,0)" stroke-width="25" stroke-linecap="round" pointer-events="all"/>
+                </g>
+
+                <!-- Left Interneurons -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Interneurons: Decussating signals to both E-W nuclei')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path id="int-l-l" class="neural-path pointer-events-none" d="M 190 235 L 205 280" fill="none" stroke="#a855f7" stroke-width="4" stroke-linecap="round" opacity="0.2"/>
+                    <path id="int-l-r" class="neural-path pointer-events-none" d="M 190 235 Q 225 255 245 280" fill="none" stroke="#a855f7" stroke-width="4" stroke-linecap="round" opacity="0.2"/>
+                    <path id="int-l-flow" d="M 190 235 L 205 280 M 190 235 Q 225 255 245 280" fill="none" stroke="#c084fc" stroke-width="3.5" stroke-linecap="round" opacity="0" class="pointer-events-none"/>
+                    
+                    <path d="M 190 235 L 205 280" fill="none" stroke="rgba(255,255,255,0)" stroke-width="25" stroke-linecap="round" pointer-events="all"/>
+                    <path d="M 190 235 Q 225 255 245 280" fill="none" stroke="rgba(255,255,255,0)" stroke-width="25" stroke-linecap="round" pointer-events="all"/>
+                </g>
+
+                <!-- Right Interneurons -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Interneurons: Decussating signals to both E-W nuclei')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path id="int-r-r" class="neural-path pointer-events-none" d="M 260 235 L 245 280" fill="none" stroke="#a855f7" stroke-width="4" stroke-linecap="round" opacity="0.2"/>
+                    <path id="int-r-l" class="neural-path pointer-events-none" d="M 260 235 Q 225 255 205 280" fill="none" stroke="#a855f7" stroke-width="4" stroke-linecap="round" opacity="0.2"/>
+                    <path id="int-r-flow" d="M 260 235 L 245 280 M 260 235 Q 225 255 205 280" fill="none" stroke="#c084fc" stroke-width="3.5" stroke-linecap="round" opacity="0" class="pointer-events-none"/>
+
+                    <path d="M 260 235 L 245 280" fill="none" stroke="rgba(255,255,255,0)" stroke-width="25" stroke-linecap="round" pointer-events="all"/>
+                    <path d="M 260 235 Q 225 255 205 280" fill="none" stroke="rgba(255,255,255,0)" stroke-width="25" stroke-linecap="round" pointer-events="all"/>
+                </g>
+
+                <!-- Left Efferent Nerves -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Efferent Motor Tract (CN III) driving left pupil')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path id="eff-l" class="neural-path pointer-events-none" d="M 205 280 Q 165 200 140 130" fill="none" stroke="#ef4444" stroke-width="5" stroke-linecap="round" opacity="0.2"/>
+                    <path id="eff-l-post" class="neural-path pointer-events-none" d="M 140 130 L 110 85" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="3 3" stroke-linecap="round" opacity="0.2"/>
+                    <path id="eff-l-flow" d="M 205 280 Q 165 200 140 130 L 110 85" fill="none" stroke="#f87171" stroke-width="4" stroke-linecap="round" opacity="0" class="pointer-events-none"/>
+                    
+                    <path d="M 205 280 Q 165 200 140 130" fill="none" stroke="rgba(255,255,255,0)" stroke-width="25" stroke-linecap="round" pointer-events="all"/>
+                    <path d="M 140 130 L 110 85" fill="none" stroke="rgba(255,255,255,0)" stroke-width="25" stroke-linecap="round" pointer-events="all"/>
+                </g>
+
+                <!-- Right Efferent Nerves -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Efferent Motor Tract (CN III) driving right pupil')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path id="eff-r" class="neural-path pointer-events-none" d="M 245 280 Q 285 200 310 130" fill="none" stroke="#ef4444" stroke-width="5" stroke-linecap="round" opacity="0.2"/>
+                    <path id="eff-r-post" class="neural-path pointer-events-none" d="M 310 130 L 340 85" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="3 3" stroke-linecap="round" opacity="0.2"/>
+                    <path id="eff-r-flow" d="M 245 280 Q 285 200 310 130 L 340 85" fill="none" stroke="#f87171" stroke-width="4" stroke-linecap="round" opacity="0" class="pointer-events-none"/>
+                    
+                    <path d="M 245 280 Q 285 200 310 130" fill="none" stroke="rgba(255,255,255,0)" stroke-width="25" stroke-linecap="round" pointer-events="all"/>
+                    <path d="M 310 130 L 340 85" fill="none" stroke="rgba(255,255,255,0)" stroke-width="25" stroke-linecap="round" pointer-events="all"/>
+                </g>
+
+                <!-- Left PON -->
+                <g class="cursor-pointer hover:opacity-80 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Pretectal Olivary Nucleus (PON)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <circle cx="190" cy="235" r="10" fill="#1e40af" id="pon-l" class="transition-all duration-300 pointer-events-none" filter="url(#dropShadow)"/>
+                    <text x="175" y="240" font-family="sans-serif" font-size="9" font-weight="bold" fill="#64748b" text-anchor="end" class="dark:fill-slate-400 pointer-events-none">PON</text>
+                    <!-- Oversized Hitbox -->
+                    <circle cx="190" cy="235" r="28" fill="rgba(255,255,255,0)" pointer-events="all" />
+                </g>
+                
+                <!-- Right PON -->
+                <g class="cursor-pointer hover:opacity-80 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Pretectal Olivary Nucleus (PON)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <circle cx="260" cy="235" r="10" fill="#1e40af" id="pon-r" class="transition-all duration-300 pointer-events-none" filter="url(#dropShadow)"/>
+                    <text x="275" y="240" font-family="sans-serif" font-size="9" font-weight="bold" fill="#64748b" text-anchor="start" class="dark:fill-slate-400 pointer-events-none">PON</text>
+                    <!-- Oversized Hitbox -->
+                    <circle cx="260" cy="235" r="28" fill="rgba(255,255,255,0)" pointer-events="all" />
+                </g>
+                
+                <!-- Left E-W Nucleus -->
+                <g class="cursor-pointer hover:opacity-80 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Edinger-Westphal (E-W) Nucleus')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <circle cx="205" cy="280" r="10" fill="#991b1b" id="ew-l" class="transition-all duration-300 pointer-events-none" filter="url(#dropShadow)"/>
+                    <text x="190" y="295" font-family="sans-serif" font-size="9" font-weight="bold" fill="#64748b" text-anchor="end" class="dark:fill-slate-400 pointer-events-none">E-W N.</text>
+                    <!-- Oversized Hitbox -->
+                    <circle cx="205" cy="280" r="28" fill="rgba(255,255,255,0)" pointer-events="all" />
+                </g>
+
+                <!-- Right E-W Nucleus -->
+                <g class="cursor-pointer hover:opacity-80 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Edinger-Westphal (E-W) Nucleus')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <circle cx="245" cy="280" r="10" fill="#991b1b" id="ew-r" class="transition-all duration-300 pointer-events-none" filter="url(#dropShadow)"/>
+                    <text x="260" y="295" font-family="sans-serif" font-size="9" font-weight="bold" fill="#64748b" text-anchor="start" class="dark:fill-slate-400 pointer-events-none">E-W N.</text>
+                    <!-- Oversized Hitbox -->
+                    <circle cx="245" cy="280" r="28" fill="rgba(255,255,255,0)" pointer-events="all" />
+                </g>
+
+                <!-- Left Ciliary Ganglion -->
+                <g class="cursor-pointer hover:opacity-80 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Ciliary Ganglion')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <rect x="133" y="123" width="14" height="14" rx="4" fill="#b91c1c" id="cg-l" class="transition-all duration-300 transform rotate-45 origin-center pointer-events-none" filter="url(#dropShadow)"/>
+                    <text x="120" y="133" font-family="sans-serif" font-size="9" font-weight="bold" fill="#64748b" text-anchor="end" class="dark:fill-slate-400 pointer-events-none">Ciliary Ganglion</text>
+                    <!-- Oversized Hitbox -->
+                    <rect x="110" y="100" width="40" height="40" fill="rgba(255,255,255,0)" pointer-events="all" /> 
+                </g>
+
+                <!-- Right Ciliary Ganglion -->
+                <g class="cursor-pointer hover:opacity-80 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Ciliary Ganglion')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <rect x="303" y="123" width="14" height="14" rx="4" fill="#b91c1c" id="cg-r" class="transition-all duration-300 transform rotate-45 origin-center pointer-events-none" filter="url(#dropShadow)"/>
+                    <text x="330" y="133" font-family="sans-serif" font-size="9" font-weight="bold" fill="#64748b" text-anchor="start" class="dark:fill-slate-400 pointer-events-none">Ciliary Ganglion</text>
+                    <!-- Oversized Hitbox -->
+                    <rect x="290" y="100" width="40" height="40" fill="rgba(255,255,255,0)" pointer-events="all" />
+                </g>
+
+                <!-- Left Eye -->
+                <g class="cursor-pointer hover:opacity-90 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Eye Globe (OS)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <circle cx="110" cy="60" r="36" fill="url(#eye3DLeft)" stroke="#94a3b8" stroke-width="1.5" class="dark:stroke-slate-700 pointer-events-none" filter="url(#dropShadow)"/>
+                    <circle cx="110" cy="60" r="18" fill="#0284c7" opacity="0.3" class="pointer-events-none"/>
+                    <text x="110" y="10" font-family="sans-serif" font-size="11" font-weight="bold" fill="#475569" text-anchor="middle" class="dark:fill-slate-300 pointer-events-none">OS</text>
+                    <!-- Hitbox -->
+                    <circle cx="110" cy="60" r="40" fill="rgba(255,255,255,0)" pointer-events="all"/>
+                </g>
+
+                <!-- Left Pupil Node -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Left Pupil (Iris Sphincter)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <circle id="plrPupilL" cx="110" cy="60" r="14" fill="#020617" class="transition-all duration-[400ms] ease-out shadow-inner pointer-events-none"/>
+                    <circle cx="110" cy="60" r="18" fill="rgba(255,255,255,0)" pointer-events="all" /> <!-- Hitbox -->
+                </g>
+                
+                <!-- Right Eye -->
+                <g class="cursor-pointer hover:opacity-90 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Eye Globe (OD)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <circle cx="340" cy="60" r="36" fill="url(#eye3DRight)" stroke="#94a3b8" stroke-width="1.5" class="dark:stroke-slate-700 pointer-events-none" filter="url(#dropShadow)"/>
+                    <circle cx="340" cy="60" r="18" fill="#0284c7" opacity="0.3" class="pointer-events-none"/>
+                    <text x="340" y="10" font-family="sans-serif" font-size="11" font-weight="bold" fill="#475569" text-anchor="middle" class="dark:fill-slate-300 pointer-events-none">OD</text>
+                    <!-- Hitbox -->
+                    <circle cx="340" cy="60" r="40" fill="rgba(255,255,255,0)" pointer-events="all"/>
+                </g>
+
+                <!-- Right Pupil Node -->
+                <g class="cursor-pointer hover:opacity-70 transition-opacity" onmouseenter="showHoverTooltip(event, 'Right Pupil (Iris Sphincter)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <circle id="plrPupilR" cx="340" cy="60" r="14" fill="#020617" class="transition-all duration-[400ms] ease-out shadow-inner pointer-events-none"/>
+                    <circle cx="340" cy="60" r="18" fill="rgba(255,255,255,0)" pointer-events="all" /> <!-- Hitbox -->
+                </g>
+
+                <!-- Flashlights -->
+                <g id="flashlightOS" opacity="0" class="transition-opacity duration-300 cursor-pointer" onmouseenter="showHoverTooltip(event, 'Light Stimulus (Flashlight)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 25 5 L 100 30 L 100 90 L 25 115 Z" fill="url(#glowBlue)" fill-opacity="0.2" fill="#fbbf24" class="pointer-events-none" />
+                    <path d="M 15 15 L 35 105" stroke="#f59e0b" stroke-width="6" stroke-linecap="round" filter="url(#glowRed)" class="pointer-events-none"/>
+                    <circle cx="110" cy="60" r="16" fill="#fbbf24" opacity="0.4" filter="url(#glowBlue)" class="pointer-events-none"/>
+                    <path d="M 15 5 L 110 30 L 110 90 L 15 115 Z" fill="rgba(255,255,255,0)" pointer-events="all" /> <!-- Hitbox -->
+                </g>
+                <g id="flashlightOD" opacity="0" class="transition-opacity duration-300 cursor-pointer" onmouseenter="showHoverTooltip(event, 'Light Stimulus (Flashlight)')" onmousemove="moveTooltip(event)" onmouseleave="hideHoverTooltip()">
+                    <path d="M 425 5 L 350 30 L 350 90 L 425 115 Z" fill="url(#glowBlue)" fill-opacity="0.2" fill="#fbbf24" class="pointer-events-none" />
+                    <path d="M 435 15 L 415 105" stroke="#f59e0b" stroke-width="6" stroke-linecap="round" filter="url(#glowRed)" class="pointer-events-none"/>
+                    <circle cx="340" cy="60" r="16" fill="#fbbf24" opacity="0.4" filter="url(#glowBlue)" class="pointer-events-none"/>
+                    <path d="M 435 5 L 340 30 L 340 90 L 435 115 Z" fill="rgba(255,255,255,0)" pointer-events="all" /> <!-- Hitbox -->
+                </g>
+
+                <!-- DYNAMIC IN-CANVAS FLOW ANNOTATIONS FOR PLR SIMULATION -->
+                <!-- Step 1 Left -->
+                <g id="canvas-step-1-l" class="transition-opacity duration-300 opacity-0 pointer-events-none">
+                    <rect x="20" y="90" width="70" height="20" rx="4" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+                    <text x="55" y="103" font-family="sans-serif" font-size="8" font-weight="bold" fill="#1d4ed8" text-anchor="middle">1. Afferent</text>
+                </g>
+                <!-- Step 1 Right -->
+                <g id="canvas-step-1-r" class="transition-opacity duration-300 opacity-0 pointer-events-none">
+                    <rect x="360" y="90" width="70" height="20" rx="4" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+                    <text x="395" y="103" font-family="sans-serif" font-size="8" font-weight="bold" fill="#1d4ed8" text-anchor="middle">1. Afferent</text>
+                </g>
+                <!-- Step 2 Central -->
+                <g id="canvas-step-2" class="transition-opacity duration-300 opacity-0 pointer-events-none">
+                    <rect x="185" y="325" width="80" height="20" rx="4" fill="#faf5ff" stroke="#a855f7" stroke-width="1.5"/>
+                    <text x="225" y="338" font-family="sans-serif" font-size="8" font-weight="bold" fill="#6b21a8" text-anchor="middle">2. Interneurons</text>
+                </g>
+                <!-- Step 3 Left -->
+                <g id="canvas-step-3-l" class="transition-opacity duration-300 opacity-0 pointer-events-none">
+                    <rect x="40" y="180" width="70" height="20" rx="4" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5"/>
+                    <text x="75" y="193" font-family="sans-serif" font-size="8" font-weight="bold" fill="#b91c1c" text-anchor="middle">3. Efferent</text>
+                </g>
+                <!-- Step 3 Right -->
+                <g id="canvas-step-3-r" class="transition-opacity duration-300 opacity-0 pointer-events-none">
+                    <rect x="340" y="180" width="70" height="20" rx="4" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5"/>
+                    <text x="375" y="193" font-family="sans-serif" font-size="8" font-weight="bold" fill="#b91c1c" text-anchor="middle">3. Efferent</text>
+                </g>
+                <!-- Step 4 Left -->
+                <g id="canvas-step-4-l" class="transition-opacity duration-300 opacity-0 pointer-events-none">
+                    <rect x="20" y="10" width="75" height="20" rx="4" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+                    <text x="57.5" y="23" font-family="sans-serif" font-size="8" font-weight="bold" fill="#047857" text-anchor="middle">4. Constriction</text>
+                </g>
+                <!-- Step 4 Right -->
+                <g id="canvas-step-4-r" class="transition-opacity duration-300 opacity-0 pointer-events-none">
+                    <rect x="355" y="10" width="75" height="20" rx="4" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+                    <text x="392.5" y="23" font-family="sans-serif" font-size="8" font-weight="bold" fill="#047857" text-anchor="middle">4. Constriction</text>
+                </g>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shrink-0">
+          <span class="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-500 tracking-wider flex items-center gap-1.5 mb-2">
+            <i class="fa-solid fa-diagram-project text-secondary"></i> Interactive Step-by-Step Flowchart
+          </span>
+          
+          <div id="flowchartRow" class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-center">
+            <div class="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs flex flex-col justify-center items-center shadow-xs">
+              <span class="font-bold text-secondary">Step 1</span>
+              <p class="text-[11px] text-slate-500 mt-0.5">Awaiting interactive selection...</p>
+            </div>
+            <div class="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs flex flex-col justify-center items-center shadow-xs">
+              <span class="font-bold text-secondary">Step 2</span>
+              <p class="text-[11px] text-slate-500 mt-0.5">Awaiting interactive selection...</p>
+            </div>
+            <div class="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs flex flex-col justify-center items-center shadow-xs">
+              <span class="font-bold text-secondary">Step 3</span>
+              <p class="text-[11px] text-slate-500 mt-0.5">Awaiting interactive selection...</p>
+            </div>
+            <div class="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs flex flex-col justify-center items-center shadow-xs">
+              <span class="font-bold text-secondary">Step 4</span>
+              <p class="text-[11px] text-slate-500 mt-0.5">Awaiting interactive selection...</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="lg:col-span-4 space-y-4">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs transition-colors duration-500">
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-secondary"></i> Interactive Simulators
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Launch individual local sub-files to complete training modules.</p>
+        </div>
+
+        <div class="space-y-2 h-auto md:max-h-[620px] overflow-y-auto pr-1">
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 transition text-xs">
+            <div class="flex items-center gap-2 truncate pr-2">
+              <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-500 flex-shrink-0" id="icon-RAPD"></i>
+              <div class="truncate">
+                <p class="font-extrabold text-slate-800 dark:text-slate-100 truncate">RAPD Simulator</p>
+              </div>
+            </div>
+            <a href="./RAPD.html" onclick="playAudioTone(640, 'sine', 0.1)" class="px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 transition text-xs">
+            <div class="flex items-center gap-2 truncate pr-2">
+              <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-500 flex-shrink-0" id="icon-Pupillary-Reflex"></i>
+              <div class="truncate">
+                <p class="font-extrabold text-slate-800 dark:text-slate-100 truncate">Pupillary Reflex Simulator</p>
+              </div>
+            </div>
+            <a href="./Pupillary-Reflex.html" onclick="playAudioTone(640, 'sine', 0.1)" class="px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 transition text-xs">
+            <div class="flex items-center gap-2 truncate pr-2">
+              <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-500 flex-shrink-0" id="icon-Cranial-Nerve-Palsy"></i>
+              <div class="truncate">
+                <p class="font-extrabold text-slate-800 dark:text-slate-100 truncate">Cranial Nerve Palsy Simulator</p>
+              </div>
+            </div>
+            <a href="./Cranial-Nerve-Palsy.html" onclick="playAudioTone(640, 'sine', 0.1)" class="px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 transition text-xs">
+            <div class="flex items-center gap-2 truncate pr-2">
+              <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-500 flex-shrink-0" id="icon-Visual-Field"></i>
+              <div class="truncate">
+                <p class="font-extrabold text-slate-800 dark:text-slate-100 truncate">Visual Field Defect Simulator</p>
+              </div>
+            </div>
+            <a href="./Visual-Field.html" onclick="playAudioTone(640, 'sine', 0.1)" class="px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 transition text-xs">
+            <div class="flex items-center gap-2 truncate pr-2">
+              <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-500 flex-shrink-0" id="icon-Color-Vision"></i>
+              <div class="truncate">
+                <p class="font-extrabold text-slate-800 dark:text-slate-100 truncate">Color Vision Simulator</p>
+              </div>
+            </div>
+            <a href="./Color-Vision.html" onclick="playAudioTone(640, 'sine', 0.1)" class="px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 transition text-xs">
+            <div class="flex items-center gap-2 truncate pr-2">
+              <i class="fa-solid fa-circle-play text-slate-300 dark:text-slate-500 flex-shrink-0" id="icon-Diplopia"></i>
+              <div class="truncate">
+                <p class="font-extrabold text-slate-800 dark:text-slate-100 truncate">Diplopia Simulator</p>
+              </div>
+            </div>
+            <a href="./Diplopia.html" onclick="playAudioTone(640, 'sine', 0.1)" class="px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 transition text-xs">
+            <div class="flex items-center gap-2 truncate pr-2">
+              <i class="fa-solid fa-circle-play text-slate-300 dark:text-slate-500 flex-shrink-0" id="icon-Anisocoria"></i>
+              <div class="truncate">
+                <p class="font-extrabold text-slate-800 dark:text-slate-100 truncate">Anisocoria Simulator</p>
+              </div>
+            </div>
+            <a href="./Anisocoria.html" onclick="playAudioTone(640, 'sine', 0.1)" class="px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 transition text-xs">
+            <div class="flex items-center gap-2 truncate pr-2">
+              <i class="fa-solid fa-circle-play text-slate-300 dark:text-slate-500 flex-shrink-0" id="icon-Neuro-Clinical-Cases"></i>
+              <div class="truncate">
+                <p class="font-extrabold text-slate-800 dark:text-slate-100 truncate">Neuro Clinical Case Simulator</p>
+              </div>
+            </div>
+            <a href="./Neuro-Clinical-Cases.html" onclick="playAudioTone(640, 'sine', 0.1)" class="px-3 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-slate-900 text-slate-400 border-t border-slate-800 py-6 text-center text-[10px] mt-auto shrink-0">
+    <div class="max-w-7xl mx-auto px-6">
+      <p class="text-slate-300 font-bold">SAHS-E-LAB Optometry Clinical Directory | Department of Neuro-Optometry</p>
+    </div>
+  </footer>
+
+  <div id="aboutModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200 transition-colors duration-500">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-graduation-cap text-lg"></i></div>
+        <div>
+          <h3 class="text-md font-bold text-slate-900 dark:text-white">About SAHS-E-LAB</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Vinayaka Mission's Research Foundation</p>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        The <strong>SAHS-E-LAB Optometry Portal</strong> is designed to support clinical learning using high-fidelity simulations.
+      </p>
+    </div>
+  </div>
+
+  <div id="referenceModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200 transition-colors duration-500">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-md font-bold text-slate-900 dark:text-white">Clinical References</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Trusted Academic Guidelines &amp; Literature</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const subsimKeys = ['RAPD', 'Pupillary-Reflex', 'Cranial-Nerve-Palsy', 'Visual-Field', 'Color-Vision', 'Diplopia', 'Anisocoria', 'Neuro-Clinical-Cases'];
+
+    window.addEventListener('DOMContentLoaded', () => {
+      syncIndividualCompletedMarks();
+      renderDefaultFlowchart('visual');
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+    });
+
+    function switchPathwayMode(mode) {
+      playAudioTone(600, 'sine', 0.08, 0.04);
+      const vMode = document.getElementById('mode-visual');
+      const pMode = document.getElementById('mode-plr');
+      
+      if(mode === 'visual') {
+        vMode.classList.remove('hidden');
+        pMode.classList.add('hidden');
+        renderDefaultFlowchart('visual');
+      } else {
+        vMode.classList.add('hidden');
+        pMode.classList.remove('hidden');
+        renderDefaultFlowchart('plr');
+      }
+    }
+
+    function renderDefaultFlowchart(type) {
+      const target = document.getElementById('flowchartRow');
+      if (type === 'visual') {
+        target.innerHTML = `
+          <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] shadow-xs">
+            <span class="font-extrabold text-sky-600 block">1. Retina</span>
+            <p class="text-slate-500 dark:text-slate-400 mt-0.5">Captures left/right field data</p>
+          </div>
+          <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] shadow-xs">
+            <span class="font-extrabold text-sky-600 block">2. Chiasm</span>
+            <p class="text-slate-500 dark:text-slate-400 mt-0.5">Nasal nerve fibers decussate</p>
+          </div>
+          <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] shadow-xs">
+            <span class="font-extrabold text-sky-600 block">3. LGN Hub</span>
+            <p class="text-slate-500 dark:text-slate-400 mt-0.5">Relays signal down radiations</p>
+          </div>
+          <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] shadow-xs">
+            <span class="font-extrabold text-sky-600 block">4. Cortex (V1)</span>
+            <p class="text-slate-500 dark:text-slate-400 mt-0.5">Processes conscious map vision</p>
+          </div>
+        `;
+      } else {
+        target.innerHTML = `
+          <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] shadow-xs">
+            <span class="font-extrabold text-blue-500 block">1. Afferent Sensory</span>
+            <p class="text-slate-500 dark:text-slate-400 mt-0.5">CN II transfers light down tracts</p>
+          </div>
+          <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] shadow-xs">
+            <span class="font-extrabold text-purple-500 block">2. Midbrain Hub</span>
+            <p class="text-slate-500 dark:text-slate-400 mt-0.5">PON distributes to bilateral E-W</p>
+          </div>
+          <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] shadow-xs">
+            <span class="font-extrabold text-red-500 block">3. Efferent Relay</span>
+            <p class="text-slate-500 dark:text-slate-400 mt-0.5">CN III targets Ciliary Ganglion</p>
+          </div>
+          <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] shadow-xs">
+            <span class="font-extrabold text-emerald-500 block">4. Constriction</span>
+            <p class="text-slate-500 dark:text-slate-400 mt-0.5">Iris Sphincters narrow simultaneously</p>
+          </div>
+        `;
+      }
+    }
+
+    let tooltipTimeout;
+
+    function showHoverTooltip(event, text) {
+        const tooltip = document.getElementById('svgTooltip');
+        tooltip.innerText = text;
+        tooltip.classList.remove('hidden');
+        
+        requestAnimationFrame(() => {
+            tooltip.classList.remove('opacity-0', 'scale-95');
+            tooltip.classList.add('opacity-100', 'scale-100');
+        });
+        
+        moveTooltip(event);
+    }
+
+    function moveTooltip(event) {
+        const container = document.getElementById('viewerContainer');
+        const tooltip = document.getElementById('svgTooltip');
+        if(!container || !tooltip) return;
+        
+        const containerRect = container.getBoundingClientRect();
+        let x = event.clientX - containerRect.left;
+        let y = event.clientY - containerRect.top;
+        
+        tooltip.style.left = `${x}px`;
+        tooltip.style.top = `${y - 15}px`;
+    }
+
+    function hideHoverTooltip() {
+        const tooltip = document.getElementById('svgTooltip');
+        tooltip.classList.remove('opacity-100', 'scale-100');
+        tooltip.classList.add('opacity-0', 'scale-95');
+        
+        clearTimeout(tooltipTimeout);
+        tooltipTimeout = setTimeout(() => {
+            tooltip.classList.add('hidden');
+        }, 200);
+    }
+
+    function syncIndividualCompletedMarks() {
+      const completedList = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      let completedCount = 0;
+      subsimKeys.forEach(key => {
+        const itemIcon = document.getElementById(`icon-${key}`);
+        if (itemIcon) {
+          if (completedList.includes(key) || completedList.includes(`${key}.html`) || completedList.includes(`${key} Simulator`)) {
+            itemIcon.className = "fa-solid fa-circle-check text-emerald-500";
+            completedCount++;
+          } else {
+            itemIcon.className = "fa-solid fa-circle-play text-slate-300 dark:text-slate-600";
+          }
+        }
+      });
+    }
+
+    const pathologyData = {
+      optic_nerve_l: {
+        title: "Left Optic Nerve Total Lesion",
+        desc: "Complete blindness in the left eye. Light entering the left eye fails to send signals down the afferent tract, preventing standard reflex arcs.",
+        steps: ["Light hits OS retina", "Left Optic Nerve BLOCKED ❌", "No signal reaches brainstem", "Complete blindness in OS field"]
+      },
+      chiasm: {
+        title: "Optic Chiasm Sagittal Lesion",
+        desc: "Disrupts all crossing nerve fibers from the nasal retinas. Results in a total loss of both outer peripheral fields.",
+        steps: ["Light captures temporal views", "Nasal fibers decussate here", "Chiasm compression BLOCKED ❌", "Bitemporal Hemianopia results"]
+      },
+      optic_tract_r: {
+        title: "Right Optic Tract Lesion",
+        desc: "Blocks all signals originating from the right side of both retinas, creating a blind spot over the entire left vision field.",
+        steps: ["Axons pass chiasm hub", "Right Optic Tract BLOCKED ❌", "No left field data reaches LGN", "Left Homonymous Hemianopia"]
+      },
+      radiation_r: {
+        title: "Right Meyer's Loop Lesion",
+        desc: "Damages lower optic radiations winding through the temporal lobe. Creates a localized 'Pie in the Sky' upper quadrant blind spot.",
+        steps: ["LGN sorts spatial signals", "Lower radiations BLOCKED ❌", "Upper quadrant map drop out", "Left Upper Quadrantanopia"]
+      },
+        cortex_r: {
+        title: "Right Primary Visual Cortex (V1)",
+        desc: "Destroys standard vision fields on the left but keeps the absolute central macular point fully intact due to duplicate blood supply.",
+        steps: ["Radiations reach back brain", "Right Cortex (V1) BLOCKED ❌", "Left field lost entirely", "Macular vision SPARED ✅"]
+      }
+    };
+
+    function showPathology(key, event) {
+      if(event) event.stopPropagation();
+      playAudioTone(480, 'sine', 0.1, 0.04);
+      const data = pathologyData[key];
+      if (!data) return;
+
+      document.getElementById('pathologyTitle').innerText = data.title;
+      document.getElementById('pathologyDesc').innerText = data.desc;
+
+      // Update interactive beginner flowchart
+      const flowchart = document.getElementById('flowchartRow');
+      flowchart.innerHTML = data.steps.map((step, idx) => `
+        <div class="p-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl text-[11px] shadow-xs transition-all duration-300 transform scale-102">
+          <span class="font-extrabold text-red-600 dark:text-red-400 block">Step ${idx + 1}</span>
+          <p class="text-slate-700 dark:text-slate-300 mt-0.5 font-medium leading-tight">${step}</p>
+        </div>
+      `).join('');
+
+      // Mirror pupil change on visual map mock view
+      const mockData = {
+        optic_nerve_l: { pupilL: 10, pupilR: 6, opacity: "1" },
+        chiasm: { pupilL: 6, pupilR: 6, opacity: "1" },
+        optic_tract_r: { pupilL: 6, pupilR: 6, opacity: "1" },
+        radiation_r: { pupilL: 6, pupilR: 6, opacity: "1" },
+        cortex_r: { pupilL: 6, pupilR: 6, opacity: "1" }
+      };
+
+      document.getElementById('leftPupilNode').setAttribute('r', mockData[key].pupilL);
+      document.getElementById('rightPupilNode').setAttribute('r', mockData[key].pupilR);
+
+      const masks = {
+        optic_nerve_l: ["background: radial-gradient(circle, #0f172a 100%, transparent 100%)", "background: transparent"],
+        chiasm: ["background: linear-gradient(to right, #0f172a 50%, transparent 50%)", "background: linear-gradient(to left, #0f172a 50%, transparent 50%)"],
+        optic_tract_r: ["background: linear-gradient(to right, #0f172a 50%, transparent 50%)", "background: linear-gradient(to right, #0f172a 50%, transparent 50%)"],
+        radiation_r: ["background: conic-gradient(from 180deg at 50% 50%, #0f172a 90deg, transparent 90deg)", "background: conic-gradient(from 180deg at 50% 50%, #0f172a 90deg, transparent 90deg)"],
+        cortex_r: ["background: radial-gradient(circle at 50% 50%, transparent 18%, #0f172a 18%, #0f172a 50%, transparent 50%), linear-gradient(to right, #0f172a 50%, transparent 50%)", "background: radial-gradient(circle at 50% 50%, transparent 18%, #0f172a 18%, #0f172a 50%, transparent 50%), linear-gradient(to right, #0f172a 50%, transparent 50%)"]
+      };
+
+      const lMask = document.getElementById('leftFieldMask');
+      const rMask = document.getElementById('rightFieldMask');
+      lMask.style = masks[key][0]; lMask.style.opacity = "1";
+      rMask.style = masks[key][1]; rMask.style.opacity = "1";
+    }
+
+    function updatePLRFlowchart(stepNum, text, colorClass) {
+      const flowchart = document.getElementById('flowchartRow');
+      if(stepNum === 1) {
+         flowchart.innerHTML = `
+            <div class="p-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/40 rounded-xl text-[11px] shadow-xs">
+              <span class="font-extrabold text-blue-600 dark:text-blue-400 block">Step 1: Active</span>
+              <p class="text-slate-700 dark:text-slate-300 mt-0.5 leading-tight">${text}</p>
+            </div>
+            <div class="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 opacity-40 rounded-xl text-[11px]">
+              <span class="font-bold text-slate-400 block">Step 2</span>
+              <p class="text-slate-400 mt-0.5">Pending...</p>
+            </div>
+            <div class="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 opacity-40 rounded-xl text-[11px]">
+              <span class="font-bold text-slate-400 block">Step 3</span>
+              <p class="text-slate-400 mt-0.5">Pending...</p>
+            </div>
+            <div class="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 opacity-40 rounded-xl text-[11px]">
+              <span class="font-bold text-slate-400 block">Step 4</span>
+              <p class="text-slate-400 mt-0.5">Pending...</p>
+            </div>`;
+      } else if (stepNum === 2) {
+         flowchart.children[1].className = "p-2 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900/40 rounded-xl text-[11px] shadow-xs";
+         flowchart.children[1].innerHTML = `<span class="font-extrabold text-purple-600 dark:text-purple-400 block">Step 2: Active</span><p class="text-slate-700 dark:text-slate-300 mt-0.5 leading-tight">${text}</p>`;
+      } else if (stepNum === 3) {
+         flowchart.children[2].className = "p-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 rounded-xl text-[11px] shadow-xs";
+         flowchart.children[2].innerHTML = `<span class="font-extrabold text-red-600 dark:text-red-400 block">Step 3: Active</span><p class="text-slate-700 dark:text-slate-300 mt-0.5 leading-tight">${text}</p>`;
+      } else if (stepNum === 4) {
+         flowchart.children[3].className = "p-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/40 rounded-xl text-[11px] shadow-xs";
+         flowchart.children[3].innerHTML = `<span class="font-extrabold text-emerald-600 dark:text-emerald-400 block">Step 4: Done</span><p class="text-slate-700 dark:text-slate-300 mt-0.5 leading-tight">${text}</p>`;
+      }
+    }
+
+    function simulatePLR(side) {
+        clearTimeout(plrTimeout1); clearTimeout(plrTimeout2); clearTimeout(plrTimeout3); clearTimeout(plrResetTimeout);
+        resetPLR();
+
+        const statusDot = document.getElementById('plrStatusDot');
+        const feedback = document.getElementById('plrFeedback');
+        
+        playAudioTone(750, 'sine', 0.1, 0.04);
+        document.getElementById(side === 'left' ? 'flashlightOS' : 'flashlightOD').style.opacity = '1';
+        
+        if (side === 'left') {
+            document.getElementById('canvas-step-1-l').style.opacity = '1';
+        } else {
+            document.getElementById('canvas-step-1-r').style.opacity = '1';
+        }
+
+        statusDot.className = "w-2 h-2 rounded-full bg-blue-500 animate-ping";
+        feedback.innerHTML = `<span class="text-blue-600 dark:text-blue-400">Afferent (CN II):</span> ipRGCs firing to Pretectal Nucleus...`;
+        updatePLRFlowchart(1, `Light hits retina cells. Cranial Nerve II carries signal up tracts.`, 'text-blue-600');
+
+        const affPaths = side === 'left' ? ['aff-l-temp', 'aff-l-nasal'] : ['aff-r-temp', 'aff-r-nasal'];
+        affPaths.forEach(id => {
+            document.getElementById(id).style.opacity = '0.8';
+            document.getElementById(id).style.filter = 'url(#glowBlue)';
+            const flow = document.getElementById(id + '-flow');
+            flow.style.opacity = '1'; flow.classList.add('flow-signal');
+        });
+
+        document.getElementById('pon-l').style.fill = '#3b82f6'; document.getElementById('pon-r').style.fill = '#3b82f6';
+        document.getElementById('pon-l').style.filter = 'url(#glowBlue)'; document.getElementById('pon-r').style.filter = 'url(#glowBlue)';
+
+        plrTimeout1 = setTimeout(() => {
+            statusDot.className = "w-2 h-2 rounded-full bg-purple-500 animate-ping";
+            feedback.innerHTML = `<span class="text-purple-600 dark:text-purple-400">Interneurons:</span> Bilateral projection to E-W nuclei...`;
+            updatePLRFlowchart(2, `PON nucleus splits information equally to BOTH E-W terminals.`, 'text-purple-600');
+            playAudioTone(850, 'sine', 0.08, 0.03);
+            
+            document.getElementById('canvas-step-2').style.opacity = '1';
+            
+            const intFlowId = side === 'left' ? 'int-l-flow' : 'int-r-flow';
+            const intPath1 = side === 'left' ? 'int-l-l' : 'int-r-r';
+            const intPath2 = side === 'left' ? 'int-l-r' : 'int-r-l';
+            
+            [intPath1, intPath2].forEach(id => {
+                document.getElementById(id).style.opacity = '0.8'; document.getElementById(id).style.filter = 'url(#glowBlue)';
+            });
+            const flow = document.getElementById(intFlowId);
+            flow.style.opacity = '1'; flow.classList.add('flow-signal');
+
+            document.getElementById('ew-l').style.fill = '#c084fc'; document.getElementById('ew-r').style.fill = '#c084fc';
+            document.getElementById('ew-l').style.filter = 'url(#glowBlue)'; document.getElementById('ew-r').style.filter = 'url(#glowBlue)';
+
+            plrTimeout2 = setTimeout(() => {
+                statusDot.className = "w-2 h-2 rounded-full bg-red-500 animate-ping";
+                feedback.innerHTML = `<span class="text-red-600 dark:text-red-400">Efferent (CN III):</span> Synapse at Ciliary Ganglion...`;
+                updatePLRFlowchart(3, `Parasympathetic motor fibres travel out down Cranial Nerve III.`, 'text-red-600');
+                playAudioTone(950, 'sine', 0.08, 0.03);
+
+                document.getElementById('canvas-step-3-l').style.opacity = '1';
+                document.getElementById('canvas-step-3-r').style.opacity = '1';
+
+                ['eff-l', 'eff-r', 'eff-l-post', 'eff-r-post'].forEach(id => {
+                    document.getElementById(id).style.opacity = '0.8'; document.getElementById(id).style.filter = 'url(#glowRed)';
+                });
+                ['eff-l-flow', 'eff-r-flow'].forEach(id => {
+                    document.getElementById(id).style.opacity = '1'; document.getElementById(id).classList.add('flow-signal');
+                });
+
+                document.getElementById('cg-l').style.fill = '#ef4444'; document.getElementById('cg-r').style.fill = '#ef4444';
+                document.getElementById('cg-l').style.filter = 'url(#glowRed)'; document.getElementById('cg-r').style.filter = 'url(#glowRed)';
+
+                plrTimeout3 = setTimeout(() => {
+                    statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
+                    feedback.innerHTML = `<span class="text-emerald-600 dark:text-emerald-400">Response Complete:</span> Direct & Consensual PLR.`;
+                    updatePLRFlowchart(4, `Sphincter pupillae muscles contract. BOTH pupils shrink together!`, 'text-emerald-600');
+                    playAudioTone(500, 'triangle', 0.2, 0.05);
+
+                    document.getElementById('canvas-step-4-l').style.opacity = '1';
+                    document.getElementById('canvas-step-4-r').style.opacity = '1';
+
+                    document.getElementById('plrPupilL').setAttribute('r', '6');
+                    document.getElementById('plrPupilR').setAttribute('r', '6');
+                }, 200);
+            }, 300);
+        }, 400);
+
+        plrResetTimeout = setTimeout(resetPLR, 6000);
+    }
+
+    function resetPLR() {
+        document.getElementById('flashlightOS').style.opacity = '0';
+        document.getElementById('flashlightOD').style.opacity = '0';
+
+        const allPaths = ['aff-l-temp', 'aff-l-nasal', 'aff-r-temp', 'aff-r-nasal', 'int-l-l', 'int-l-r', 'int-r-r', 'int-r-l', 'eff-l', 'eff-r', 'eff-l-post', 'eff-r-post'];
+        allPaths.forEach(id => {
+            const el = document.getElementById(id); el.style.opacity = '0.2'; el.style.filter = 'none';
+        });
+
+        const allFlows = ['aff-l-temp-flow', 'aff-l-nasal-flow', 'aff-r-temp-flow', 'aff-r-nasal-flow', 'int-l-flow', 'int-r-flow', 'eff-l-flow', 'eff-r-flow'];
+        allFlows.forEach(id => {
+            const el = document.getElementById(id); el.style.opacity = '0'; el.classList.remove('flow-signal');
+        });
+
+        ['canvas-step-1-l', 'canvas-step-1-r', 'canvas-step-2', 'canvas-step-3-l', 'canvas-step-3-r', 'canvas-step-4-l', 'canvas-step-4-r'].forEach(id => {
+            document.getElementById(id).style.opacity = '0';
+        });
+
+        document.getElementById('pon-l').style.fill = '#1e40af'; document.getElementById('pon-r').style.fill = '#1e40af';
+        document.getElementById('pon-l').style.filter = 'none'; document.getElementById('pon-r').style.filter = 'none';
+        document.getElementById('ew-l').style.fill = '#991b1b'; document.getElementById('ew-r').style.fill = '#991b1b';
+        document.getElementById('ew-l').style.filter = 'none'; document.getElementById('ew-r').style.filter = 'none';
+        document.getElementById('cg-l').style.fill = '#b91c1c'; document.getElementById('cg-r').style.fill = '#b91c1c';
+        document.getElementById('cg-l').style.filter = 'none'; document.getElementById('cg-r').style.filter = 'none';
+
+        document.getElementById('plrPupilL').setAttribute('r', '14');
+        document.getElementById('plrPupilR').setAttribute('r', '14');
+        
+        document.getElementById('plrStatusDot').className = "w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 transition-colors duration-300";
+        document.getElementById('plrFeedback').innerText = "Awaiting sensory input...";
+        
+        const selector = document.getElementById('modelSelector');
+        renderDefaultFlowchart(selector.value);
+    }
+
+    function openMenuModal(modalId) {
+      playAudioTone(600, 'sine', 0.08, 0.04);
+      document.getElementById(`${modalId}Modal`).classList.remove('hidden');
+    }
+
+    function closeMenuModal(modalId) {
+      playAudioTone(600, 'sine', 0.08, 0.04);
+      document.getElementById(`${modalId}Modal`).classList.add('hidden');
+    }
+
+    function toggleMobileDropdown() {
+      document.getElementById('mobileDropdown').classList.toggle('hidden');
+    }
+
+    function toggleMute() {
+      hubState.soundMuted = !hubState.soundMuted;
+      const muteIcon = document.getElementById('muteIcon');
+      const muteText = document.getElementById('muteText');
+      if (hubState.soundMuted) {
+        muteIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+        muteText.innerText = "Unmute";
+      } else {
+        muteIcon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse";
+        muteText.innerText = "Mute";
+        playAudioTone(520, 'sine', 0.1, 0.05);
+      }
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+      playAudioTone(600, 'sine', 0.08, 0.04);
+    }
+  </script>
+</body>
+</html>

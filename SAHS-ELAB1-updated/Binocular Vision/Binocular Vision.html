@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Binocular Vision Department Hub</title>
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',    /* Slate 900 */
+            secondary: '#0284c7',  /* Sky 600 */
+            accent: '#0d9488',     /* Teal 600 */
+            lightbg: '#f8fafc',    /* Slate 50 */
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Premium High-Contrast Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #0284c7;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    .dark .glass {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <!-- Audio Chimes System for Clinical Feedback -->
+  <script>
+    let audioCtx = null;
+    const hubState = {
+      soundMuted: false
+    };
+
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.12, vol = 0.05) {
+      if (hubState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("Audio Context blocked or unsupported by browser.");
+      }
+    }
+  </script>
+
+  <!-- HEADER / CLINICAL BRANDING BAR -->
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-500" id="mainHeader">
+    <nav class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <!-- Back Navigation to main Clinical Hub Index -->
+        <a href="../index.html" onclick="playAudioTone(400, 'sine')" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition shadow-xs">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div>
+          <h1 class="text-md font-extrabold tracking-tight text-slate-900 dark:text-white">
+            SAHS-E-LAB | <span class="text-secondary">Binocular Vision</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Binocular Sensory-Motor Integration Hub</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <div class="hidden lg:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+          <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke"></i>
+          </button>
+        </div>
+
+        <div class="relative lg:hidden">
+          <button onclick="toggleMobileDropdown()" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </button>
+          <div id="mobileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 py-2">
+            <button onclick="openMenuModal('about'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-info text-secondary w-4 text-center"></i> About Us
+            </button>
+            <button onclick="toggleMute(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i id="mobileMuteIcon" class="fa-solid fa-volume-high text-teal-600 w-4 text-center"></i> <span id="mobileMuteText">Mute Sound</span>
+            </button>
+            <button onclick="openMenuModal('reference'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-book-bookmark text-amber-500 w-4 text-center"></i> Reference
+            </button>
+            <button onclick="toggleDarkMode(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-half-stroke text-indigo-600 w-4 text-center"></i> Theme Toggle
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> <span id="progressText">0/9 Completed</span>
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+  
+  <main class="max-w-7xl mx-auto px-6 pt-24 pb-12 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- LEFT PANEL: CENTRAL EDUCATIONAL READING INTERFACE (8 COLS) -->
+    <section class="lg:col-span-8 space-y-6">
+      
+      <!-- Welcome & Description Box -->
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs transition-colors duration-500">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/40 flex items-center justify-center text-secondary border border-sky-100 dark:border-sky-900">
+            <i class="fa-solid fa-glasses text-lg"></i>
+          </div>
+          <h2 class="text-xl font-black text-slate-900 dark:text-white">Understanding Binocular Vision</h2>
+        </div>
+        <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed font-medium">
+          Binocular vision is the visual process where both of your eyes work together as a coordinated team. Each eye captures a slightly different angle of the world, and your brain blends these two images into a single, seamless, three-dimensional view with depth perception. Understanding how our eyes align and how the brain combines these views is the key to helping patients with double vision, lazy eyes, or eye turns.
+        </p>
+      </div>
+
+      <!-- INTERACTIVE DIAGNOSTIC SIMULATORS INTRO CARD -->
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-500 space-y-6">
+        <div>
+          <h3 class="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-graduation-cap text-secondary"></i> Interactive Diagnostic Simulators Overview
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Select a diagnostic module to run simulated tests for beginners.</p>
+        </div>
+
+      
+
+    <!-- RIGHT PANEL: CLINICAL STUDY AND REFERENCE PORTAL (4 COLS) -->
+    <section class="lg:col-span-4 space-y-4">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs transition-colors duration-500">
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-book-bookmark text-secondary"></i> Study & Reference Portal
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Trusted clinical resources for pediatric and binocular diagnostic workflows.</p>
+        </div>
+
+        <!-- Web Resources Links -->
+        <div class="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-3">
+          <p class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Recommended Readings</p>
+          <ul class="space-y-2.5 text-xs">
+            <li class="flex items-start gap-2">
+              <i class="fa-solid fa-square-rss text-secondary mt-0.5"></i>
+              <div class="flex-1">
+                <a href="https://eyewiki.aao.org" target="_blank" class="font-extrabold text-slate-800 dark:text-slate-200 hover:text-secondary hover:underline block leading-tight">EyeWiki (AAO) Portal</a>
+                <span class="text-[9px] text-slate-400 dark:text-slate-500 block mt-0.5">Comprehensive pediatric strabismus and vergence profiles</span>
+              </div>
+            </li>
+            <li class="flex items-start gap-2 pt-2 border-t border-slate-200/40 dark:border-slate-800/40">
+              <i class="fa-solid fa-globe text-secondary mt-0.5"></i>
+              <div class="flex-1">
+                <a href="https://www.aoa.org" target="_blank" class="font-extrabold text-slate-800 dark:text-slate-200 hover:text-secondary hover:underline block leading-tight">AOA Clinical Guidelines</a>
+                <span class="text-[9px] text-slate-400 dark:text-slate-500 block mt-0.5">Structured pathways for amblyopia and heterophoria care</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- YouTube Interactive Prompt Copier -->
+        <div class="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-3">
+          <div class="flex justify-between items-center">
+            <p class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">YouTube Video Study Prompts</p>
+            <span class="text-[9px] bg-sky-100 text-secondary dark:bg-sky-950/40 font-bold px-1.5 py-0.5 rounded">Beginner Friendly</span>
+          </div>
+          <p class="text-[10px] text-slate-500 leading-normal">Directly copy and paste these exact search terms into YouTube to view clinical examinations:</p>
+          
+          <div class="space-y-2">
+            <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 rounded-xl relative group">
+              <p class="font-mono text-[9px] text-slate-800 dark:text-slate-200 break-words font-semibold" id="yt-p1">"Near Point of Convergence NPC clinical test optometry"</p>
+              <button onclick="copyToClipboard('yt-p1')" class="absolute top-2 right-2 text-slate-400 hover:text-secondary text-[10px] transition"><i class="fa-regular fa-copy"></i></button>
+            </div>
+            <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 rounded-xl relative group">
+              <p class="font-mono text-[9px] text-slate-800 dark:text-slate-200 break-words font-semibold" id="yt-p2">"Cover uncover test and alternate cover test strabismus clinical demonstration"</p>
+              <button onclick="copyToClipboard('yt-p2')" class="absolute top-2 right-2 text-slate-400 hover:text-secondary text-[10px] transition"><i class="fa-regular fa-copy"></i></button>
+            </div>
+            <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 rounded-xl relative group">
+              <p class="font-mono text-[9px] text-slate-800 dark:text-slate-200 break-words font-semibold" id="yt-p3">"Worth 4 Dot Test optometry clinical examination"</p>
+              <button onclick="copyToClipboard('yt-p3')" class="absolute top-2 right-2 text-slate-400 hover:text-secondary text-[10px] transition"><i class="fa-regular fa-copy"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- CLASSROOM COURSE SYLLABUS SECTION -->
+  <section class="max-w-7xl mx-auto px-6 pb-12 w-full">
+    <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6 shadow-xs">
+      <div>
+        <h3 class="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <i class="fa-solid fa-graduation-cap text-secondary"></i> Classroom Course Syllabus
+        </h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Complete your laboratory protocols by launching any of the 9 linked simulators below.</p>
+      </div>
+
+      <!-- Syllabus Simulators Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        <!-- NPC Card -->
+        <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-3 hover:border-secondary/40 hover:shadow-xs transition">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-bold text-slate-900 dark:text-white text-sm">NPC Simulator</h4>
+              <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-600" id="icon-NPC"></i>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Find the Near Point of Convergence. Measures the closest point where both eyes can pull inwards together before breaking into double vision at the nose.
+            </p>
+          </div>
+          <div class="flex items-center justify-end pt-2 border-t border-slate-200/40 dark:border-slate-800/40">
+            <a href="./NPC.html" class="px-3.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+        </div>
+
+        <!-- Cover Test Card -->
+        <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-3 hover:border-secondary/40 hover:shadow-xs transition">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-bold text-slate-900 dark:text-white text-sm">Cover Test Simulator</h4>
+              <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-600" id="icon-Cover-Test"></i>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Diagnostic tool for manifest eye turns (Tropias). Blocks input to one eye to see if the opposite eye jumps to pick up fixation.
+            </p>
+          </div>
+          <div class="flex items-center justify-end pt-2 border-t border-slate-200/40 dark:border-slate-800/40">
+            <a href="./Cover-Test.html" class="px-3.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+        </div>
+
+        <!-- Worth Four Dot Simulator Card -->
+        <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-3 hover:border-secondary/40 hover:shadow-xs transition">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-bold text-slate-900 dark:text-white text-sm">Worth Four Dot Simulator</h4>
+              <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-600" id="icon-Worth-Four-Dot"></i>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Sensory fusion test under red-green filters. Diagnoses whether the brain is fusing normally, ignoring one eye (suppression), or seeing double.
+            </p>
+          </div>
+          <div class="flex items-center justify-end pt-2 border-t border-slate-200/40 dark:border-slate-800/40">
+            <a href="./Worth-Four-Dot.html" class="px-3.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+        </div>
+
+        <!-- Vergence Simulator Card -->
+        <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-3 hover:border-secondary/40 hover:shadow-xs transition">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-bold text-slate-900 dark:text-white text-sm">Vergence Simulator</h4>
+              <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-600" id="icon-Vergence"></i>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Evaluates motor vergence thresholds. Measures ocular muscle stamina under base-in (divergence) and base-out (convergence) prism strains.
+            </p>
+          </div>
+          <div class="flex items-center justify-end pt-2 border-t border-slate-200/40 dark:border-slate-800/40">
+            <a href="./Vergence.html" class="px-3.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+        </div>
+
+        <!-- Fusion Simulator Card -->
+        <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-3 hover:border-secondary/40 hover:shadow-xs transition">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-bold text-slate-900 dark:text-white text-sm">Fusion Simulator</h4>
+              <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-600" id="icon-Fusion"></i>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Traces cortical sensory fusion. Examines how the visual cortex matches and blends slightly disparate right/left eye inputs into a single scene.
+            </p>
+          </div>
+          <div class="flex items-center justify-end pt-2 border-t border-slate-200/40 dark:border-slate-800/40">
+            <a href="./Fusion.html" class="px-3.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+        </div>
+
+        <!-- Suppression Simulator Card -->
+        <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-3 hover:border-secondary/40 hover:shadow-xs transition">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-bold text-slate-900 dark:text-white text-sm">Suppression Simulator</h4>
+              <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-600" id="icon-Suppression"></i>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Maps cortical "shut-off" zones. When eyes point in different directions, the brain blocks the turning eye's feed to protect the patient from seeing double.
+            </p>
+          </div>
+          <div class="flex items-center justify-end pt-2 border-t border-slate-200/40 dark:border-slate-800/40">
+            <a href="./Suppression.html" class="px-3.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+        </div>
+
+        <!-- Stereoacuity Simulator Card -->
+        <div class="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-3 hover:border-secondary/40 hover:shadow-xs transition">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-bold text-slate-900 dark:text-white text-sm">Stereoacuity Simulator</h4>
+              <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-600" id="icon-Stereoacuity"></i>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Measures high-grade 3D depth perception in seconds of arc. Determines how accurately the visual cortex calculates physical depth and relative spatial distances.
+            </p>
+          </div>
+          <div class="flex items-center justify-end pt-2 border-t border-slate-200/40 dark:border-slate-800/40">
+            <a href="./Stereoacuity.html" class="px-3.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-secondary dark:text-sky-300 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <footer class="bg-slate-900 text-slate-400 border-t border-slate-800 py-6 text-center text-[10px] mt-auto shrink-0">
+    <div class="max-w-7xl mx-auto px-6">
+      <p class="text-slate-300 font-bold">SAHS-E-LAB Optometry Clinical Directory | Department of Binocular Vision</p>
+    </div>
+  </footer>
+
+  <!-- ABOUT MODAL -->
+  <div id="aboutModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200 transition-colors duration-500">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-graduation-cap text-lg"></i></div>
+        <div>
+          <h3 class="text-md font-bold text-slate-900 dark:text-white">About SAHS-E-LAB</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Vinayaka Mission's Research Foundation</p>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        The <strong>SAHS-E-LAB Binocular Vision Module</strong> bridges theoretical alignment models with sensory fusion testing profiles to deliver premium interactive training for students.
+      </p>
+    </div>
+  </div>
+
+  <!-- REFERENCE MODAL -->
+  <div id="referenceModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-900 dark:text-slate-200 transition-colors duration-500">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-700"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-md font-bold text-slate-900 dark:text-white">Clinical References</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Academic Literature for Binocular Diagnostics</p>
+        </div>
+      </div>
+      <div class="space-y-3 text-xs leading-relaxed max-h-64 overflow-y-auto">
+         <p><strong>1. AAO Basic &amp; Clinical Science Course, Section 6:</strong> Pediatric Ophthalmology and Strabismus. Core guidelines for evaluating sensory and motor vergence anomalies.</p>
+         <p class="pt-2 border-t border-slate-200/50 dark:border-slate-800/50"><strong>2. AOA Evidence-Based Clinical Practice Guideline:</strong> Care of the Patient with Amblyopia or Strabismus. Standardized testing for vergence breaks and suppression limits.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Module Tracking Keys matching syllabus database structure
+    const subsimKeys = ['NPC', 'Cover-Test', 'Alternate-Cover-Test', 'Prism-Bar-Cover-Test', 'Worth-Four-Dot', 'Vergence', 'Fusion', 'Suppression', 'Stereoacuity'];
+
+    // STATE VARIABLES
+    const state = {
+      worth: {
+        glassesOn: false,
+        condition: 'normal' // normal, suppOS, suppOD, diplopia
+      },
+      prism: {
+        type: 'none', // none, BI, BO
+        power: 1
+      },
+      cover: {
+        condition: 'ortho', // ortho, esotropia, exotropia
+        occlusion: 'none'  // none, OS, OD
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      syncCompletedSimulators();
+      switchBvMode('worth');
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+    });
+
+    // MODE ROUTING SWITCH FOR INTERNAL INTERACTIVE DIAGNOSIS
+    function switchBvMode(mode) {
+      playAudioTone(500, 'sine', 0.1, 0.03);
+      document.getElementById('mode-worth').classList.toggle('hidden', mode !== 'worth');
+      document.getElementById('mode-prism').classList.toggle('hidden', mode !== 'prism');
+      document.getElementById('mode-cover').classList.toggle('hidden', mode !== 'cover');
+
+      if (mode === 'worth') {
+        renderWorthPerception();
+        renderWorthFlowchart();
+      } else if (mode === 'prism') {
+        renderPrismTracts();
+        renderPrismFlowchart();
+      } else if (mode === 'cover') {
+        applyCoverPositions();
+        renderCoverFlowchart();
+      }
+    }
+
+    // =========================================================
+    // WORTH 4-DOT SIMULATOR ENGINE (SENSORY PATHWAY)
+    // =========================================================
+    function toggleWorthGlasses() {
+      state.worth.glassesOn = !state.worth.glassesOn;
+      const btn = document.getElementById('toggleGlassesBtn');
+      if(state.worth.glassesOn) {
+        btn.innerText = "Remove Red-Green Glasses";
+        btn.className = "px-3.5 py-1.5 rounded-lg bg-teal-600 text-white font-bold text-[10px] uppercase transition cursor-pointer";
+        playAudioTone(640, 'triangle', 0.15, 0.05);
+      } else {
+        btn.innerText = "Wear Red-Green Glasses";
+        btn.className = "px-3.5 py-1.5 rounded-lg bg-slate-800 text-white dark:bg-white dark:text-slate-900 font-bold text-[10px] uppercase transition cursor-pointer";
+        playAudioTone(400, 'sine', 0.1, 0.03);
+      }
+      renderWorthPerception();
+      renderWorthFlowchart();
+    }
+
+    function setWorthCondition(cond) {
+      state.worth.condition = cond;
+      playAudioTone(480, 'sine', 0.1, 0.04);
+      
+      document.querySelectorAll('.worth-btn').forEach(b => {
+        b.className = "worth-btn py-2 text-[10px] font-bold uppercase rounded-xl border transition-all text-slate-800 dark:text-slate-200 hover:bg-slate-100 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-center";
+      });
+      document.getElementById(`worth-cond-${cond}`).className = "worth-btn py-2 text-[10px] font-bold uppercase rounded-xl border transition-all text-white bg-secondary border-secondary shadow-sm text-center";
+
+      renderWorthPerception();
+      renderWorthFlowchart();
+    }
+
+    function renderWorthPerception() {
+      const screen = document.getElementById('perceptionScreen');
+      const title = document.getElementById('worth-view-title');
+      
+      if (!state.worth.glassesOn) {
+        title.innerText = "Direct Room View (No Goggles)";
+        screen.innerHTML = `
+          <div class="w-6 h-6 rounded-full bg-red-500 absolute top-6" style="filter: drop-shadow(0 0 6px #ef4444)"></div>
+          <div class="w-6 h-6 rounded-full bg-emerald-500 absolute left-6" style="filter: drop-shadow(0 0 6px #10b981)"></div>
+          <div class="w-6 h-6 rounded-full bg-emerald-500 absolute right-6" style="filter: drop-shadow(0 0 6px #10b981)"></div>
+          <div class="w-6 h-6 rounded-full bg-white absolute bottom-6" style="filter: drop-shadow(0 0 6px #ffffff)"></div>
+        `;
+        return;
+      }
+
+      title.innerText = "Patient's Sensory Perception (Filters On)";
+      
+      if (state.worth.condition === 'normal') {
+        screen.innerHTML = `
+          <div class="w-6 h-6 rounded-full bg-red-500 absolute top-6" style="filter: drop-shadow(0 0 6px #ef4444)"></div>
+          <div class="w-6 h-6 rounded-full bg-emerald-500 absolute left-6" style="filter: drop-shadow(0 0 6px #10b981)"></div>
+          <div class="w-6 h-6 rounded-full bg-emerald-500 absolute right-6" style="filter: drop-shadow(0 0 6px #10b981)"></div>
+          <div class="w-6 h-6 rounded-full bg-amber-400 absolute bottom-6" style="filter: drop-shadow(0 0 6px #fbbf24)"></div>
+        `;
+      } else if (state.worth.condition === 'suppOS') {
+        screen.innerHTML = `
+          <div class="w-6 h-6 rounded-full bg-red-500 absolute top-6" style="filter: drop-shadow(0 0 6px #ef4444)"></div>
+          <div class="w-6 h-6 rounded-full bg-red-500 absolute bottom-6" style="filter: drop-shadow(0 0 6px #ef4444)"></div>
+        `;
+      } else if (state.worth.condition === 'suppOD') {
+        screen.innerHTML = `
+          <div class="w-6 h-6 rounded-full bg-emerald-500 absolute left-6" style="filter: drop-shadow(0 0 6px #10b981)"></div>
+          <div class="w-6 h-6 rounded-full bg-emerald-500 absolute right-6" style="filter: drop-shadow(0 0 6px #10b981)"></div>
+          <div class="w-6 h-6 rounded-full bg-emerald-500 absolute bottom-6" style="filter: drop-shadow(0 0 6px #10b981)"></div>
+        `;
+      } else if (state.worth.condition === 'diplopia') {
+        screen.innerHTML = `
+          <div class="w-5 h-5 rounded-full bg-emerald-500 absolute left-4 top-1/2 -translate-y-1/2" style="filter: drop-shadow(0 0 6px #10b981)"></div>
+          <div class="w-5 h-5 rounded-full bg-emerald-500 absolute left-12 top-1/2 -translate-y-1/2" style="filter: drop-shadow(0 0 6px #10b981)"></div>
+          <div class="w-5 h-5 rounded-full bg-emerald-500 absolute left-8 bottom-6" style="filter: drop-shadow(0 0 6px #10b981)"></div>
+          <div class="w-5 h-5 rounded-full bg-red-500 absolute right-8 top-6" style="filter: drop-shadow(0 0 6px #ef4444)"></div>
+          <div class="w-5 h-5 rounded-full bg-red-500 absolute right-8 bottom-10" style="filter: drop-shadow(0 0 6px #ef4444)"></div>
+        `;
+      }
+    }
+
+    function renderWorthFlowchart() {
+      const flowchart = document.getElementById('flowchartRow');
+      if (!state.worth.glassesOn) {
+        flowchart.innerHTML = `
+          <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] shadow-xs col-span-4 text-center">
+            <span class="font-extrabold text-secondary block"><i class="fa-solid fa-circle-info"></i> Diagnostic Action Required</span>
+            <p class="text-slate-500 dark:text-slate-400 mt-0.5">Please click "Wear Red-Green Glasses" to simulate clinical cortical outcomes.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const stepDetails = {
+        normal: [
+          { title: "1. Red-Green Input", desc: "Filters separate inputs bilateral" },
+          { title: "2. Chiasm Transfer", desc: "Sensory pathways transport signals" },
+          { title: "3. Brainstem Synapse", desc: "Visual cortex takes in both feeds" },
+          { title: "4. Cortical Fusion", desc: "Blends 4 dots: No suppression!" }
+        ],
+        suppOS: [
+          { title: "1. Right Feed Only", desc: "OD (Red) transmits successfully" },
+          { title: "2. OS Blocked", desc: "Left pathway input ignored at cortex" },
+          { title: "3. Cortical Zone", desc: "OS visual cortex suppressed" },
+          { title: "4. Result: 2 Dots", desc: "OS Suppression Diagnosed ❌" }
+        ],
+        suppOD: [
+          { title: "1. Left Feed Only", desc: "OS (Green) transmits successfully" },
+          { title: "2. OD Blocked", desc: "Right pathway input ignored at cortex" },
+          { title: "3. Cortical Zone", desc: "OD visual cortex suppressed" },
+          { title: "4. Result: 3 Dots", desc: "OD Suppression Diagnosed ❌" }
+        ],
+        diplopia: [
+          { title: "1. Visual Axes Split", desc: "Eyes misaligned (Strabismus)" },
+          { title: "2. Dual Projection", desc: "Target falls on non-corresponding points" },
+          { title: "3. Brain Fails Fusion", desc: "Cortical blending limit exceeded" },
+          { title: "4. Result: 5 Dots", desc: "Sensory Diplopia Confirmed ❌" }
+        ]
+      };
+
+      const steps = stepDetails[state.worth.condition];
+      flowchart.innerHTML = steps.map((s, idx) => `
+        <div class="p-2 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900/60 rounded-xl text-[11px] shadow-xs">
+          <span class="font-extrabold text-secondary block">Step ${idx + 1}</span>
+          <p class="text-slate-700 dark:text-slate-300 mt-0.5 leading-tight font-medium">${s.title}</p>
+          <span class="text-[9px] text-slate-500 dark:text-slate-400 font-mono">${s.desc}</span>
+        </div>
+      `).join('');
+    }
+
+    // =========================================================
+    // PRISM VERGENCE SIMULATOR ENGINE (MOTOR PATHWAY)
+    // =========================================================
+    function setPrismType(type) {
+      state.prism.type = type;
+      playAudioTone(520, 'sine', 0.1, 0.04);
+      document.getElementById('prismSlider').disabled = false;
+      
+      document.getElementById('prismBI').className = "flex-1 py-2 text-[10px] font-bold uppercase rounded-xl border transition-all text-slate-800 dark:text-slate-200 hover:bg-slate-100 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-center";
+      document.getElementById('prismBO').className = "flex-1 py-2 text-[10px] font-bold uppercase rounded-xl border transition-all text-slate-800 dark:text-slate-200 hover:bg-slate-100 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-center";
+
+      if (type === 'BI') {
+        document.getElementById('prismBI').className = "flex-1 py-2 text-[10px] font-bold uppercase rounded-xl border transition-all text-white bg-secondary border-secondary shadow-sm text-center";
+      } else {
+        document.getElementById('prismBO').className = "flex-1 py-2 text-[10px] font-bold uppercase rounded-xl border transition-all text-white bg-secondary border-secondary shadow-sm text-center";
+      }
+
+      renderPrismTracts();
+      renderPrismFlowchart();
+    }
+
+    function adjustPrismPower(val) {
+      state.prism.power = parseInt(val);
+      playAudioTone(400 + (val * 20), 'sine', 0.08, 0.03);
+      renderPrismTracts();
+      renderPrismFlowchart();
+    }
+
+    function resetPrismSimulation() {
+      state.prism.type = 'none';
+      state.prism.power = 1;
+      document.getElementById('prismSlider').value = 1;
+      document.getElementById('prismSlider').disabled = true;
+
+      document.getElementById('prismBI').className = "flex-1 py-2 text-[10px] font-bold uppercase rounded-xl border transition-all text-slate-800 dark:text-slate-200 hover:bg-slate-100 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-center";
+      document.getElementById('prismBO').className = "flex-1 py-2 text-[10px] font-bold uppercase rounded-xl border transition-all text-slate-800 dark:text-slate-200 hover:bg-slate-100 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-center";
+
+      playAudioTone(300, 'sawtooth', 0.15, 0.04);
+      renderPrismTracts();
+      renderPrismFlowchart();
+    }
+
+    function renderPrismTracts() {
+      const indicator = document.getElementById('prismValIndicator');
+      const prismOverlay = document.getElementById('prismGroup');
+      const prismLabel = document.getElementById('prismLabelText');
+      const rayOD = document.getElementById('ray-od');
+      const corneaOD = document.getElementById('cornea-od');
+      const pupilOD = document.getElementById('pupil-od');
+
+      if (state.prism.type === 'none') {
+        indicator.innerText = "0 Δ (Orthophoria)";
+        prismOverlay.setAttribute('opacity', '0');
+        rayOD.setAttribute('d', 'M 320,182 L 250,20');
+        corneaOD.setAttribute('transform', 'translate(0, 0)');
+        pupilOD.setAttribute('transform', 'translate(0, 0)');
+        return;
+      }
+
+      const power = state.prism.power;
+      indicator.innerText = `${power} Δ ${state.prism.type === 'BI' ? 'Base-In' : 'Base-Out'}`;
+      prismOverlay.setAttribute('opacity', '1');
+      prismLabel.innerText = state.prism.type === 'BI' ? 'Base-In' : 'Base-Out';
+
+      if (state.prism.type === 'BI') {
+        const bendOffset = power * 1.5;
+        rayOD.setAttribute('d', `M 320,182 L ${320 + bendOffset},110 L 250,20`);
+        const eyeTurn = power * 0.45;
+        corneaOD.setAttribute('transform', `translate(${eyeTurn}, 0)`);
+        pupilOD.setAttribute('transform', `translate(${eyeTurn}, 0)`);
+      } else {
+        const bendOffset = power * 1.5;
+        rayOD.setAttribute('d', `M 320,182 L ${320 - bendOffset},110 L 250,20`);
+        const eyeTurn = -power * 0.45;
+        corneaOD.setAttribute('transform', `translate(${eyeTurn}, 0)`);
+        pupilOD.setAttribute('transform', `translate(${eyeTurn}, 0)`);
+      }
+    }
+
+    function renderPrismFlowchart() {
+      const flowchart = document.getElementById('flowchartRow');
+      if (state.prism.type === 'none') {
+        flowchart.innerHTML = `
+          <div class="p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] shadow-xs col-span-4 text-center">
+            <span class="font-extrabold text-secondary block"><i class="fa-solid fa-circle-info"></i> Diagnostic Action Required</span>
+            <p class="text-slate-500 dark:text-slate-400 mt-0.5">Please click "Base-In" or "Base-Out" to simulate prismatic light translation.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const steps = state.prism.type === 'BI' ? [
+        { title: "1. BI Base-In", desc: "Base is nasal, apex temporal" },
+        { title: "2. Ray Bends In", desc: "Light translates toward nasal retina" },
+        { title: "3. Temporal Gaze", desc: "OD triggered to turn temporalward" },
+        { title: "4. Divergence ✅", desc: "Maintains single binocular vision" }
+      ] : [
+        { title: "1. BO Base-Out", desc: "Base is temporal, apex nasal" },
+        { title: "2. Ray Bends Out", desc: "Light translates toward temporal retina" },
+        { title: "3. Nasal Gaze", desc: "OD triggered to turn nasalward" },
+        { title: "4. Convergence ✅", desc: "Maintains single binocular vision" }
+      ];
+
+      flowchart.innerHTML = steps.map((s, idx) => `
+        <div class="p-2 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-900/60 rounded-xl text-[11px] shadow-xs">
+          <span class="font-extrabold text-teal-600 block">Step ${idx + 1}</span>
+          <p class="text-slate-700 dark:text-slate-300 mt-0.5 leading-tight font-medium">${s.title}</p>
+          <span class="text-[9px] text-slate-500 dark:text-slate-400 font-mono">${s.desc}</span>
+        </div>
+      `).join('');
+    }
+
+    // =========================================================
+    // COVER TEST SIMULATOR ENGINE (MOTOR ALIGNMENT)
+    // =========================================================
+    function setCoverCondition(cond) {
+      state.cover.condition = cond;
+      state.cover.occlusion = 'none'; 
+      playAudioTone(520, 'sine', 0.1, 0.04);
+
+      document.querySelectorAll('.cover-cond-btn').forEach(b => {
+        b.className = "cover-cond-btn py-2 text-[10px] font-bold uppercase rounded-xl border transition-all text-slate-800 dark:text-slate-200 hover:bg-slate-100 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-center";
+      });
+      document.getElementById(`cover-cond-${cond}`).className = "cover-cond-btn py-2 text-[10px] font-bold uppercase rounded-xl border transition-all text-white bg-secondary border-secondary shadow-sm text-center";
+
+      applyCoverPositions();
+      renderCoverFlowchart();
+    }
+
+    function performCoverAction(act) {
+      playAudioTone(640, 'triangle', 0.1, 0.05);
+      if (act === 'coverOS') {
+        state.cover.occlusion = 'OS';
+      } else if (act === 'coverOD') {
+        state.cover.occlusion = 'OD';
+      } else {
+        state.cover.occlusion = 'none';
+      }
+      applyCoverPositions();
+      renderCoverFlowchart();
+    }
+
+    function applyCoverPositions() {
+      const irisOD = document.getElementById('irisOD');
+      const irisOS = document.getElementById('irisOS');
+      const padOD = document.getElementById('paddleOD');
+      const padOS = document.getElementById('paddleOS');
+
+      padOD.style.opacity = state.cover.occlusion === 'OD' ? '1' : '0';
+      padOD.style.transform = state.cover.occlusion === 'OD' ? 'scale(1)' : 'scale(0.9)';
+      padOS.style.opacity = state.cover.occlusion === 'OS' ? '1' : '0';
+      padOS.style.transform = state.cover.occlusion === 'OS' ? 'scale(1)' : 'scale(0.9)';
+
+      irisOD.style.transform = "translateX(0px)";
+      irisOS.style.transform = "translateX(0px)";
+
+      if (state.cover.condition === 'ortho') {
+        return;
+      }
+
+      if (state.cover.condition === 'esotropia') {
+        if (state.cover.occlusion === 'none') {
+          irisOD.style.transform = "translateX(-16px)"; 
+        } else if (state.cover.occlusion === 'OS') {
+          irisOD.style.transform = "translateX(0px)"; 
+          irisOS.style.transform = "translateX(-16px)"; 
+        } else if (state.cover.occlusion === 'OD') {
+          irisOD.style.transform = "translateX(-16px)";
+        }
+      } else if (state.cover.condition === 'exotropia') {
+        if (state.cover.occlusion === 'none') {
+          irisOD.style.transform = "translateX(16px)"; 
+        } else if (state.cover.occlusion === 'OS') {
+          irisOD.style.transform = "translateX(0px)";
+          irisOS.style.transform = "translateX(16px)"; 
+        } else if (state.cover.occlusion === 'OD') {
+          irisOD.style.transform = "translateX(16px)";
+        }
+      }
+    }
+
+    function renderCoverFlowchart() {
+      const flowchart = document.getElementById('flowchartRow');
+      const cond = state.cover.condition;
+      const occ = state.cover.occlusion;
+
+      let steps = [];
+
+      if (cond === 'ortho') {
+        steps = [
+          { title: "1. Orthophoria State", desc: "No baseline manifest turn" },
+          { title: "2. Apply Cover Paddle", desc: "Blocks sensor input on side" },
+          { title: "3. No corrective movement", desc: "Contralateral eye stays aligned" },
+          { title: "4. Result: Normal ✅", desc: "Normal Binocular Alignment" }
+        ];
+      } else if (cond === 'esotropia') {
+        if (occ === 'none') {
+          steps = [
+            { title: "1. Esotropia State", desc: "Manifest inward turn OD" },
+            { title: "2. Target check", desc: "OS takes primary fixation" },
+            { title: "3. Binocular view", desc: "Deficient motor symmetry" },
+            { title: "4. Apply Cover OS", desc: "Forces OD to take fixation!" }
+          ];
+        } else if (occ === 'OS') {
+          steps = [
+            { title: "1. OS covered", desc: "Left pathway input occluded" },
+            { title: "2. OD Abducts", desc: "Right eye rotates OUT to fixate" },
+            { title: "3. Motor check", desc: "Positive redress movement OS" },
+            { title: "4. Diagnosis: ET ✅", desc: "Constant Right Esotropia" }
+          ];
+        } else {
+          steps = [
+            { title: "1. OD covered", desc: "Right eye hidden behind pad" },
+            { title: "2. Fixation OS", desc: "Left eye maintains straight view" },
+            { title: "3. OD Inward shift", desc: "OD relaxes inwards behind pad" },
+            { title: "4. Uncover check", desc: "Observe return of manifest turn" }
+          ];
+        }
+      } else if (cond === 'exotropia') {
+        if (occ === 'none') {
+          steps = [
+            { title: "1. Exotropia State", desc: "Manifest outward turn OD" },
+            { title: "2. Target check", desc: "OS takes primary fixation" },
+            { title: "3. Binocular view", desc: "Deficient motor symmetry" },
+            { title: "4. Apply Cover OS", desc: "Forces OD to take fixation!" }
+          ];
+        } else if (occ === 'OS') {
+          steps = [
+            { title: "1. OS covered", desc: "Left pathway input occluded" },
+            { title: "2. OD Adducts", desc: "Right eye rotates IN to fixate" },
+            { title: "3. Motor check", desc: "Positive redress movement OS" },
+            { title: "4. Diagnosis: XT ✅", desc: "Constant Right Exotropia" }
+          ];
+        } else {
+          steps = [
+            { title: "1. OD covered", desc: "Right eye hidden behind pad" },
+            { title: "2. Fixation OS", desc: "Left eye maintains straight view" },
+            { title: "3. OD Outward shift", desc: "OD relaxes outwards behind pad" },
+            { title: "4. Uncover check", desc: "Observe return of manifest turn" }
+          ];
+        }
+      }
+
+      flowchart.innerHTML = steps.map((s, idx) => `
+        <div class="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl text-[11px] shadow-xs">
+          <span class="font-extrabold text-amber-600 block">Step ${idx + 1}</span>
+          <p class="text-slate-700 dark:text-slate-300 mt-0.5 leading-tight font-medium">${s.title}</p>
+          <span class="text-[9px] text-slate-500 dark:text-slate-400 font-mono">${s.desc}</span>
+        </div>
+      `).join('');
+    }
+
+    // =========================================================
+    // SYLLABUS LOCAL STORAGE & UTILITY MODULES
+    // =========================================================
+    function syncCompletedSimulators() {
+      const completedList = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      let doneCount = 0;
+      subsimKeys.forEach(k => {
+        const icon = document.getElementById(`icon-${k}`);
+        if (icon) {
+          if (completedList.includes(k) || completedList.includes(`${k}.html`) || completedList.includes(`${k} Simulator`)) {
+            icon.className = "fa-solid fa-circle-check text-emerald-500";
+            doneCount++;
+          } else {
+            icon.className = "fa-solid fa-circle-play text-slate-300 dark:text-slate-700 flex-shrink-0";
+          }
+        }
+      });
+      document.getElementById('progressText').innerText = `${doneCount} / 9 Completed`;
+    }
+
+    function copyToClipboard(id) {
+      const text = document.getElementById(id).innerText;
+      
+      // Standalone iframe friendly copy fallback 
+      const el = document.createElement('textarea');
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+
+      playAudioTone(800, 'sine', 0.1, 0.05);
+    }
+
+    // Modal Trigger Management
+    function openMenuModal(modalId) {
+      playAudioTone(600, 'sine', 0.08, 0.04);
+      document.getElementById(`${modalId}Modal`).classList.remove('hidden');
+    }
+
+    function closeMenuModal(modalId) {
+      playAudioTone(600, 'sine', 0.08, 0.04);
+      document.getElementById(`${modalId}Modal`).classList.add('hidden');
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+      playAudioTone(600, 'sine', 0.08, 0.04);
+    }
+
+    function toggleMobileDropdown() {
+      document.getElementById('mobileDropdown').classList.toggle('hidden');
+    }
+
+    function toggleMute() {
+      hubState.soundMuted = !hubState.soundMuted;
+      const muteIcon = document.getElementById('muteIcon');
+      const muteText = document.getElementById('muteText');
+      if (hubState.soundMuted) {
+        muteIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+        muteText.innerText = "Unmute";
+      } else {
+        muteIcon.className = "fa-solid fa-volume-high text-teal-700 animate-pulse";
+        muteText.innerText = "Mute";
+        playAudioTone(520, 'sine', 0.1, 0.05);
+      }
+    }
+  </script>
+</body>
+</html>

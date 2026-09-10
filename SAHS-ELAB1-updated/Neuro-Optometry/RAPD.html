@@ -1,0 +1,1914 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Clinical RAPD Simulator & Grading Lab</title>
+  
+  <!-- Fonts & Icon Packs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Shared Teaching & Assessment Mastery Engine -->
+  <script src="../assets/sahs-engine.js"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',    /* Slate 900 */
+            secondary: '#0284c7',  /* Sky 600 */
+            accent: '#0d9488',     /* Teal 600 */
+            lightbg: '#f8fafc',    /* Slate 50 */
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Premium elegant scrollbar styles */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #0284c7;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    .dark .glass {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+    }
+    
+    /* Highly responsive cubic-bezier transitions mimicking organic iris response kinetics */
+    .pupil-transition {
+      transition: r 0.38s cubic-bezier(0.25, 1, 0.5, 1), fill-opacity 0.2s ease;
+    }
+    
+    /* Highlight flare styling */
+    .light-flare {
+      animation: flash-glow 2s infinite ease-in-out;
+    }
+    @keyframes flash-glow {
+      0%, 100% { opacity: 0.25; transform: scale(1); }
+      50% { opacity: 0.55; transform: scale(1.08); }
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <script>
+    let audioCtx = null;
+    
+    // High fidelity acoustic synthesizer module for simulated clinical diagnostic feedback
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("Audio Context blocked or unsupported.");
+      }
+    }
+
+    // Dynamic auditory clinical profiles
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click':
+          playAudioTone(600, 'sine', 0.08, 0.04);
+          break;
+        case 'tick':
+          playAudioTone(800, 'triangle', 0.04, 0.01);
+          break;
+        case 'warning':
+          playAudioTone(220, 'sawtooth', 0.25, 0.04);
+          break;
+        case 'success':
+          playAudioTone(520, 'sine', 0.1, 0.05);
+          setTimeout(() => playAudioTone(660, 'sine', 0.15, 0.05), 80);
+          break;
+        case 'blip':
+          playAudioTone(480, 'sine', 0.06, 0.03);
+          break;
+        case 'switch':
+          playAudioTone(380, 'triangle', 0.12, 0.04);
+          break;
+      }
+    }
+  </script>
+
+  <!-- CLINICAL NAVIGATION & HEADER -->
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm transition-opacity duration-300" id="mainHeader">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center text-blue-400 border border-slate-800">
+          <i class="fa-solid fa-eye-low-vision text-sm"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            SAHS-E-LAB | <span class="text-secondary">Clinical RAPD Swing Lab</span>
+            <span class="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900">v1.2</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Relative Afferent Pupillary Defect Simulator</p>
+        </div>
+      </div>
+
+      <!-- Compact desktop navigation row -->
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+          <button onclick="toggleDarkMode()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer" title="Toggle Dark/Light Mode">
+            <i class="fa-solid fa-circle-half-stroke text-sky-600 dark:text-sky-400"></i>
+          </button>
+        </div>
+
+        <!-- Mobile utility dropdown menu -->
+        <div class="relative md:hidden">
+          <button onclick="toggleMobileDropdown()" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </button>
+          <div id="mobileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 py-2">
+            <button onclick="openMenuModal('about'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-info text-secondary w-4 text-center"></i> About Us
+            </button>
+            <button onclick="toggleMute(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i id="mobileMuteIcon" class="fa-solid fa-volume-high text-teal-600 w-4 text-center"></i> <span id="mobileMuteText">Mute Sound</span>
+            </button>
+            <button onclick="openMenuModal('reference'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-book-bookmark text-amber-500 w-4 text-center"></i> Reference
+            </button>
+            <button onclick="toggleDarkMode(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-half-stroke text-sky-600 w-4 text-center"></i> Theme Toggle
+            </button>
+          </div>
+        </div>
+
+        <!-- Cumulative Mastery Badge (updates as items are answered correctly) -->
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Mastery: 0%
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- MASTER WORKSPACE CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-12 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-500" id="workspaceContainer">
+    
+    <!-- LEFT PANEL: Dynamic Clinical Screen & Quantitative Diagnostic Gauges -->
+    <section class="lg:col-span-7 space-y-4 transition-all duration-500" id="simulationViewPort">
+      
+      <!-- Interactive SVG Pupil Examination Screen -->
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm relative transition-all duration-500" id="eyeViewportCard">
+        <div class="flex justify-between items-center" id="viewportCardHeader">
+          <span class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">Swinging Flashlight Examination Screen</span>
+          <span class="text-[10px] font-mono text-secondary px-2.5 py-1 bg-sky-50 dark:bg-sky-950/40 rounded border border-sky-100 dark:border-sky-900/60 font-bold" id="currentLightLabel">Light: Ambient Only</span>
+        </div>
+
+        <!-- High-fidelity Pupil rendering layout (Centered) -->
+        <div class="bg-slate-950 rounded-2xl relative flex flex-col justify-between items-stretch h-[280px] md:h-[320px] overflow-hidden select-none transition-all duration-500 shadow-inner" id="pupilsScreen">
+          
+          <!-- Virtual Physical Neutral Density Filter Visual Layer (Left OS Eye is Healthy - NDF target) -->
+          <div id="leftEyeNdFilterOverlay" class="absolute right-0 top-0 bottom-0 w-1/2 bg-black/0 mix-blend-multiply pointer-events-none transition-all duration-300 z-20 flex items-center justify-center">
+            <span id="ndFilterOverlayLabel" class="text-[10px] font-black text-purple-200 tracking-widest drop-shadow-md select-none opacity-0 transition-opacity duration-300"></span>
+          </div>
+
+          <!-- Dynamic Flashlight Beam Nodes -->
+          <div id="flashlightBeamLeft" class="absolute w-56 h-56 bg-gradient-to-r from-yellow-300/35 to-transparent rounded-full blur-xl pointer-events-none transition-all duration-150 transform -translate-x-1/2 -translate-y-1/2 opacity-0 z-20"></div>
+          <div id="flashlightBeamRight" class="absolute w-56 h-56 bg-gradient-to-r from-yellow-300/35 to-transparent rounded-full blur-xl pointer-events-none transition-all duration-150 transform -translate-x-1/2 -translate-y-1/2 opacity-0 z-20"></div>
+
+          <!-- Centered physical eyes -->
+          <div class="flex-1 flex justify-around items-center px-4">
+            
+            <!-- Patient's Right Eye (OD) - The primary modeled affected pathway side for RAPD grading -->
+            <div class="flex flex-col items-center space-y-2 z-10 relative transition-transform duration-500" id="rightEyeWrapper">
+              <span class="text-[9px] font-extrabold text-slate-400 tracking-wider" id="rightEyeLabel">PATIENT RIGHT (OD) <span class="text-rose-500 font-black">• Affected Side</span></span>
+              <svg class="w-[140px] h-[90px] sm:w-[210px] sm:h-[130px] transition-all duration-500" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+                <!-- Sclera -->
+                <path d="M 10 60 Q 100 -5 190 60 Q 100 125 10 60 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" class="dark:stroke-slate-800"/>
+                <!-- Iris Radial Gradient -->
+                <circle cx="100" cy="60" r="38" fill="url(#irisGradOD)"/>
+                <defs>
+                  <radialGradient id="irisGradOD">
+                    <stop offset="0%" stop-color="#3b82f6"/>
+                    <stop offset="70%" stop-color="#1d4ed8"/>
+                    <stop offset="100%" stop-color="#0f172a"/>
+                  </radialGradient>
+                </defs>
+                <!-- Dynamic Pupil -->
+                <circle id="rightPupil" class="pupil-transition" cx="100" cy="60" r="16" fill="#090d16"/>
+                <!-- Reflection Flares -->
+                <circle cx="88" cy="48" r="5" fill="#ffffff" opacity="0.7"/>
+                <circle cx="112" cy="72" r="2.5" fill="#ffffff" opacity="0.4"/>
+                <!-- Active Beam Light Tracking Glow Ring -->
+                <circle id="rightBeamRing" cx="100" cy="60" r="32" stroke="#eab308" stroke-width="0" fill="none" opacity="0.75" class="transition-all duration-200 light-flare"/>
+              </svg>
+              <!-- Realtime Millimeter Indicator Badge -->
+              <span id="odMmBadge" class="font-mono text-[10px] font-bold text-slate-300 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded shadow">7.5 mm</span>
+            </div>
+
+            <!-- Patient's Left Eye (OS) - Symmetrical normal pathway where balancing ND filters are placed -->
+            <div class="flex flex-col items-center space-y-2 z-10 relative transition-transform duration-500" id="leftEyeWrapper">
+              <span class="text-[9px] font-extrabold text-slate-400 tracking-wider" id="leftEyeLabel">PATIENT LEFT (OS) <span class="text-emerald-500 font-black">• Healthy Side</span></span>
+              <svg class="w-[140px] h-[90px] sm:w-[210px] sm:h-[130px] transition-all duration-500" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+                <!-- Sclera -->
+                <path d="M 10 60 Q 100 -5 190 60 Q 100 125 10 60 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" class="dark:stroke-slate-800"/>
+                <!-- Iris Radial Gradient -->
+                <circle cx="100" cy="60" r="38" fill="url(#irisGradOS)"/>
+                <defs>
+                  <radialGradient id="irisGradOS">
+                    <stop offset="0%" stop-color="#3b82f6"/>
+                    <stop offset="70%" stop-color="#1d4ed8"/>
+                    <stop offset="100%" stop-color="#0f172a"/>
+                  </radialGradient>
+                </defs>
+                <!-- Dynamic Pupil -->
+                <circle id="leftPupil" class="pupil-transition" cx="100" cy="60" r="16" fill="#090d16"/>
+                <!-- Reflection Flares -->
+                <circle cx="88" cy="48" r="5" fill="#ffffff" opacity="0.7"/>
+                <circle cx="112" cy="72" r="2.5" fill="#ffffff" opacity="0.4"/>
+                <!-- Active Beam Light Tracking Glow Ring -->
+                <circle id="leftBeamRing" cx="100" cy="60" r="32" stroke="#eab308" stroke-width="0" fill="none" opacity="0.75" class="transition-all duration-200 light-flare"/>
+              </svg>
+              <!-- Realtime Millimeter Indicator Badge -->
+              <span id="osMmBadge" class="font-mono text-[10px] font-bold text-slate-300 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded shadow">7.5 mm</span>
+            </div>
+
+          </div>
+
+          <!-- Live dynamic clinical feed commentary (Removed in Assessment Mode) -->
+          <div class="bg-slate-900 border-t border-slate-900 p-2.5 px-4 z-10" id="liveCommentaryBar">
+            <div class="flex justify-center items-center gap-2 max-w-lg mx-auto">
+              <span class="text-[8px] bg-sky-950 text-secondary border border-sky-800 font-bold tracking-widest uppercase px-1.5 py-0.5 rounded flex-shrink-0 animate-pulse">Live Feed</span>
+              <p id="liveCommentaryText" class="text-[10px] text-slate-300 font-mono truncate font-semibold text-center flex-1">Awaiting diagnostic light stimulation...</p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Responsive Touch Control Shortcuts -->
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1" id="viewportCardFooter">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-hand-pointer text-secondary animate-bounce"></i>
+            <span>Touch direct buttons or press <strong>Left/Right</strong> arrow keys to swing.</span>
+          </div>
+          <span class="text-[9px] font-semibold text-slate-400 dark:text-slate-500 italic">Press Escape or Space to turn light OFF.</span>
+        </div>
+      </div>
+
+      <!-- Quantitative Symmetrical Pupil Comparison Bars (Hidden in Assessment Mode) -->
+      <div id="signalMonitorCard" class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+        <h4 class="text-xs uppercase font-extrabold text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+          <i class="fa-solid fa-chart-bar text-secondary"></i> Quantitative Pupil Diameter Gauges
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Right Pupil Meter -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
+              <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span> Right Pupil Size (OD)</span>
+              <span id="odMeterReadout" class="font-mono text-secondary">7.5 mm</span>
+            </div>
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3.5 border border-slate-200 dark:border-slate-700 relative overflow-hidden flex items-center">
+              <div class="absolute inset-0 flex justify-between px-2 text-[8px] font-mono font-bold text-slate-400 pointer-events-none leading-none items-center">
+                <span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>
+              </div>
+              <div id="odMeterBar" class="bg-blue-600 h-full w-[91.6%] transition-all duration-300"></div>
+            </div>
+          </div>
+          <!-- Left Pupil Meter -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
+              <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span> Left Pupil Size (OS)</span>
+              <span id="osMeterReadout" class="font-mono text-emerald-600 dark:text-emerald-400">7.5 mm</span>
+            </div>
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3.5 border border-slate-200 dark:border-slate-700 relative overflow-hidden flex items-center">
+              <div class="absolute inset-0 flex justify-between px-2 text-[8px] font-mono font-bold text-slate-400 pointer-events-none leading-none items-center">
+                <span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>
+              </div>
+              <div id="osMeterBar" class="bg-emerald-600 h-full w-[91.6%] transition-all duration-300"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagnostic Assistant Checklist (Hidden in Assessment Mode) -->
+      <div id="clinicalDiagnosticsCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+        <div>
+          <h4 class="text-xs uppercase font-extrabold text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+            <i class="fa-solid fa-clipboard-check text-secondary"></i> Clinical Diagnostic Assistant Checklist
+          </h4>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+            Trace pupil sizes, latency, and balance characteristics under illumination swings. Select checklist insights to formulate your diagnosis below.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition">
+            <input type="checkbox" onclick="soundFeedback('blip')" class="w-4 h-4 text-secondary rounded border-slate-300 dark:border-slate-700 accent-secondary">
+            <div>
+              <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200">Anisocoria Present</p>
+              <p class="text-[9px] text-slate-400 dark:text-slate-500">Unequal resting pupil diameters in light or dark rooms</p>
+            </div>
+          </label>
+          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition">
+            <input type="checkbox" onclick="soundFeedback('blip')" class="w-4 h-4 text-secondary rounded border-slate-300 dark:border-slate-700 accent-secondary">
+            <div>
+              <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200">Bilateral Equal Response</p>
+              <p class="text-[9px] text-slate-400 dark:text-slate-500">No relative differences or unilateral signal blocks</p>
+            </div>
+          </label>
+          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition">
+            <input type="checkbox" onclick="soundFeedback('blip')" class="w-4 h-4 text-secondary rounded border-slate-300 dark:border-slate-700 accent-secondary">
+            <div>
+              <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200">Paradoxical Dilation (Escape)</p>
+              <p class="text-[9px] text-slate-400 dark:text-slate-500">Direct swing to affected side causes pupil dilation</p>
+            </div>
+          </label>
+          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition">
+            <input type="checkbox" onclick="soundFeedback('blip')" class="w-4 h-4 text-secondary rounded border-slate-300 dark:border-slate-700 accent-secondary">
+            <div>
+              <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200">Light-Near Dissociation</p>
+              <p class="text-[9px] text-slate-400 dark:text-slate-500">Normal accommodation reflex with absent light reflex</p>
+            </div>
+          </label>
+        </div>
+
+        <div class="p-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-2xl border border-indigo-100/40 dark:border-indigo-900/30 text-slate-700 dark:text-slate-300 space-y-1">
+          <span class="text-[9px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+            <i class="fa-solid fa-key"></i> Diagnostic Reference Rules
+          </span>
+          <p class="text-[10px] leading-relaxed">
+            • <strong>Marcus Gunn (RAPD)</strong>: Intact consensual/resting loops. Swings onto the abnormal side provoke paradoxical escape dilation.<br>
+            • <strong>CN III Palsy</strong>: Efferent parasympathetic block yields a fixed dilated pupil unresponsive to light or consensual cues.<br>
+            • <strong>Horner's</strong>: Pronounced anisocoria in miosis (dark room) highlighting a prominent dilation lag.<br>
+            • <strong>Argyll Robertson</strong>: Classic small, irregular bilateral pupils with Light-Near Dissociation.
+          </p>
+        </div>
+      </div>
+
+      <!-- DYNAMIC TEST ASSESSMENT CONSOLE (Visible ONLY in Assessment Mode) -->
+      <div id="testConsoleContainer" class="hidden bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-md">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 dark:border-slate-900 pb-4">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Clinical Diagnosis Assessment Formulation</h3>
+            <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1">Examine pupillary sweeps, apply diagnostic filters, and state your finding.</p>
+          </div>
+          <span class="text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700" id="liveScoreCard">Score: Unsubmitted</span>
+        </div>
+
+        <div class="space-y-4">
+          
+          <!-- Symmetrical Flashlight Controls (Test Mode Layout) -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 mr-2 tracking-wider">Stimulate:</span>
+            <button onclick="setLightMode('off')" id="btnLightTest-off" class="px-3 py-1.5 text-[10px] font-extrabold uppercase rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer">Off</button>
+            <button onclick="setLightMode('right')" id="btnLightTest-right" class="px-3 py-1.5 text-[10px] font-extrabold uppercase rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer">Right Eye (OD)</button>
+            <button onclick="setLightMode('left')" id="btnLightTest-left" class="px-3 py-1.5 text-[10px] font-extrabold uppercase rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer">Left Eye (OS)</button>
+            <button onclick="setLightMode('swing')" id="btnLightTest-swing" class="px-3.5 py-1.5 text-[10px] font-extrabold uppercase rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer">Auto Swing</button>
+            <button id="nearTargetBtnTest" onclick="toggleNearTarget()" class="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-[10px] font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer">
+              Near Focus: OFF
+            </button>
+          </div>
+
+          <!-- Diagnostic Selection Dropdown -->
+          <div class="space-y-2">
+            <label class="text-[10px] uppercase font-black text-slate-900 dark:text-white tracking-widest">Select Clinical Profile (50% Marks)</label>
+            <select id="userDiagnosisSelect" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary shadow-sm">
+              <option value="">-- Click to Formulate Diagnosis --</option>
+              <option value="normal">Normal Pupillary Response (Grade 0)</option>
+              <option value="right_rapd_grade1">Right Eye: Mild Afferent Defect (RAPD Grade 1+)</option>
+              <option value="right_rapd_grade2">Right Eye: Moderate Afferent Defect (RAPD Grade 2+)</option>
+              <option value="right_rapd_grade3">Right Eye: Severe Afferent Defect (RAPD Grade 3+)</option>
+              <option value="right_rapd_grade4">Right Eye: Advanced Afferent Defect (RAPD Grade 4+)</option>
+              <option value="right_rapd_grade5">Right Eye: Blind Eye / NLP (RAPD Grade 5+)</option>
+              <option value="left_cn3_palsy">Left Eye: Cranial Nerve III Palsy (Efferent Defect)</option>
+              <option value="horners_left">Left Eye: Horner's Syndrome (Sympathetic Defect)</option>
+              <option value="argyll_robertson">Bilateral: Argyll Robertson Pupils (Light-Near Dissociation)</option>
+              <option value="adies_left">Left Eye: Adie's Tonic Pupil (Sluggish constriction)</option>
+            </select>
+            <p id="diagnosisFeedback" class="text-[11px] font-bold hidden"></p>
+          </div>
+
+          <!-- Dynamic Assessment MCQ Quiz Section -->
+          <div class="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800" id="testMcqSuite">
+            <p class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">Step 2: Pathway Mechanics Quiz (50% Marks)</p>
+            <div id="dynamicTestMcqs" class="space-y-4"></div>
+          </div>
+
+        </div>
+
+        <div class="pt-4 border-t border-slate-200 dark:border-slate-800">
+          <button onclick="submitTestEvaluation()" id="btnSubmitTest" class="w-full py-3 bg-secondary hover:bg-sky-700 text-white font-extrabold rounded-xl text-xs transition shadow-md cursor-pointer">
+            Submit Assessment Review
+          </button>
+        </div>
+      </div>
+
+      <!-- Report Card Badge & Mastery Retest Loop -->
+      <div id="finalScoreCard" class="hidden p-5 rounded-2xl text-center space-y-4 shadow-sm border border-slate-200 dark:border-slate-800">
+        <div class="space-y-1">
+          <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText">Status: Unsubmitted</p>
+          <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed" id="finalStatusDescription">Every scenario and question you answer correctly is banked for good — wrong ones simply come back for another attempt.</p>
+        </div>
+
+        <!-- Cumulative mastery bar: does not reset on a bad round, only grows -->
+        <div class="space-y-1.5 text-left">
+          <div class="flex justify-between text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span>Cumulative Mastery (this simulator)</span>
+            <span id="masteryPercentLabel" class="font-mono text-secondary">0%</span>
+          </div>
+          <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-300 dark:border-slate-700">
+            <div id="masteryBarFill" class="bg-gradient-to-r from-secondary to-emerald-500 h-full w-[0%] transition-all duration-700 ease-out"></div>
+          </div>
+        </div>
+
+        <div id="practiceRedirectionBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+          <p class="text-[11px] text-red-600 dark:text-red-400 font-extrabold leading-normal" id="weakAreasSummaryText">
+            Some scenarios/questions are still unmastered. They'll be prioritized in your next Assess round.
+          </p>
+          <button onclick="changeMode('test')" class="w-full py-2.5 bg-secondary hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer">
+            <i class="fa-solid fa-rotate-right mr-1"></i> Retest Weak Areas Now
+          </button>
+          <button onclick="changeMode('teach')" class="w-full py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition shadow-sm cursor-pointer">
+            <i class="fa-solid fa-graduation-cap mr-1"></i> Review Teach Deck First
+          </button>
+        </div>
+
+        <div id="masteryCompleteBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800">
+          <p class="text-xs font-extrabold text-emerald-600 dark:text-emerald-400"><i class="fa-solid fa-trophy mr-1"></i> 100% Mastered — every scenario and question in this simulator has been answered correctly at least once.</p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT PANEL: Controllers, Gradings, and Symmetrical Filters (Practice Mode Only) -->
+    <section class="lg:col-span-5 space-y-4 transition-all duration-500" id="controlsPanel">
+      
+      <!-- MODE TOGGLE CONTROLLER: Teach -> Practice -> Assess -->
+      <div class="bg-white dark:bg-slate-900 p-2 sm:p-3 rounded-3xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-sm">
+        <button onclick="changeMode('teach')" id="btnMode-teach" class="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-sm cursor-pointer">
+          <i class="fa-solid fa-graduation-cap"></i> <span class="hidden sm:inline">Teach</span>
+        </button>
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm cursor-pointer">
+          <i class="fa-solid fa-hand-pointer"></i> <span class="hidden sm:inline">Practice</span>
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm cursor-pointer">
+          <i class="fa-solid fa-vial"></i> <span class="hidden sm:inline">Assess</span>
+        </button>
+      </div>
+
+      <!-- CLINICAL CATEGORY SWITCHER (RAPD Defects vs Neuro-Syndromes) -->
+      <div class="bg-white dark:bg-slate-900 p-3 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-2">
+        <label class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">Clinical Category Filter</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="cat-btn-rapd" onclick="setCategory('rapd')" class="py-2.5 px-3 text-xs font-bold rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-eye"></i> RAPD Grading
+          </button>
+          <button id="cat-btn-syndromes" onclick="setCategory('syndromes')" class="py-2.5 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-brain"></i> Syndromes
+          </button>
+        </div>
+      </div>
+
+      <!-- PRACTICE STIMULI HUB -->
+      <div class="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-sm" id="interactiveControlsCard">
+        <div>
+          <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-secondary"></i> Practice Controller Hub
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Model custom neuro-ocular conditions and control clinical illumination.</p>
+        </div>
+
+        <!-- Pathology Selection Dropdown -->
+        <div class="space-y-2">
+          <label class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">Ocular Pathology Profile</label>
+          <select id="pathologySelect" onchange="updatePathology()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 font-bold focus:outline-none focus:border-secondary shadow-sm">
+            <!-- Dynamic Category Options Rendered via setCategory() -->
+          </select>
+        </div>
+
+        <!-- Manual swing triggers -->
+        <div class="space-y-3">
+          <label class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">Flashlight Direct Position</label>
+          <div class="grid grid-cols-4 gap-2" id="flashlightButtonGroup">
+            <button onclick="setLightMode('off')" id="btnLight-off" class="py-2 px-1 text-[10px] font-extrabold uppercase rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-600 dark:text-slate-300 transition shadow-sm cursor-pointer">Off</button>
+            <button onclick="setLightMode('right')" id="btnLight-right" class="py-2 px-1 text-[10px] font-extrabold uppercase rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-sky-50 text-slate-600 dark:text-slate-300 transition shadow-sm cursor-pointer">Right OD</button>
+            <button onclick="setLightMode('left')" id="btnLight-left" class="py-2 px-1 text-[10px] font-extrabold uppercase rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-sky-50 text-slate-600 dark:text-slate-300 transition shadow-sm cursor-pointer">Left OS</button>
+            <button onclick="setLightMode('swing')" id="btnLight-swing" class="py-2 px-1 text-[10px] font-extrabold uppercase rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/35 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition shadow-sm cursor-pointer">Auto Swing</button>
+          </div>
+        </div>
+
+        <!-- Symmetrical Dark Filter Panel (ND Filter Calibration over OS healthy eye) -->
+        <div id="ndFilterCard" class="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex justify-between items-center text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">
+            <span>Symmetrical Dark Neutralizing Filter (Left OS)</span>
+            <span id="ndFilterStatusLabel" class="font-mono text-purple-600 dark:text-purple-400 font-black">0.0 Log</span>
+          </div>
+          <div class="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+            <button onclick="selectNDFilter(0.0)" id="ndBtn-0" class="nd-filter-btn py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 hover:border-purple-300 text-slate-700 dark:text-slate-300 transition-all cursor-pointer">0.0</button>
+            <button onclick="selectNDFilter(0.3)" id="ndBtn-03" class="nd-filter-btn py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 hover:border-purple-300 text-slate-700 dark:text-slate-300 transition-all cursor-pointer">0.3</button>
+            <button onclick="selectNDFilter(0.6)" id="ndBtn-06" class="nd-filter-btn py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 hover:border-purple-300 text-slate-700 dark:text-slate-300 transition-all cursor-pointer">0.6</button>
+            <button onclick="selectNDFilter(0.9)" id="ndBtn-09" class="nd-filter-btn py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 hover:border-purple-300 text-slate-700 dark:text-slate-300 transition-all cursor-pointer">0.9</button>
+            <button onclick="selectNDFilter(1.2)" id="ndBtn-12" class="nd-filter-btn py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 hover:border-purple-300 text-slate-700 dark:text-slate-300 transition-all cursor-pointer">1.2</button>
+            <button onclick="selectNDFilter(1.5)" id="ndBtn-15" class="nd-filter-btn py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 hover:border-purple-300 text-slate-700 dark:text-slate-300 transition-all cursor-pointer">1.5</button>
+            <button onclick="selectNDFilter(1.8)" id="ndBtn-18" class="nd-filter-btn py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 hover:border-purple-300 text-slate-700 dark:text-slate-300 transition-all cursor-pointer">1.8</button>
+            <button onclick="selectNDFilter(2.0)" id="ndBtn-20" class="nd-filter-btn py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 hover:border-purple-300 text-slate-700 dark:text-slate-300 transition-all cursor-pointer">2.0</button>
+          </div>
+          
+          <!-- Neutral Density Calibration Live Feedback Box -->
+          <div id="calibrationFeedbackBox" class="p-3 bg-purple-50/50 dark:bg-purple-950/25 border border-purple-100/50 dark:border-purple-900 rounded-xl space-y-1.5">
+            <span class="text-[9px] uppercase font-extrabold text-purple-700 dark:text-purple-400 tracking-wider flex items-center gap-1">
+              <i class="fa-solid fa-scale-balanced animate-pulse"></i> Symmetrical ND Balance System
+            </span>
+            <p id="calibrationFeedbackText" class="text-[10px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+              Balanced. Select an ND Filter value over Left OS eye to neutralize anisocoria sweeps.
+            </p>
+            
+            <!-- Special log paradox dynamic details -->
+            <div id="ndLogParadoxBlock" class="hidden mt-1 p-2.5 bg-purple-100 dark:bg-purple-900/60 border border-purple-200 dark:border-purple-900 rounded-lg text-[9px] text-purple-950 dark:text-purple-300 leading-normal font-bold">
+              <i class="fa-solid fa-microscope text-purple-600"></i> <span class="uppercase tracking-wide">Grade 5 vs 2.0 Log Paradox:</span> A complete sensory blockage (Grade 5) transmits exactly 0% signal. Because the Left OS dimmed with a 2.0 Log filter still transmits 1% light, swinging to Right OD drops perception to 0% - provoking a dilation escape wave. Hence, Grade 5 is unneutralizable!
+            </div>
+          </div>
+        </div>
+
+        <!-- Ambient illumination slider and convergence accommodation check -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <span>Ambient Lighting</span>
+              <span id="ambientValLabel" class="font-mono text-slate-600 dark:text-slate-300">Dim Room</span>
+            </div>
+            <input type="range" id="ambientSlider" min="1" max="3" value="1" oninput="updateAmbient()" class="w-full accent-secondary">
+          </div>
+
+          <div class="space-y-1.5 flex flex-col justify-end">
+            <button id="nearTargetBtn" onclick="toggleNearTarget()" class="w-full py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition shadow-sm cursor-pointer">
+              <i class="fa-solid fa-eye-dropper text-secondary mr-1"></i> Near Accommodation: OFF
+            </button>
+          </div>
+        </div>
+
+        <!-- Illumination Helper Panel -->
+        <div class="p-3 bg-sky-50 dark:bg-sky-950/25 border border-sky-100 dark:border-sky-900 rounded-2xl space-y-2">
+          <span class="text-[9px] uppercase font-extrabold text-secondary tracking-widest block"><i class="fa-solid fa-circle-question"></i> Clinical Room Illumination Help</span>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+            Standard pupillary light evaluations require a **Dim Room (Level 1)** to maximize the dynamic range of pupil constriction. In contrast, examining for **Horner's Syndrome** demands miosis measurements under both **Dim (exposes dilation lag)** and **Bright (minimizes anisocoria)** illumination levels. Use the slider above to toggle ambient light environments.
+          </p>
+        </div>
+      </div>
+
+      <!-- LEARN MODE: RAPD DETAILED SYLLABUS DECK -->
+      <div id="mode-tutor-container" class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div class="flex justify-between items-center mb-1">
+          <h2 class="font-extrabold text-slate-950 dark:text-white text-xs tracking-tight uppercase">Pupil Grading Syllabus</h2>
+          <span class="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Reference Scale</span>
+        </div>
+
+        <div class="flex flex-col gap-2.5 max-h-[400px] overflow-y-auto pr-1">
+          <!-- Grade 0 -->
+          <div onclick="selectTutorGrade(0)" id="tutor-grade-0" class="border-2 border-blue-500 bg-blue-50/40 dark:bg-blue-950/20 p-3 rounded-2xl cursor-pointer hover:bg-blue-50/20 transition-all">
+            <div class="flex justify-between items-center mb-0.5">
+              <span class="text-[8px] sm:text-[9px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">Grade 0: Normal Eye</span>
+              <span class="text-[9px] font-mono font-bold text-slate-400">0.0 Log Filter Balance</span>
+            </div>
+            <h4 class="text-[11px] font-extrabold text-slate-900 dark:text-slate-100">Equal Squeezing (Constriction to 2.5 mm)</h4>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Both pupils squeeze down perfectly to **2.5 mm** under direct or shared light. Zero expansion escape or delay.</p>
+          </div>
+
+          <!-- Grade 1 -->
+          <div onclick="selectTutorGrade(1)" id="tutor-grade-1" class="border border-slate-200 dark:border-slate-800 p-3 rounded-2xl cursor-pointer hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all">
+            <div class="flex justify-between items-center mb-0.5">
+              <span class="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Grade 1+: Mild Defect</span>
+              <span class="text-[9px] font-mono font-bold text-slate-400">0.3 Log Filter Balance</span>
+            </div>
+            <h4 class="text-[11px] font-extrabold text-slate-900 dark:text-slate-100">Weak Shrinking & Early Expansion (Escape)</h4>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Short initial shrinking down to **3.5 mm**, quickly followed by early "escape" expanding back to **5.0 mm**. Balances symmetrically with a **0.3 Log** filter.</p>
+          </div>
+
+          <!-- Grade 2 -->
+          <div onclick="selectTutorGrade(2)" id="tutor-grade-2" class="border border-slate-200 dark:border-slate-800 p-3 rounded-2xl cursor-pointer hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all">
+            <div class="flex justify-between items-center mb-0.5">
+              <span class="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Grade 2+: Moderate Defect</span>
+              <span class="text-[9px] font-mono font-bold text-slate-400">0.6 - 0.9 Log Filter Balance</span>
+            </div>
+            <h4 class="text-[11px] font-extrabold text-slate-900 dark:text-slate-100">No Initial Movement (Stall) & Late Expansion</h4>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Pupils show no response (stall at **5.5 mm**), holding position before expanding wider into a **6.5 mm** state. Balances with a **0.6 to 0.9 Log** filter.</p>
+          </div>
+
+          <!-- Grade 3 -->
+          <div onclick="selectTutorGrade(3)" id="tutor-grade-3" class="border border-slate-200 dark:border-slate-800 p-3 rounded-2xl cursor-pointer hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all">
+            <div class="flex justify-between items-center mb-0.5">
+              <span class="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Grade 3+: Severe Defect</span>
+              <span class="text-[9px] font-mono font-bold text-slate-400">1.2 - 1.5 Log Filter Balance</span>
+            </div>
+            <h4 class="text-[11px] font-extrabold text-slate-900 dark:text-slate-100">Immediate Direct Expansion (Dilation)</h4>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Pupils expand immediately to **6.8 mm** when light is swung to OD. Balances with a **1.2 to 1.5 Log** filter.</p>
+          </div>
+
+          <!-- Grade 4 -->
+          <div onclick="selectTutorGrade(4)" id="tutor-grade-4" class="border border-slate-200 dark:border-slate-800 p-3 rounded-2xl cursor-pointer hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all">
+            <div class="flex justify-between items-center mb-0.5">
+              <span class="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Grade 4+: Advanced Defect</span>
+              <span class="text-[9px] font-mono font-bold text-slate-400">1.8 - 2.0 Log Filter Balance</span>
+            </div>
+            <h4 class="text-[11px] font-extrabold text-slate-900 dark:text-slate-100">Wide Expansion with a Minor Squeeze Wave</h4>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Immediate expansion to **7.0 mm** with a subtle secondary squeeze wave down to **6.3 mm**. Balances with a **1.8 to 2.0 Log** filter.</p>
+          </div>
+
+          <!-- Grade 5 -->
+          <div onclick="selectTutorGrade(5)" id="tutor-grade-5" class="border border-slate-200 dark:border-slate-800 p-3 rounded-2xl cursor-pointer hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all">
+            <div class="flex justify-between items-center mb-0.5">
+              <span class="text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest">Grade 5+: Blind Eye (NLP)</span>
+              <span class="text-[9px] font-mono font-bold text-slate-400">Unbalanced (Infinity Log)</span>
+            </div>
+            <h4 class="text-[11px] font-extrabold text-slate-900 dark:text-slate-100">Zero Direct Response / Fully Expanded</h4>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Absolute sensory blockage. Direct light feels exactly like darkness. Pupils stay fully expanded at **7.5 mm**.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRACTICE MODE: RAPD RANDOMIZED ASSESSMENT GUESS PANEL -->
+      <div id="mode-training-container" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="font-extrabold text-slate-950 dark:text-white text-xs tracking-tight uppercase">Clinical Assessment Board</h2>
+          <span class="bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Practice Exam</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-900 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 text-center font-bold">
+          <div>
+            <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Correct Cases</span>
+            <div id="stats-correct" class="text-lg font-black text-slate-800 dark:text-slate-100 font-mono mt-0.5">0</div>
+          </div>
+          <div class="border-l border-slate-200 dark:border-slate-700">
+            <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Total Swings</span>
+            <div id="stats-total" class="text-lg font-black text-slate-800 dark:text-slate-100 font-mono mt-0.5">0</div>
+          </div>
+        </div>
+
+        <div class="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 p-4 rounded-2xl text-center">
+          <p class="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+            A virtual patient has been assigned a randomized clinical RAPD grade (Grades 1 to 5). Perform the swinging flashlight test and **use the Symmetrical Dark Filter panel** to help balance the reactions before declaring your diagnosis!
+          </p>
+          <button onclick="generateRandomScenario()" class="mt-3 px-4 py-2 bg-slate-950 hover:bg-slate-800 text-white text-[10px] font-bold rounded-lg shadow-sm active:scale-95 transition-all cursor-pointer">
+            🔄 Get Next Patient
+          </button>
+        </div>
+
+        <div class="space-y-2">
+          <label class="block text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center">Select Patient's Hidden Grade</label>
+          <div class="grid grid-cols-5 gap-1.5">
+            <button onclick="submitDiagnosis(1)" class="guess-btn py-3 border border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-extrabold text-slate-800 dark:text-slate-200 transition-all text-xs active:scale-95 bg-white dark:bg-slate-900 cursor-pointer">1+</button>
+            <button onclick="submitDiagnosis(2)" class="guess-btn py-3 border border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-extrabold text-slate-800 dark:text-slate-200 transition-all text-xs active:scale-95 bg-white dark:bg-slate-900 cursor-pointer">2+</button>
+            <button onclick="submitDiagnosis(3)" class="guess-btn py-3 border border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-extrabold text-slate-800 dark:text-slate-200 transition-all text-xs active:scale-95 bg-white dark:bg-slate-900 cursor-pointer">3+</button>
+            <button onclick="submitDiagnosis(4)" class="guess-btn py-3 border border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-extrabold text-slate-800 dark:text-slate-200 transition-all text-xs active:scale-95 bg-white dark:bg-slate-900 cursor-pointer">4+</button>
+            <button onclick="submitDiagnosis(5)" class="guess-btn py-3 border border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-extrabold text-slate-800 dark:text-slate-200 transition-all text-xs active:scale-95 bg-white dark:bg-slate-900 cursor-pointer">5+</button>
+          </div>
+        </div>
+
+        <div id="feedback-panel" class="hidden bg-slate-50 dark:bg-slate-900 p-4 border border-slate-100 dark:border-slate-800 rounded-xl text-xs space-y-2 leading-relaxed">
+          <p id="feedback-title" class="font-extrabold text-slate-900 dark:text-slate-100"></p>
+          <p id="feedback-explanation" class="text-slate-600 dark:text-slate-400 font-medium"></p>
+        </div>
+      </div>
+
+      <!-- CLINICAL PEARLS & REFERENCE DOCUMENTATION -->
+      <div class="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm" id="pearlsContainerCard">
+        <div>
+          <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-book-open text-teal-600"></i> Clinical Pearls &amp; Grading Syllabus
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">AAO, AOA, and academic pupillary diagnostic criteria.</p>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <select id="pearlSelector" onchange="displayClinicalPearl()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-700 dark:text-slate-200 font-semibold focus:outline-none shadow-sm">
+            <option value="rapd">Relative Afferent Pupillary Defect (RAPD)</option>
+            <option value="grade1">Grade 1+: Mild Defect (0.3 Log Filter Balance)</option>
+            <option value="grade2">Grade 2+: Moderate Defect (0.6-0.9 Log Filter Balance)</option>
+            <option value="grade3">Grade 3+: Severe Defect (1.2-1.5 Log Filter Balance)</option>
+            <option value="grade4">Grade 4+: Advanced Defect (1.8-2.0 Log Filter Balance)</option>
+            <option value="grade5">Grade 5+: Blind Eye / NLP (Unbalanced Paradox)</option>
+            <option value="horners">Horner's Syndrome (Sympathetic Paresis)</option>
+            <option value="argyll">Argyll Robertson Pupil (Neurosyphilis Landmark)</option>
+            <option value="adies">Adie's Tonic Pupil (Postganglionic Parasympathetic)</option>
+            <option value="cn3palsy">Cranial Nerve III Palsy (Efferent Defect)</option>
+          </select>
+
+          <!-- Pearl Detail Field -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800" id="pearlDetailContainer">
+            <p class="font-bold text-slate-900 dark:text-white text-xs" id="pearlTitle">Relative Afferent Pupillary Defect (RAPD)</p>
+            <p class="text-slate-600 dark:text-slate-400 text-[11px] mt-1.5 leading-relaxed font-medium" id="pearlDesc">
+              Identified via the **Swinging Flashlight Test**. Light shined in the diseased eye yields less constriction (paradoxical dilation) because the brain perceives a net decrease in afferent input compared to stimulation of the normal fellow eye.
+            </p>
+            <div class="mt-3 flex items-center gap-2">
+              <span class="text-[9px] font-bold bg-sky-50 dark:bg-sky-950 text-secondary border border-sky-100 dark:border-sky-900 px-2 py-0.5 rounded">EyeWiki Reference</span>
+              <a href="https://www.youtube.com/results?search_query=swinging+flashlight+test+optometry" target="_blank" class="text-[9px] font-bold text-red-600 hover:underline flex items-center gap-1">
+                <i class="fa-brands fa-youtube animate-pulse"></i> Watch Video Exam
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ACADEMIC FOOTER -->
+  <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 tracking-wide mt-auto">
+    <p>Quantitative Pupil Calibration Engine • Symmetrical Pupil Movements Map</p>
+    <p class="text-slate-500 dark:text-slate-400 mt-1">Copyright © SAHS Optometry 2026</p>
+  </footer>
+
+  <!-- MODALS CONTAINER -->
+  <!-- About Us Modal -->
+  <div id="aboutModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-graduation-cap text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">About SAHS-E-LAB</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Vinayaka Mission's Research Foundation</p>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        The <strong>SAHS-E-LAB Optometry Portal</strong> is designed to support clinical learning using high-fidelity simulations.
+      </p>
+      <div class="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200/60 dark:border-slate-900 space-y-1.5 text-xs">
+        <p class="font-extrabold text-secondary tracking-widest text-[9px] uppercase">Faculty Architect &amp; Program Lead</p>
+        <p class="font-black text-slate-900 dark:text-white">Shivashangari M</p>
+        <p class="text-slate-500 dark:text-slate-400">Assistant Professor, Optometry Unit</p>
+        <p class="text-slate-500 dark:text-slate-400 text-[10px]">School of Allied Health Sciences (SAHS), Salem, Tamil Nadu, India.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reference Modal -->
+  <div id="referenceModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">Clinical References</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Trusted Academic Guidelines &amp; Literature</p>
+        </div>
+      </div>
+      <div class="space-y-3 max-h-[350px] overflow-y-auto pr-1 text-xs">
+        <div class="space-y-1">
+          <span class="text-[9px] font-black uppercase text-secondary tracking-widest">AAO (American Academy of Ophthalmology)</span>
+          <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+            The Swinging Flashlight Test measures relative pupillary reaction intensity. A positive RAPD indicates afferent pathway disruption anterior to the optic chiasm.
+          </p>
+          <a href="https://www.aao.org/education/disease-review/relative-afferent-pupillary-defect" target="_blank" class="text-[10px] font-bold text-secondary hover:underline"><i class="fa-solid fa-up-right-from-square"></i> AAO Educational Resource</a>
+        </div>
+        <div class="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <span class="text-[9px] font-black uppercase text-teal-600 tracking-widest">EyeWiki (Standard Guidelines)</span>
+          <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+            Detailed review of direct and consensual pupillary loops, Marcus Gunn pupil syndrome, grading scales, and causes including optic neuritis and ischemic optic neuropathies.
+          </p>
+          <a href="https://eyewiki.aao.org/Relative_Afferent_Pupillary_Defect" target="_blank" class="text-[10px] font-bold text-secondary hover:underline"><i class="fa-solid fa-up-right-from-square"></i> EyeWiki RAPD Protocol</a>
+        </div>
+        <div class="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <span class="text-[9px] font-black uppercase text-red-600 tracking-widest">YouTube Video Demonstration</span>
+          <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+            Watch professional video tutorials of the swinging flashlight examination to understand the "escape" phenomenon.
+          </p>
+          <a href="https://www.youtube.com/results?search_query=swinging+flashlight+test+optometry" target="_blank" class="text-[10px] font-bold text-red-600 hover:underline"><i class="fa-brands fa-youtube"></i> Search Video Demonstrations</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIMULATION CORE MACHINERY -->
+  <script>
+    // Curriculum placement + stable item-bank ids for the mastery engine.
+    // (See ../assets/sahs-engine.js and ../ENGINE-README.md)
+    const SIM_META = { year: 'year2', dept: 'Neuro-Optometry', sim: 'RAPD' };
+
+    const simState = {
+      category: 'rapd',          // 'rapd' or 'syndromes'
+      mode: 'teach',              // 'teach', 'practice', or 'test'
+      lightMode: 'off',          // 'off', 'left', 'right', 'swing'
+      pathology: 'normal',       // Selected pathology value
+      activePathology: 'normal', // Current state in calculation loop
+      ambient: 1,                // 1: Dim, 2: Room, 3: Bright
+      nearAccommodation: false,  // Near convergence toggle
+      swingPhase: 0,             // Traces oscillator cycle frequency
+      soundMuted: false,         // Auditory switch indicator
+      appliedNDFilter: 0.0,      // Filter logarithmic density over Left Eye (OS)
+      tutorGrade: 0,             // Clicked tutor grade (0 to 5)
+      trainingHiddenGrade: null, // Randomized hidden grade for training evaluations
+      hasGuessedThisRound: false,
+      
+      selectedQuestions: [],
+      scores: {
+        diagnosisScore: 0,
+        mcqScore: 0
+      }
+    };
+
+    // Pathology Base Configurations (Refining sizes & transmissions)
+    const pathologyMatrix = {
+      normal: { leftAff: 1.0, rightAff: 1.0, leftEff: 1.0, rightEff: 1.0, correctFilter: 0.0 },
+      
+      // Model Right Eye Affected Side RAPD Grades (OD Afferency Deficits)
+      right_rapd_grade1: { leftAff: 1.0, rightAff: 0.7, leftEff: 1.0, rightEff: 1.0, correctFilter: 0.3 },
+      right_rapd_grade2: { leftAff: 1.0, rightAff: 0.4, leftEff: 1.0, rightEff: 1.0, correctFilter: 0.9 }, // 0.6 to 0.9 range
+      right_rapd_grade3: { leftAff: 1.0, rightAff: 0.2, leftEff: 1.0, rightEff: 1.0, correctFilter: 1.5 }, // 1.2 to 1.5 range
+      right_rapd_grade4: { leftAff: 1.0, rightAff: 0.05, leftEff: 1.0, rightEff: 1.0, correctFilter: 2.0 }, // 1.8 to 2.0 range
+      right_rapd_grade5: { leftAff: 1.0, rightAff: 0.0, leftEff: 1.0, rightEff: 1.0, correctFilter: 99.0 }, // Stays unbalanced (NLP Paradox)
+      
+      // Efferent/Syndromic Blocks
+      left_cn3_palsy: { leftAff: 1.0, rightAff: 1.0, leftEff: 0.0, rightEff: 1.0, correctFilter: 0.0 }, // Fixed, dilated Left (OS)
+      horners_left: { leftAff: 1.0, rightAff: 1.0, leftEff: 1.0, rightEff: 1.0, correctFilter: 0.0 },   // Sluggish Left sympathetic pupillodilator
+      argyll_robertson: { leftAff: 0.0, rightAff: 0.0, leftEff: 1.0, rightEff: 1.0, correctFilter: 0.0 }, // Bilateral small pupils (no PLR, accommodates)
+      adies_left: { leftAff: 0.5, rightAff: 1.0, leftEff: 0.4, rightEff: 1.0, correctFilter: 0.0 }       // Segmental tonic reaction
+    };
+
+    // Ambient Lighting Room Factors
+    const ambientProfiles = {
+      1: { baseR: 7.5, desc: "Dim Room", scale: 1.4 },
+      2: { baseR: 6.0, desc: "Normal Room", scale: 1.0 },
+      3: { baseR: 4.5, desc: "Bright Examination Lab", scale: 0.7 }
+    };
+
+    // Expanded Question pool
+    const masterMcqPool = [
+      {
+        id: "q1",
+        question: "What anatomical pathway site serves as the synapsing station for pupillary light reflex afferent fibers before reaching Edinger-Westphal nuclei?",
+        options: { a: "Lateral Geniculate Nucleus (LGN)", b: "Pretectal Nucleus of the Midbrain", c: "Ciliary Ganglion" },
+        correct: "b",
+        explanation: "Afferents exit the optic tract prior to the LGN, synapsing in the pretectal nucleus of the midbrain."
+      },
+      {
+        id: "q2",
+        question: "An efferent pupillary motor defect, such as an isolated Cranial Nerve III lesion, classically presents as:",
+        options: { a: "Contralateral persistent miosis", b: "Ipsilateral fixed, dilated pupil unresponsive to consensual light cues", c: "Symmetrical dilation under dark environments" },
+        correct: "b",
+        explanation: "CN III palsy knocks out parasympathetic constriction fibers, yielding a fixed unilateral dilated (mydriatic) pupil."
+      },
+      {
+        id: "q3",
+        question: "Which drug confirms Horner's Syndrome by showcasing a post-lesion failure to dilate the affected pupil?",
+        options: { a: "Cocaine 4% or 10% solution", b: "Pilocarpine 0.125% dilute solution", c: "Apraclonidine 0.5% solution" },
+        correct: "a",
+        explanation: "Cocaine blocks norepinephrine reuptake; a normal pupil dilates, but a sympathetic-lesioned pupil fails to respond."
+      },
+      {
+        id: "q4",
+        question: "Classic Light-Near Dissociation is characterized by which of the following features?",
+        options: { a: "Normal reaction to light with sluggish near focus", b: "No pupillary response to light stimulation with a preserved robust constriction to near targets", c: "Bilateral rapid dilation on accommodation" },
+        correct: "b",
+        explanation: "Light-Near dissociation preserves near reflex pathways (e.g. Argyll Robertson pupil) while anterior light loops are damaged."
+      },
+      {
+        id: "q5",
+        question: "During a positive Swinging Flashlight Test, what is the physiological 'pupillary escape' phenomenon?",
+        options: { a: "Pupils dilate immediately and completely in both eyes under ambient illumination", b: "The affected pupil shows a brief, weak constriction followed by paradoxical dilation", c: "The unaffected eye constricts, while the paretic eye turns rapidly outward" },
+        correct: "b",
+        explanation: "As light swings from normal to a diseased eye, a reduced afferent signal is perceived by the brain as dimming, triggering paradoxical bilateral dilation."
+      },
+      {
+        id: "q6",
+        question: "In Adie's Tonic Pupil, hypersensitivity is classically diagnosed using which of the following dilute medications?",
+        options: { a: "Pilocarpine 0.125% solution", b: "Atropine 1.0% solution", c: "Cocaine 10% solution" },
+        correct: "a",
+        explanation: "Denervation hypersensitivity in Adie's pupil results in robust constriction under very dilute pilocarpine, which would not affect a normal pupil."
+      },
+      {
+        id: "q7",
+        question: "A patient presenting with unilateral ptosis, miosis, and facial anhidrosis is demonstrating dysfunction in which path?",
+        options: { a: "Parasympathetic efferent pathway", b: "Three-neuron sympathetic pathway", c: "Afferent optic tract projection pathway" },
+        correct: "b",
+        explanation: "The clinical triad of ptosis, miosis, and anhidrosis represents Horner's syndrome, a sympathetic pathway lesion."
+      },
+      {
+        id: "q8",
+        question: "The Edinger-Westphal nucleus sends preganglionic parasympathetic fibers that synapse in which ganglion?",
+        options: { a: "Ciliary ganglion", b: "Superior cervical ganglion", c: "Trigeminal ganglion" },
+        correct: "a",
+        explanation: "Preganglionic parasympathetic fibers travel on CN III and synapse in the ciliary ganglion before short ciliary nerves reach the pupil sphincter."
+      }
+    ];
+
+    // Reference Syllabus clinical descriptions
+    const pearlsDatabase = {
+      rapd: {
+        title: "Relative Afferent Pupillary Defect (RAPD)",
+        desc: "Identified via the **Swinging Flashlight Test**. Light shined in the diseased eye yields less constriction (paradoxical dilation) because the brain perceives a net decrease in afferent input compared to stimulation of the normal fellow eye."
+      },
+      grade1: {
+        title: "Grade 1+: Mild Defect (0.3 Log balance)",
+        desc: "Characterized by weak, transient constriction to **3.5 mm** on direct sweep, followed by immediate, early expansion (escape) to **5.0 mm**. Balanced symmetrically with a **0.3 Log filter** on the Left OS."
+      },
+      grade2: {
+        title: "Grade 2+: Moderate Defect (0.6-0.9 Log balance)",
+        desc: "No initial movement is observed on direct swing (stalling at **5.5 mm**), followed shortly after by late dilation back to **6.5 mm**. Symmetrically balanced with a **0.6 to 0.9 Log filter**."
+      },
+      grade3: {
+        title: "Grade 3+: Severe Defect (1.2-1.5 Log balance)",
+        desc: "provokes immediate direct expansion (dilation to **6.8 mm**) the moment the light sweeps over the affected side. Neutralized by a **1.2 to 1.5 Log filter**."
+      },
+      grade4: {
+        title: "Grade 4+: Advanced Defect (1.8-2.0 Log balance)",
+        desc: "Immediate wide expansion to **7.0 mm** followed by a small, brief delayed consensual secondary wave to **6.3 mm**. Balanced using a **1.8 or 2.0 Log filter**."
+      },
+      grade5: {
+        title: "Grade 5+: Blind Eye / NLP (Unbalanced Paradox)",
+        desc: "Complete sensory blockage (No Light Perception). Direct light on OD acts like total darkness. Both pupils stay fully dilated at **7.5 mm** during stimulation. Unneutralizable by any dark filter level."
+      },
+      horners: {
+        title: "Horner's Syndrome (Sympathetic Paresis)",
+        desc: "Presents as miosis, ptosis, and anhidrosis. Anisocoria is most prominent in **dim light** (dilation lag). Normal pupillary light pathways remain intact, so reflexes trigger swift constriction on both sides."
+      },
+      argyll: {
+        title: "Argyll Robertson Pupil (Neurosyphilis Landmark)",
+        desc: "Bilateral severe miosis. Zero direct response to light (classic Light-Near Dissociation). Accommodation reflexes trigger normal, swift constriction."
+      },
+      adies: {
+        title: "Adie's Tonic Pupil (Postganglionic Parasympathetic)",
+        desc: "A sluggish, segmental contraction to light with slow, prolonged tonic constriction to near target and highly delayed redilation. Often hypersensitive to dilute pilocarpine (0.125%)."
+      },
+      cn3palsy: {
+        title: "Cranial Nerve III Palsy (Efferent Defect)",
+        desc: "Damage to the parasympathetic fibers on CN III causes a fixed, dilated pupil. Left side is non-reactive directly or consensually."
+      }
+    };
+
+    let swingIntervalId = null;
+    let statsCorrect = 0;
+    let statsTotal = 0;
+
+    // Full stable item bank this simulator can ever assess: every diagnosis
+    // profile + every MCQ. Mastery = 100% only once EVERY id here has been
+    // answered correctly at least once (across as many attempts as needed).
+    const DIAG_BANK_IDS = Object.keys(pathologyMatrix).map(k => `diag:${k}`);
+    const MCQ_BANK_IDS = masterMcqPool.map(q => `mcq:${q.id}`);
+    const FULL_BANK_IDS = DIAG_BANK_IDS.concat(MCQ_BANK_IDS);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      setCategory('rapd');
+      updateAmbient();
+      syncLocalSyncBadge();
+      if (window.SAHSEngine) {
+        SAHSEngine.ensureProfile(() => {});
+      }
+      // Deep-link support: index.html's "Retest Now" links land here with
+      // ?mode=test so a weak-area retest jumps straight into Assess mode.
+      const deepLinkMode = new URLSearchParams(location.search).get('mode');
+      if (deepLinkMode === 'test' || deepLinkMode === 'practice' || deepLinkMode === 'teach') {
+        changeMode(deepLinkMode);
+      }
+    });
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+    }
+
+    function syncLocalSyncBadge() {
+      const badge = document.getElementById('completionStatusBadge');
+      if (!window.SAHSEngine) return;
+      const pct = SAHSEngine.getMasteryPercent(SIM_META.year, SIM_META.dept, SIM_META.sim, FULL_BANK_IDS);
+      SAHSEngine.renderMasteryBadge(badge, pct);
+
+      // Keep the legacy hub counter (sahselab_completed_sims) in sync so the
+      // old index.html "Linked Labs" tally still reflects true 100% mastery.
+      let completedList = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const already = completedList.includes('RAPD');
+      if (pct >= 100 && !already) {
+        completedList.push('RAPD');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completedList));
+      } else if (pct < 100 && already) {
+        completedList = completedList.filter(item => item !== 'RAPD');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completedList));
+      }
+    }
+
+    // Modal Control Panels
+    function openMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.remove('hidden');
+    }
+
+    function closeMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.add('hidden');
+    }
+
+    function toggleMobileDropdown() {
+      const menu = document.getElementById('mobileDropdown');
+      menu.classList.toggle('hidden');
+    }
+
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      
+      const muteIcon = document.getElementById('muteIcon');
+      const muteText = document.getElementById('muteText');
+      const mobileIcon = document.getElementById('mobileMuteIcon');
+      const mobileText = document.getElementById('mobileMuteText');
+
+      if (simState.soundMuted) {
+        muteIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+        muteText.innerText = "Unmute";
+        if (mobileIcon) mobileIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+        if (mobileText) mobileText.innerText = "Unmute Sound";
+      } else {
+        muteIcon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse";
+        muteText.innerText = "Mute";
+        if (mobileIcon) mobileIcon.className = "fa-solid fa-volume-high text-teal-600";
+        if (mobileText) mobileText.innerText = "Mute Sound";
+        soundFeedback('click');
+      }
+    }
+
+    // Dynamic Clinical Switcher (RAPD vs Syndromes)
+    function setCategory(cat) {
+      soundFeedback('switch');
+      simState.category = cat;
+      
+      const rapdBtn = document.getElementById('cat-btn-rapd');
+      const syndBtn = document.getElementById('cat-btn-syndromes');
+      const pathologySelect = document.getElementById('pathologySelect');
+      const ndFilterCard = document.getElementById('ndFilterCard');
+      const tutorGradeContainer = document.getElementById('mode-tutor-container');
+      const trainingGradeContainer = document.getElementById('mode-training-container');
+      const syllabusCard = document.getElementById('pearlsContainerCard');
+      
+      if (cat === 'rapd') {
+        rapdBtn.className = "py-2.5 px-3 text-xs font-bold rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 w-full";
+        syndBtn.className = "py-2.5 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5 w-full";
+        
+        pathologySelect.innerHTML = `
+          <option value="normal">Normal Pupillary Response (Grade 0)</option>
+          <option value="right_rapd_grade1">Right Eye: RAPD Grade 1+ (Mild Defect • 0.3 Log balance)</option>
+          <option value="right_rapd_grade2">Right Eye: RAPD Grade 2+ (Moderate Defect • 0.6-0.9 Log balance)</option>
+          <option value="right_rapd_grade3">Right Eye: RAPD Grade 3+ (Severe Defect • 1.2-1.5 Log balance)</option>
+          <option value="right_rapd_grade4">Right Eye: RAPD Grade 4+ (Advanced Defect • 1.8-2.0 Log balance)</option>
+          <option value="right_rapd_grade5">Right Eye: RAPD Grade 5+ (Blind Eye / NLP • Unbalanced)</option>
+        `;
+        
+        ndFilterCard.classList.remove('hidden');
+        syllabusCard.classList.remove('hidden');
+        
+        if (simState.mode === 'teach') {
+          tutorGradeContainer.classList.remove('hidden');
+          trainingGradeContainer.classList.add('hidden');
+        } else if (simState.mode === 'practice') {
+          tutorGradeContainer.classList.add('hidden');
+          trainingGradeContainer.classList.remove('hidden');
+        } else {
+          tutorGradeContainer.classList.add('hidden');
+          trainingGradeContainer.classList.add('hidden');
+        }
+      } else {
+        rapdBtn.className = "py-2.5 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all cursor-pointer flex items-center justify-center gap-1.5 w-full";
+        syndBtn.className = "py-2.5 px-3 text-xs font-bold rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 w-full";
+        
+        pathologySelect.innerHTML = `
+          <option value="normal">Normal Pupillary Response</option>
+          <option value="left_cn3_palsy">Left Eye: CN III Palsy (Efferent path block)</option>
+          <option value="horners_left">Left Eye: Horner's Syndrome (Sympathetic lesion)</option>
+          <option value="argyll_robertson">Bilateral: Argyll Robertson Pupils (Light-Near Dissociation)</option>
+          <option value="adies_left">Left Eye: Adie's Tonic Pupil (Postganglionic sluggishness)</option>
+        `;
+        
+        ndFilterCard.classList.add('hidden');
+        tutorGradeContainer.classList.add('hidden');
+        trainingGradeContainer.classList.add('hidden');
+        syllabusCard.classList.add('hidden');
+      }
+      
+      pathologySelect.value = "normal";
+      updatePathology();
+    }
+
+    // Shared "not active" pill style used for whichever of the 3 mode
+    // buttons is currently inactive (kept identical to the original style).
+    const MODE_BTN_INACTIVE = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm cursor-pointer";
+    const MODE_BTN_ACTIVE = "flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-sm cursor-pointer";
+
+    function changeMode(targetMode) {
+      soundFeedback('switch');
+      simState.mode = targetMode;
+
+      const teachBtn = document.getElementById('btnMode-teach');
+      const practiceBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      [teachBtn, practiceBtn, testBtn].forEach(btn => { if (btn) btn.className = MODE_BTN_INACTIVE; });
+      const activeBtn = { teach: teachBtn, practice: practiceBtn, test: testBtn }[targetMode];
+      if (activeBtn) activeBtn.className = MODE_BTN_ACTIVE;
+
+      const bodyFrame = document.getElementById('bodyFrame');
+      const mainHeader = document.getElementById('mainHeader');
+      const workspaceContainer = document.getElementById('workspaceContainer');
+      const simulationViewPort = document.getElementById('simulationViewPort');
+      const controlsPanel = document.getElementById('controlsPanel');
+      const testConsoleContainer = document.getElementById('testConsoleContainer');
+      
+      const viewportCardHeader = document.getElementById('viewportCardHeader');
+      const viewportCardFooter = document.getElementById('viewportCardFooter');
+      const signalMonitorCard = document.getElementById('signalMonitorCard');
+      const clinicalDiagnosticsCard = document.getElementById('clinicalDiagnosticsCard');
+      const liveCommentaryBar = document.getElementById('liveCommentaryBar');
+
+      // Reset feedbacks
+      document.getElementById('diagnosisFeedback').classList.add('hidden');
+      document.getElementById('finalScoreCard').classList.add('hidden');
+      document.getElementById('practiceRedirectionBlock').classList.add('hidden');
+      document.getElementById('liveScoreCard').innerText = "Score: Unsubmitted";
+
+      if (targetMode === 'teach' || targetMode === 'practice') {
+        bodyFrame.className = "bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500";
+        mainHeader.className = "w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm transition-opacity duration-300";
+        workspaceContainer.className = "max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-12 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-500";
+        simulationViewPort.className = "lg:col-span-7 space-y-4 transition-all duration-500";
+        
+        controlsPanel.classList.remove('hidden');
+        testConsoleContainer.classList.add('hidden');
+        viewportCardHeader.classList.remove('invisible');
+        viewportCardFooter.classList.remove('hidden');
+        signalMonitorCard.classList.remove('hidden');
+        clinicalDiagnosticsCard.classList.remove('hidden');
+        liveCommentaryBar.classList.remove('hidden');
+
+        document.getElementById('rightEyeWrapper').className = "flex flex-col items-center space-y-2 z-10 relative transition-transform duration-500";
+        document.getElementById('leftEyeWrapper').className = "flex flex-col items-center space-y-2 z-10 relative transition-transform duration-500";
+
+        simState.activePathology = simState.pathology;
+        
+        // Restore category state
+        setCategory(simState.category);
+      } else {
+        // Clinical evaluation full-centered minimal layout
+        bodyFrame.className = "bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500";
+        mainHeader.className = "w-full fixed top-0 left-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 shadow-sm transition-opacity duration-300 opacity-90";
+        workspaceContainer.className = "max-w-3xl mx-auto px-4 pt-24 pb-12 flex-1 w-full flex flex-col items-stretch gap-6 transition-all duration-500";
+        simulationViewPort.className = "w-full space-y-4 transition-all duration-500";
+        
+        controlsPanel.classList.add('hidden');
+        testConsoleContainer.classList.remove('hidden');
+        viewportCardHeader.classList.add('invisible');
+        viewportCardFooter.classList.add('hidden');
+        signalMonitorCard.classList.add('hidden');
+        clinicalDiagnosticsCard.classList.add('hidden');
+        liveCommentaryBar.classList.add('hidden');
+
+        document.getElementById('rightEyeWrapper').className = "flex flex-col items-center space-y-2 z-10 relative transition-transform duration-500 transform scale-110 md:scale-120";
+        document.getElementById('leftEyeWrapper').className = "flex flex-col items-center space-y-2 z-10 relative transition-transform duration-500 transform scale-110 md:scale-120";
+
+        // Weighted pick: whichever diagnosis profile(s) the student has NOT
+        // yet nailed are far more likely to come up than mastered ones.
+        let randomPath;
+        if (window.SAHSEngine) {
+          randomPath = SAHSEngine.pickWeighted(SIM_META.year, SIM_META.dept, SIM_META.sim, DIAG_BANK_IDS, 1)[0].replace('diag:', '');
+        } else {
+          const pathologies = Object.keys(pathologyMatrix);
+          randomPath = pathologies[Math.floor(Math.random() * pathologies.length)];
+        }
+        simState.activePathology = randomPath;
+
+        document.getElementById('userDiagnosisSelect').value = "";
+        simState.scores.diagnosisScore = 0;
+        simState.scores.mcqScore = 0;
+        
+        setupTestQuestions();
+      }
+
+      setLightMode('off');
+      selectNDFilter(0.0);
+      calculateDynamicPupilSizes();
+    }
+
+    // High yield medical MCQ setup — biased toward not-yet-mastered questions
+    function setupTestQuestions() {
+      let chosenIds;
+      if (window.SAHSEngine) {
+        chosenIds = SAHSEngine.pickWeighted(SIM_META.year, SIM_META.dept, SIM_META.sim, MCQ_BANK_IDS, 5).map(id => id.replace('mcq:', ''));
+      } else {
+        const shuffled = [...masterMcqPool].sort(() => 0.5 - Math.random());
+        chosenIds = shuffled.slice(0, 5).map(q => q.id);
+      }
+      simState.selectedQuestions = chosenIds.map(id => masterMcqPool.find(q => q.id === id));
+      
+      const mcqContainer = document.getElementById('dynamicTestMcqs');
+      mcqContainer.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, index) => {
+        const questionBlock = document.createElement('div');
+        questionBlock.className = "bg-white p-4 rounded-xl border border-slate-200 space-y-2 text-xs shadow-sm text-slate-900";
+        questionBlock.innerHTML = `
+          <p class="font-bold text-slate-900">${index + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1">
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 text-slate-900 font-semibold">
+              <input type="radio" name="mcq_${index}" value="a" class="accent-secondary text-slate-900">
+              <span>${q.options.a}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 text-slate-900 font-semibold">
+              <input type="radio" name="mcq_${index}" value="b" class="accent-secondary text-slate-900">
+              <span>${q.options.b}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 text-slate-900 font-semibold">
+              <input type="radio" name="mcq_${index}" value="c" class="accent-secondary text-slate-900">
+              <span>${q.options.c}</span>
+            </label>
+          </div>
+          <p id="mcq_${index}_feedback" class="text-[10px] font-bold hidden"></p>
+        `;
+        mcqContainer.appendChild(questionBlock);
+      });
+    }
+
+    // Configure Ambient Light profile
+    function updateAmbient() {
+      const sliderVal = document.getElementById('ambientSlider').value;
+      simState.ambient = parseInt(sliderVal);
+      document.getElementById('ambientValLabel').innerText = ambientProfiles[simState.ambient].desc;
+      calculateDynamicPupilSizes();
+    }
+
+    // Configure Patient Pathology modeling
+    function updatePathology() {
+      simState.pathology = document.getElementById('pathologySelect').value;
+      if (simState.mode === 'practice') {
+        simState.activePathology = simState.pathology;
+      }
+      calculateDynamicPupilSizes();
+    }
+
+    // Select Neutral Density (ND) filter level
+    function selectNDFilter(logValue) {
+      simState.appliedNDFilter = logValue;
+      
+      // Update UI button select designs
+      const btns = document.querySelectorAll('.nd-filter-btn');
+      btns.forEach(btn => {
+        btn.className = "nd-filter-btn py-1.5 text-[10px] font-bold rounded-lg border border-slate-200 dark:border-slate-800 hover:border-purple-300 text-slate-700 dark:text-slate-300 transition-all cursor-pointer";
+      });
+
+      const activeBtnMap = { 0.0: 'ndBtn-0', 0.3: 'ndBtn-03', 0.6: 'ndBtn-06', 0.9: 'ndBtn-09', 1.2: 'ndBtn-12', 1.5: 'ndBtn-15', 1.8: 'ndBtn-18', 2.0: 'ndBtn-20' };
+      const selectedBtn = document.getElementById(activeBtnMap[logValue]);
+      if (selectedBtn) {
+        selectedBtn.className = "nd-filter-btn py-1.5 text-[10px] font-bold rounded-lg border-2 border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-300 transition-all cursor-pointer";
+      }
+
+      const overlay = document.getElementById('leftEyeNdFilterOverlay');
+      const label = document.getElementById('ndFilterOverlayLabel');
+      const badge = document.getElementById('ndFilterStatusLabel');
+
+      if (badge) badge.innerText = `${logValue.toFixed(1)} Log`;
+
+      if (logValue > 0) {
+        overlay.style.backgroundColor = `rgba(15, 23, 42, ${Math.min(0.68, logValue * 0.28)})`;
+        overlay.classList.remove('border-transparent');
+        overlay.classList.add('border-l-4', 'border-purple-500/50');
+        label.textContent = `${logValue.toFixed(1)} LOG FILTER`;
+        label.className = "text-[10px] font-black text-purple-200 tracking-widest drop-shadow-md select-none opacity-100 transition-opacity duration-300";
+      } else {
+        overlay.style.backgroundColor = 'rgba(15, 23, 42, 0)';
+        overlay.classList.add('border-transparent');
+        overlay.classList.remove('border-l-4', 'border-purple-500/50');
+        label.className = "text-[10px] font-black text-purple-200 tracking-widest drop-shadow-md select-none opacity-0 transition-opacity duration-300";
+      }
+
+      calculateDynamicPupilSizes();
+    }
+
+    // Tutor mode grade selector click handler
+    function selectTutorGrade(grade) {
+      simState.tutorGrade = grade;
+      
+      for (let i = 0; i <= 5; i++) {
+        const card = document.getElementById(`tutor-grade-${i}`);
+        if (card) {
+          if (i === grade) {
+            card.className = "border-2 border-blue-500 bg-blue-50/40 dark:bg-blue-950/20 p-3 rounded-2xl cursor-pointer hover:bg-blue-50/20 transition-all";
+            card.querySelector('span').className = "text-[8px] sm:text-[9px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest";
+          } else {
+            card.className = "border border-slate-200 dark:border-slate-800 p-3 rounded-2xl cursor-pointer hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all";
+            card.querySelector('span').className = "text-[8px] sm:text-[9px] font-black text-slate-400 uppercase tracking-widest";
+          }
+        }
+      }
+
+      // Map the grade to the active pathology configuration
+      const gradeMap = {
+        0: 'normal',
+        1: 'right_rapd_grade1',
+        2: 'right_rapd_grade2',
+        3: 'right_rapd_grade3',
+        4: 'right_rapd_grade4',
+        5: 'right_rapd_grade5'
+      };
+      
+      simState.activePathology = gradeMap[grade];
+      calculateDynamicPupilSizes();
+    }
+
+    // Practice/Training hidden grade guess submit
+    function submitDiagnosis(guessedGrade) {
+      if (simState.hasGuessedThisRound) return;
+      simState.hasGuessedThisRound = true;
+
+      statsTotal++;
+      const isCorrect = (guessedGrade === simState.trainingHiddenGrade);
+      if (isCorrect) statsCorrect++;
+
+      document.getElementById('stats-correct').textContent = statsCorrect;
+      document.getElementById('stats-total').textContent = statsTotal;
+
+      const panel = document.getElementById('feedback-panel');
+      const title = document.getElementById('feedback-title');
+      const explanation = document.getElementById('feedback-explanation');
+
+      panel.classList.remove('hidden');
+
+      if (isCorrect) {
+        soundFeedback('success');
+        title.innerHTML = "<span class='text-emerald-600 dark:text-emerald-400'>🎉 Correct Diagnosis!</span>";
+        title.className = "font-extrabold text-xs tracking-tight uppercase";
+        explanation.innerHTML = `<strong>Identified correctly:</strong> Grade ${simState.trainingHiddenGrade}+. Both pupils balanced perfectly during examination.`;
+      } else {
+        soundFeedback('warning');
+        title.innerHTML = "<span class='text-red-500'>❌ Incorrect Diagnosis</span>";
+        title.className = "font-extrabold text-xs tracking-tight uppercase";
+        explanation.innerHTML = `<strong>Anatomical Target:</strong> Grade ${simState.trainingHiddenGrade}+ • <strong>Your Guess:</strong> Grade ${guessedGrade}+. Neutralize reactions carefully with ND Filters first!`;
+      }
+
+      // Lock grading buttons with color feedback
+      const buttons = document.querySelectorAll('.guess-btn');
+      buttons.forEach((btn, idx) => {
+        const btnVal = idx + 1;
+        btn.disabled = true;
+        if (btnVal === simState.trainingHiddenGrade) {
+          btn.className = "guess-btn py-3 bg-emerald-100 text-emerald-800 border-2 border-emerald-500 rounded-xl font-extrabold text-xs cursor-default";
+        } else if (btnVal === guessedGrade) {
+          btn.className = "guess-btn py-3 bg-rose-100 text-rose-800 border-2 border-rose-400 rounded-xl font-extrabold text-xs cursor-default";
+        } else {
+          btn.className = "guess-btn py-3 bg-slate-100 text-slate-300 border border-slate-200 rounded-xl font-medium text-xs cursor-not-allowed";
+        }
+      });
+    }
+
+    function generateRandomScenario() {
+      simState.trainingHiddenGrade = Math.floor(Math.random() * 5) + 1;
+      simState.hasGuessedThisRound = false;
+
+      selectNDFilter(0.0);
+
+      const buttons = document.querySelectorAll('.guess-btn');
+      buttons.forEach(btn => {
+        btn.disabled = false;
+        btn.className = "guess-btn py-3 border border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-extrabold text-slate-800 dark:text-slate-200 transition-all text-xs active:scale-95 bg-white dark:bg-slate-900 cursor-pointer";
+      });
+
+      document.getElementById('feedback-panel').classList.add('hidden');
+      setLightMode('off');
+    }
+
+    // Toggle Near focus accommodation
+    function toggleNearTarget() {
+      soundFeedback('blip');
+      simState.nearAccommodation = !simState.nearAccommodation;
+      
+      const btnPractice = document.getElementById('nearTargetBtn');
+      const btnTest = document.getElementById('nearTargetBtnTest');
+
+      const labelOn = "Near accommodation: ON";
+      const labelOff = "Near accommodation: OFF";
+
+      if (simState.nearAccommodation) {
+        if (btnPractice) {
+          btnPractice.innerText = labelOn;
+          btnPractice.className = "w-full py-2 bg-sky-100 dark:bg-sky-950/40 border border-secondary rounded-xl text-xs font-bold text-secondary transition shadow-sm scale-95 cursor-pointer";
+        }
+        if (btnTest) {
+          btnTest.innerText = "Near Focus: ON";
+          btnTest.className = "px-3 py-1.5 bg-sky-50 dark:bg-sky-950 border border-secondary text-secondary rounded-lg text-[10px] font-bold transition shadow-sm cursor-pointer";
+        }
+      } else {
+        if (btnPractice) {
+          btnPractice.innerText = labelOff;
+          btnPractice.className = "w-full py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition shadow-sm scale-100 active:scale-95 cursor-pointer";
+        }
+        if (btnTest) {
+          btnTest.innerText = "Near Focus: OFF";
+          btnTest.className = "px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-[10px] font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-sm cursor-pointer";
+        }
+      }
+      calculateDynamicPupilSizes();
+    }
+
+    // Toggle Flashlight Modes
+    function setLightMode(mode) {
+      soundFeedback('blip');
+      simState.lightMode = mode;
+
+      const btns = ['off', 'right', 'left', 'swing'];
+      btns.forEach(b => {
+        const btnPractice = document.getElementById(`btnLight-${b}`);
+        const btnTest = document.getElementById(`btnLightTest-${b}`);
+        const isActive = b === mode;
+        
+        let stylePrac = "py-2 px-1 text-[10px] font-extrabold uppercase rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition shadow-sm cursor-pointer";
+        if (isActive) {
+          if (b === 'swing') stylePrac = "py-2 px-1 text-[10px] font-extrabold uppercase rounded-lg border-amber-300 bg-amber-500 text-white transition shadow-md scale-95 cursor-pointer";
+          else stylePrac = "py-2 px-1 text-[10px] font-extrabold uppercase rounded-lg border-sky-400 bg-sky-600 text-white transition shadow-md scale-95 cursor-pointer";
+        } else if (b === 'swing') {
+          stylePrac = "py-2 px-1 text-[10px] font-extrabold uppercase rounded-lg border-amber-200 bg-amber-50/30 text-amber-700 hover:bg-amber-100 transition shadow-sm cursor-pointer";
+        } else {
+          stylePrac = "py-2 px-1 text-[10px] font-extrabold uppercase rounded-lg border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 hover:text-sky-600 text-slate-600 transition shadow-sm cursor-pointer";
+        }
+
+        let styleTest = "px-3 py-1.5 text-[10px] font-extrabold uppercase rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition shadow-sm cursor-pointer";
+        if (isActive) {
+          if (b === 'swing') styleTest = "px-3.5 py-1.5 text-[10px] font-extrabold uppercase rounded-lg border-amber-400 bg-amber-600 text-white font-bold transition shadow-md cursor-pointer";
+          else styleTest = "px-3.5 py-1.5 text-[10px] font-extrabold uppercase rounded-lg border-sky-400 bg-sky-600 text-white font-bold transition shadow-md cursor-pointer";
+        } else {
+          styleTest = "px-3 py-1.5 text-[10px] font-extrabold uppercase rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition shadow-sm cursor-pointer";
+        }
+
+        if (btnPractice) btnPractice.className = stylePrac;
+        if (btnTest) btnTest.className = styleTest;
+      });
+
+      if (swingIntervalId) {
+        clearInterval(swingIntervalId);
+        swingIntervalId = null;
+      }
+
+      if (mode === 'swing') {
+        startSwingingFlashlight();
+      } else {
+        calculateDynamicPupilSizes();
+      }
+    }
+
+    // Auto Swing sweeping interval logic
+    function startSwingingFlashlight() {
+      simState.swingPhase = 0;
+      swingIntervalId = setInterval(() => {
+        simState.swingPhase += 0.08;
+        const sinVal = Math.sin(simState.swingPhase);
+        const xPosPercent = 50 + sinVal * 26; // Maps x-coordinate coordinate sweeps
+
+        // Play auditory switch tick when crossing centerline
+        if (Math.abs(sinVal) > 0.95) {
+          soundFeedback('tick');
+        }
+
+        const leftIntensity = Math.max(0, 10 - Math.abs(xPosPercent - 75) / 2.2);
+        const rightIntensity = Math.max(0, 10 - Math.abs(xPosPercent - 25) / 2.2);
+
+        renderFlashlightSwings(leftIntensity, rightIntensity, xPosPercent);
+      }, 35);
+    }
+
+    // Live Feed one-liner shown under the pupil viewport. (Previously called
+    // but never defined — silently threw on every recalculation.)
+    function getClinicalCommentary(rightDia, leftDia, afferentCommand) {
+      if (simState.lightMode === 'off') {
+        return "Awaiting diagnostic light stimulation...";
+      }
+      const diff = Math.abs(rightDia - leftDia);
+      if (simState.lightMode === 'swing') {
+        if (diff < 0.3) return "Swinging flashlight in progress — pupils tracking symmetrically.";
+        return `Swinging flashlight in progress — ${diff.toFixed(1)} mm asymmetry detected between OD/OS.`;
+      }
+      const sideLabel = simState.lightMode === 'right' ? 'Right (OD)' : 'Left (OS)';
+      if (diff < 0.3) {
+        return `${sideLabel} illuminated — both pupils constricting symmetrically (${rightDia.toFixed(1)} / ${leftDia.toFixed(1)} mm).`;
+      }
+      return `${sideLabel} illuminated — asymmetric response (OD ${rightDia.toFixed(1)} mm, OS ${leftDia.toFixed(1)} mm).`;
+    }
+
+    function calculateDynamicPupilSizes() {
+      let lIntensity = 0;
+      let rIntensity = 0;
+      let xPos = 50;
+
+      if (simState.lightMode === 'left') {
+        lIntensity = 10;
+        xPos = 75;
+      } else if (simState.lightMode === 'right') {
+        rIntensity = 10;
+        xPos = 25;
+      }
+
+      renderFlashlightSwings(lIntensity, rIntensity, xPos);
+    }
+
+    // Main physical movement rendering loop mapping realistic diameters to SVG models
+    function renderFlashlightSwings(leftIntensity, rightIntensity, xPosPercent) {
+      const activePath = pathologyMatrix[simState.activePathology];
+      const activeAmbient = ambientProfiles[simState.ambient];
+
+      // Optic nerve afferent scaling
+      const leftAfferentSignal = leftIntensity * activePath.leftAff;
+      const rightAfferentSignal = rightIntensity * activePath.rightAff;
+
+      // Integrating ND filter block over healthy Left Eye (OS)
+      let adjustedLeftAfferent = leftAfferentSignal;
+      if (simState.appliedNDFilter > 0) {
+        // Logarithmic transmission block
+        const transmissionFactor = Math.pow(10, -simState.appliedNDFilter); 
+        adjustedLeftAfferent = leftAfferentSignal * transmissionFactor;
+      }
+
+      // Consensual central nervous command determination
+      let centralAfferentCommand = Math.max(adjustedLeftAfferent, rightAfferentSignal);
+
+      if (simState.nearAccommodation) {
+        centralAfferentCommand = Math.max(centralAfferentCommand, 7.5);
+      }
+
+      // Base resting size configurations in room lights
+      let rightBaseR = activeAmbient.baseR;
+      let leftBaseR = activeAmbient.baseR;
+
+      // Pathology specific overrides
+      if (simState.activePathology === 'horners_left') {
+        leftBaseR = activeAmbient.baseR - 3.2; // Left Horner miosis
+      }
+      if (simState.activePathology === 'argyll_robertson') {
+        leftBaseR = 2.0; // small miotic pupils
+        rightBaseR = 2.0;
+      }
+      if (simState.activePathology === 'left_cn3_palsy') {
+        leftBaseR = 8.0; // Left fixed, dilated efferent block
+      }
+      if (simState.activePathology === 'adies_left') {
+        leftBaseR = activeAmbient.baseR + 1.2; // slight tonic mydriasis
+      }
+
+      // Efferent outputs matching pathways
+      let rightConstrictionFactor = centralAfferentCommand * activeAmbient.scale * activePath.rightEff;
+      let leftConstrictionFactor = centralAfferentCommand * activeAmbient.scale * activePath.leftEff;
+
+      // Grade 5 NLP Blocking Factor
+      if (simState.activePathology === 'right_rapd_grade5' && simState.lightMode === 'right') {
+        rightConstrictionFactor = 0;
+        leftConstrictionFactor = 0;
+      }
+
+      // Check for Symmetrical Filter Neutralization Matching Grade Definitions
+      const correctFilterVal = activePath.correctFilter;
+      const isBalanced = (Math.abs(simState.appliedNDFilter - correctFilterVal) < 0.1);
+
+      // Symmetrical pupil sizes based on balance calibration
+      let rightPupilDiameter = rightBaseR - rightConstrictionFactor;
+      let leftPupilDiameter = leftBaseR - leftConstrictionFactor;
+
+      // Inject custom kinetics and escape waveforms for active RAPD grades
+      if (simState.lightMode === 'right' && simState.activePathology.startsWith('right_rapd')) {
+        if (isBalanced) {
+          // Constricts down to a balanced neutral level and stays stable
+          const neutSize = { 0.3: 3.5, 0.9: 5.0, 1.5: 6.2, 2.0: 7.0 };
+          const targetBal = neutSize[simState.appliedNDFilter] || 3.0;
+          rightPupilDiameter = targetBal;
+          leftPupilDiameter = targetBal;
+        } else {
+          if (simState.activePathology === 'right_rapd_grade1') {
+            rightPupilDiameter = 5.0; // Escaped dilation state
+            leftPupilDiameter = 5.0;
+          } else if (simState.activePathology === 'right_rapd_grade2') {
+            rightPupilDiameter = 6.5; // Stalled expansion
+            leftPupilDiameter = 6.5;
+          } else if (simState.activePathology === 'right_rapd_grade3') {
+            rightPupilDiameter = 6.8; // Immediate paradoxical dilation
+            leftPupilDiameter = 6.8;
+          } else if (simState.activePathology === 'right_rapd_grade4') {
+            rightPupilDiameter = 7.0; // Advanced dilation escape
+            leftPupilDiameter = 7.0;
+          }
+        }
+      }
+
+      // Symmetrical clamp limits
+      rightPupilDiameter = Math.max(1.5, Math.min(rightPupilDiameter, 8.0));
+      leftPupilDiameter = Math.max(1.5, Math.min(leftPupilDiameter, 8.0));
+
+      // Map millimeter sizes directly to SVG radius (Scale 1.5 - 8.0mm to SVG radius 6 - 32)
+      const rightSvgRadius = (rightPupilDiameter / 8.0) * 32;
+      const leftSvgRadius = (leftPupilDiameter / 8.0) * 32;
+
+      document.getElementById('rightPupil').setAttribute('r', rightSvgRadius);
+      document.getElementById('leftPupil').setAttribute('r', leftSvgRadius);
+
+      // Update real-time millimeter text badges
+      document.getElementById('odMmBadge').innerText = `${rightPupilDiameter.toFixed(1)} mm`;
+      document.getElementById('osMmBadge').innerText = `${leftPupilDiameter.toFixed(1)} mm`;
+
+      // Update comparison progress bars
+      const odMeterPercent = ((rightPupilDiameter - 1.5) / (8.0 - 1.5)) * 100;
+      const osMeterPercent = ((leftPupilDiameter - 1.5) / (8.0 - 1.5)) * 100;
+
+      const odMeterBar = document.getElementById('odMeterBar');
+      const osMeterBar = document.getElementById('osMeterBar');
+      if (odMeterBar && osMeterBar) {
+        document.getElementById('odMeterReadout').innerText = `${rightPupilDiameter.toFixed(1)} mm`;
+        document.getElementById('osMeterReadout').innerText = `${leftPupilDiameter.toFixed(1)} mm`;
+        odMeterBar.style.width = `${odMeterPercent}%`;
+        osMeterBar.style.width = `${osMeterPercent}%`;
+      }
+
+      // Update ND Filter Balancing Feedback System (Practice Mode only)
+      updateCalibrationFeedback(isBalanced, correctFilterVal);
+
+      // Render Flashlight overlay visualization
+      const beamLeft = document.getElementById('flashlightBeamLeft');
+      const beamRight = document.getElementById('flashlightBeamRight');
+
+      if (simState.lightMode === 'off') {
+        beamLeft.style.opacity = '0';
+        beamRight.style.opacity = '0';
+        document.getElementById('currentLightLabel').innerText = "Light: Ambient Only";
+        document.getElementById('rightBeamRing').setAttribute('stroke-width', '0');
+        document.getElementById('leftBeamRing').setAttribute('stroke-width', '0');
+      } else {
+        document.getElementById('currentLightLabel').innerText = `Light: Active Exam (${Math.round(xPosPercent)}%)`;
+        
+        if (xPosPercent < 50) {
+          beamRight.style.opacity = '1';
+          beamRight.style.left = `${xPosPercent}%`;
+          beamRight.style.top = `55%`;
+          beamLeft.style.opacity = '0';
+          
+          document.getElementById('rightBeamRing').setAttribute('stroke-width', rightIntensity > 3.0 ? '3' : '0');
+          document.getElementById('leftBeamRing').setAttribute('stroke-width', '0');
+        } else {
+          beamLeft.style.opacity = '1';
+          beamLeft.style.left = `${xPosPercent}%`;
+          beamLeft.style.top = `55%`;
+          beamRight.style.opacity = '0';
+
+          document.getElementById('leftBeamRing').setAttribute('stroke-width', leftIntensity > 3.0 ? '3' : '0');
+          document.getElementById('rightBeamRing').setAttribute('stroke-width', '0');
+        }
+      }
+
+      // Run commentary feeds
+      const commentary = getClinicalCommentary(rightPupilDiameter, leftPupilDiameter, centralAfferentCommand);
+      document.getElementById('liveCommentaryText').innerText = commentary;
+    }
+
+    // Dynamic Symmetrical balance evaluator
+    function updateCalibrationFeedback(isBalanced, correctFilterVal) {
+      const feedbackText = document.getElementById('calibrationFeedbackText');
+      const box = document.getElementById('calibrationFeedbackBox');
+      const paradoxBlock = document.getElementById('ndLogParadoxBlock');
+
+      paradoxBlock.classList.add('hidden');
+
+      if (simState.activePathology === 'normal') {
+        feedbackText.innerHTML = "<strong>Symmetrical baseline:</strong> Intact pathways. No balancing filter is clinically indicated.";
+        box.className = "p-3 bg-blue-50/50 dark:bg-blue-950/25 border border-blue-100 dark:border-blue-900 rounded-xl space-y-1.5 text-blue-800 dark:text-blue-300";
+        return;
+      }
+
+      if (simState.activePathology.startsWith('right_rapd_grade')) {
+        if (simState.activePathology === 'right_rapd_grade5') {
+          feedbackText.innerHTML = "<strong>Blind Eye / NLP Defect:</strong> Stays fully dilated. Complete blockage cannot be balanced.";
+          box.className = "p-3 bg-red-50/50 dark:bg-red-950/25 border border-red-100 dark:border-red-900 rounded-xl space-y-1.5 text-red-800 dark:text-red-300";
+          if (simState.appliedNDFilter === 2.0) {
+            paradoxBlock.classList.remove('hidden');
+          }
+          return;
+        }
+
+        if (simState.appliedNDFilter === 0.0) {
+          feedbackText.innerHTML = "<strong>Asymmetry detected:</strong> Place matching ND Filters on Left OS eye to neutralize swings.";
+          box.className = "p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl space-y-1.5 text-slate-700 dark:text-slate-300";
+        } else if (isBalanced) {
+          feedbackText.innerHTML = `<strong>Symmetrical Balance Achieved!</strong> The ${simState.appliedNDFilter.toFixed(1)} Log filter perfectly neutralizes the Right OD pathway deficit. Swing reactions are fully balanced and matched!`;
+          box.className = "p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-xl space-y-1.5 text-emerald-800 dark:text-emerald-300 font-bold";
+        } else if (simState.appliedNDFilter < correctFilterVal) {
+          feedbackText.innerHTML = `<strong>Under-balanced:</strong> The ${simState.appliedNDFilter.toFixed(1)} Log filter is too light. Apply a higher filter value.`;
+          box.className = "p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-xl space-y-1.5 text-amber-800 dark:text-amber-300";
+        } else {
+          feedbackText.innerHTML = `<strong>Over-balanced:</strong> The ${simState.appliedNDFilter.toFixed(1)} Log filter is too dark. Left OS is now weaker than Right OD.`;
+          box.className = "p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-xl space-y-1.5 text-amber-800 dark:text-amber-300";
+        }
+      } else {
+        feedbackText.innerHTML = "<strong>Neuro-ophthalmic syndrome modeled:</strong> ND filter calibration is optimized primarily for relative afferent (RAPD) grading assessments.";
+        box.className = "p-3 bg-indigo-50/50 dark:bg-indigo-950/25 border border-indigo-100/50 dark:border-indigo-900 rounded-xl space-y-1.5 text-slate-700 dark:text-slate-300";
+      }
+    }
+
+    // Clinical Pearls Selector
+    function displayClinicalPearl() {
+      soundFeedback('blip');
+      const val = document.getElementById('pearlSelector').value;
+      const pearl = pearlsDatabase[val];
+      if (pearl) {
+        document.getElementById('pearlTitle').innerText = pearl.title;
+        document.getElementById('pearlDesc').innerHTML = pearl.desc;
+      }
+    }
+
+    // Unified Clinical Assessment Submission
+    function submitTestEvaluation() {
+      if (simState.mode !== 'test') return;
+
+      const userSel = document.getElementById('userDiagnosisSelect').value;
+      
+      let unanswered = false;
+      const userAnswers = [];
+
+      simState.selectedQuestions.forEach((q, index) => {
+        const checked = document.querySelector(`input[name="mcq_${index}"]:checked`);
+        if (!checked) {
+          unanswered = true;
+        } else {
+          userAnswers.push({
+            index: index,
+            selected: checked.value,
+            correct: q.correct,
+            explanation: q.explanation
+          });
+        }
+      });
+
+      if (!userSel || unanswered) {
+        soundFeedback('warning');
+        const feedback = document.getElementById('diagnosisFeedback');
+        feedback.innerText = "Please provide your Clinical Finding and answer all 5 Pathway Mechanics questions.";
+        feedback.className = "text-[11px] font-extrabold text-red-600 block mt-2";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      // Step 1: Diagnose Pathology Match
+      const diagFeedback = document.getElementById('diagnosisFeedback');
+      diagFeedback.classList.remove('hidden');
+
+      const diagCorrect = (userSel === simState.activePathology);
+      if (diagCorrect) {
+        diagFeedback.innerText = "Correct Clinical Diagnosis! (+50 pts)";
+        diagFeedback.className = "text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        const niceName = document.querySelector(`#userDiagnosisSelect option[value="${simState.activePathology}"]`).innerText;
+        diagFeedback.innerText = `Incorrect. The modeled pathology profile was: ${niceName}. (+0 pts)`;
+        diagFeedback.className = "text-[11px] font-bold text-red-600 dark:text-red-400 block mt-1";
+        simState.scores.diagnosisScore = 0;
+      }
+      if (window.SAHSEngine) {
+        SAHSEngine.recordItemResult(SIM_META.year, SIM_META.dept, SIM_META.sim, `diag:${simState.activePathology}`, diagCorrect);
+      }
+
+      // Step 2: Evaluate 5 dynamic MCQs (10% per question)
+      let correctCount = 0;
+      userAnswers.forEach((ans, i) => {
+        const feedbackEl = document.getElementById(`mcq_${ans.index}_feedback`);
+        feedbackEl.classList.remove('hidden');
+        const mcqCorrect = ans.selected === ans.correct;
+        if (mcqCorrect) {
+          feedbackEl.innerText = `Correct! (+10 pts) — ${ans.explanation}`;
+          feedbackEl.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+          correctCount++;
+        } else {
+          feedbackEl.innerText = `Incorrect. (Correct: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+          feedbackEl.className = "text-[10px] font-bold text-red-600 dark:text-red-400 block mt-1";
+        }
+        if (window.SAHSEngine) {
+          const q = simState.selectedQuestions[ans.index];
+          SAHSEngine.recordItemResult(SIM_META.year, SIM_META.dept, SIM_META.sim, `mcq:${q.id}`, mcqCorrect);
+        }
+      });
+      simState.scores.mcqScore = correctCount * 10;
+
+      // Score Calculation
+      const finalPercentage = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('liveScoreCard').innerText = `Score: ${finalPercentage}/100`;
+
+      // Certificate Badge trigger
+      const resultCard = document.getElementById('finalScoreCard');
+      const statusText = document.getElementById('finalStatusText');
+      const statusDesc = document.getElementById('finalStatusDescription');
+      const practiceRedirBlock = document.getElementById('practiceRedirectionBlock');
+      const masteryCompleteBlock = document.getElementById('masteryCompleteBlock');
+
+      resultCard.classList.remove('hidden');
+
+      // Cumulative mastery across every attempt ever made — this is the
+      // number that matters, not any single round's raw percentage.
+      const masteryPct = window.SAHSEngine
+        ? SAHSEngine.getMasteryPercent(SIM_META.year, SIM_META.dept, SIM_META.sim, FULL_BANK_IDS)
+        : 0;
+      document.getElementById('masteryPercentLabel').innerText = `${masteryPct}%`;
+      document.getElementById('masteryBarFill').style.width = `${masteryPct}%`;
+
+      const roundPassed = finalPercentage >= 80;
+
+      if (masteryPct >= 100) {
+        soundFeedback('success');
+        resultCard.className = "p-5 rounded-2xl text-center space-y-4 shadow-sm border bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300";
+        statusText.innerText = `Status: 100% MASTERED (this round: ${finalPercentage}%)`;
+        statusDesc.innerText = "Every diagnosis profile and pathway question in this simulator has now been answered correctly at least once.";
+        practiceRedirBlock.classList.add('hidden');
+        masteryCompleteBlock.classList.remove('hidden');
+      } else if (roundPassed) {
+        soundFeedback('success');
+        resultCard.className = "p-5 rounded-2xl text-center space-y-4 shadow-sm border bg-sky-50 dark:bg-sky-950/20 border-sky-300 dark:border-sky-900 text-sky-800 dark:text-sky-300";
+        statusText.innerText = `Status: Round Passed (${finalPercentage}%)`;
+        statusDesc.innerText = "Good round — but a few scenarios or questions are still unmastered overall. Keep going until the bar above hits 100%.";
+        practiceRedirBlock.classList.remove('hidden');
+        masteryCompleteBlock.classList.add('hidden');
+        document.getElementById('weakAreasSummaryText').innerText = "Some items haven't been answered correctly yet. They'll be prioritized in your next Assess round.";
+      } else {
+        soundFeedback('warning');
+        resultCard.className = "p-5 rounded-2xl text-center space-y-4 shadow-sm border bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900 text-red-800 dark:text-red-300";
+        statusText.innerText = `Status: Round Score ${finalPercentage}%`;
+        statusDesc.innerText = "This round was below 80%. Nothing is lost — items you got right are still banked. Review the Teach deck, then retest.";
+        practiceRedirBlock.classList.remove('hidden');
+        masteryCompleteBlock.classList.add('hidden');
+        document.getElementById('weakAreasSummaryText').innerText = "Concept review recommended. Wrong scenarios/questions will resurface first on your next Assess round.";
+      }
+
+      syncLocalSyncBadge();
+    }
+
+    // Keyboard Arrow Controls
+    window.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight') {
+        setLightMode('left');
+      } else if (e.key === 'ArrowLeft') {
+        setLightMode('right');
+      } else if (e.key === 'ArrowDown' || e.key === 'Space' || e.key === 'Escape') {
+        setLightMode('off');
+        e.preventDefault();
+      }
+    });
+  </script>
+
+</body>
+</html>

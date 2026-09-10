@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Clinical Keratometry Lab</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',
+            secondary: '#0284c7',
+            accent: '#0d9488',
+            lightbg: '#f8fafc',
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    .dark ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    ::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+    /* Custom Input Sliders */
+    input[type=range] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      height: 20px; width: 20px;
+      border-radius: 50%;
+      background: #0284c7;
+      cursor: pointer;
+      margin-top: -8px;
+      box-shadow: 0 0 10px rgba(2, 132, 199, 0.5);
+      border: 2px solid #ffffff;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      appearance: none;
+      width: 100%; height: 4px;
+      cursor: pointer;
+      background: #cbd5e1;
+      border-radius: 2px;
+    }
+    .dark input[type=range]::-webkit-slider-runnable-track {
+      background: #334155;
+    }
+
+    /* Keratometer Eyepiece Darkroom Viewport */
+    .keratometer-bg {
+      background: radial-gradient(circle at center, #2e261f 0%, #0d0a07 65%, #020305 100%);
+      box-shadow: inset 0 0 50px rgba(0,0,0,0.95);
+    }
+
+    /* Dashed Mire Ring Glow Filter */
+    .mire-glow {
+      filter: drop-shadow(0 0 2.5px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 6px rgba(56, 189, 248, 0.4));
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <script>
+    let audioCtx = null;
+    
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("AudioContext blocked or unsupported.");
+      }
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click': playAudioTone(720, 'sine', 0.08, 0.04); break;
+        case 'dial': playAudioTone(300, 'triangle', 0.04, 0.02); break;
+        case 'wheel': playAudioTone(200, 'sawtooth', 0.05, 0.015); break;
+        case 'warning': playAudioTone(190, 'sawtooth', 0.25, 0.05); break;
+        case 'success':
+          playAudioTone(520, 'sine', 0.1, 0.05);
+          setTimeout(() => playAudioTone(640, 'sine', 0.15, 0.05), 80);
+          break;
+        case 'switch': playAudioTone(380, 'triangle', 0.12, 0.04); break;
+      }
+    }
+  </script>
+
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-500">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="Refraction.html" class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hover:bg-slate-800 transition cursor-pointer">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </a>
+        <div class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hidden sm:flex">
+          <i class="fa-solid fa-eye text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+            SAHS-E-LAB | <span class="text-secondary">Clinical Keratometry Lab</span>
+            <span class="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900">v3.3 CLINICAL EXACT</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-extrabold">Bausch &amp; Lomb One-Position Mire Alignment</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+          <button onclick="toggleDarkMode()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke text-sky-600 dark:text-sky-400"></i>
+          </button>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-4 sm:px-6 pt-24 pb-12 gap-6">
+    
+    <!-- LEFT COLUMN: Keratometer Eyepiece & Drum Readouts -->
+    <section class="lg:w-[58%] space-y-4 font-mono" id="simulationViewport">
+      
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs relative transition-all duration-500">
+        
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Eyepiece Field Viewport (Bausch &amp; Lomb)</span>
+          <div class="flex items-center gap-2">
+            <button onclick="toggleGuideArrow()" id="guideArrowBtn" class="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 transition cursor-pointer">
+              <i class="fa-solid fa-location-arrow text-rose-500 mr-1"></i> Target Guide Arrow: <span id="guideArrowStatus">ON</span>
+            </button>
+            <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span class="text-[9px] font-black uppercase text-slate-600 dark:text-slate-300">Target Illuminated</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="keratometer-bg rounded-full mx-auto relative flex items-center justify-center overflow-hidden shadow-2xl border-[10px] border-slate-800 dark:border-slate-950 select-none" style="width: 360px; height: 360px;" id="eyesViewportBox">
+          
+          <svg viewBox="-120 -120 240 240" class="w-full h-full">
+            <defs>
+              <filter id="focusBlur" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur id="focusBlurStd" stdDeviation="0" />
+              </filter>
+              <filter id="scheinerBlur" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur id="scheinerBlurStd" stdDeviation="0" />
+              </filter>
+              <radialGradient id="irisPattern" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#1e1811" />
+                <stop offset="30%" stop-color="#3d2b1f" />
+                <stop offset="70%" stop-color="#241910" />
+                <stop offset="100%" stop-color="#0a0704" />
+              </radialGradient>
+              <radialGradient id="pupilGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#000000" />
+                <stop offset="80%" stop-color="#080808" />
+                <stop offset="100%" stop-color="#1a120b" />
+              </radialGradient>
+            </defs>
+
+            <!-- Organic Corneal / Iris Background Field -->
+            <g id="corneaBackground" transform="translate(0, 0)">
+              <circle cx="0" cy="0" r="115" fill="url(#irisPattern)" opacity="0.9" />
+              <!-- Iris Fiber Details -->
+              <g stroke="#523927" stroke-width="0.7" opacity="0.4">
+                <line x1="-115" y1="0" x2="115" y2="0" />
+                <line x1="0" y1="-115" x2="0" y2="115" />
+                <line x1="-80" y1="-80" x2="80" y2="80" />
+                <line x1="-80" y1="80" x2="-80" y2="-80" />
+              </g>
+              <!-- Central Pupil -->
+              <circle cx="0" cy="0" r="42" fill="url(#pupilGlow)" stroke="#1c130c" stroke-width="2" />
+              <circle cx="-15" cy="-15" r="12" fill="#ffffff" opacity="0.06" filter="blur(2px)" />
+            </g>
+
+            <!-- Fixed Eyepiece Central Reticle Crosshair -->
+            <g id="eyepieceReticle" stroke="#0ea5e9" stroke-width="0.8" fill="none" opacity="0.75">
+              <circle cx="0" cy="0" r="16" stroke-dasharray="3 3" />
+              <line x1="-120" y1="0" x2="120" y2="0" />
+              <line x1="0" y1="-120" x2="0" y2="120" />
+            </g>
+
+            <!-- Rotatable Axis & Translatable Mire Assembly (Bausch & Lomb Model) -->
+            <g id="mireCenteringGroup" transform="translate(0, 0)">
+              <g id="mireRotationGroup" transform="rotate(0)">
+                <g id="mireBlurGroup" filter="url(#focusBlur)" class="mire-glow">
+                  
+                  <!-- SCHEINER OUT-OF-FOCUS GHOST IMAGE OVERLAY -->
+                  <g id="scheinerGhostGroup" opacity="0" filter="url(#scheinerBlur)">
+                    <g id="mainCircleGhost" transform="translate(35, 35)">
+                      <circle cx="0" cy="0" r="28" stroke="#ffffff" stroke-width="2" stroke-dasharray="7 3.5" fill="none" opacity="0.7" />
+                      <path d="M-39 0 H-31 M-35 -4 V4" stroke="#ffffff" stroke-width="1.8" opacity="0.7" />
+                      <path d="M31 0 H39 M35 -4 V4" stroke="#ffffff" stroke-width="1.8" opacity="0.7" />
+                      <path d="M-4 -35 H4" stroke="#ffffff" stroke-width="1.8" opacity="0.7" />
+                      <path d="M-4 35 H4" stroke="#ffffff" stroke-width="1.8" opacity="0.7" />
+                    </g>
+                  </g>
+
+                  <!-- 1. MAIN / BASE CORNEAL MIRE (Bottom-Right Circle: Outer + on L/R, Outer - on T/B) -->
+                  <g id="mireCircleMain" transform="translate(35, 35)">
+                    <!-- Dashed Ring (Radius = 28) -->
+                    <circle cx="0" cy="0" r="28" stroke="#ffffff" stroke-width="2.2" stroke-dasharray="7 3.5" fill="none" />
+                    
+                    <!-- Left Plus (+) centered outside circle at X = -35 -->
+                    <path id="mainLeftPlus" d="M-39 0 H-31 M-35 -4 V4" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" />
+                    <!-- Right Plus (+) centered outside circle at X = +35 -->
+                    <path d="M31 0 H39 M35 -4 V4" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" />
+                    <!-- Top Minus (-) centered outside circle at Y = -35 -->
+                    <path id="mainTopMinus" d="M-4 -35 H4" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+                    <!-- Bottom Minus (-) centered outside circle at Y = +35 -->
+                    <path d="M-4 35 H4" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+                  </g>
+
+                  <!-- 2. HORIZONTAL MEASURING MIRE (Left Circle with Outer Pluses) -->
+                  <!-- Aligns with Bottom-Right circle when hError = 0 (hShift = -35). Right Plus (+35) lands at X = 0 -->
+                  <g id="mireCircleLeft" transform="translate(-35, 35)">
+                    <circle cx="0" cy="0" r="28" stroke="#ffffff" stroke-width="2.2" stroke-dasharray="7 3.5" fill="none" />
+                    <!-- Outer Left Plus (-) -->
+                    <path d="M-39 0 H-31 M-35 -4 V4" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+                    <!-- Outer Right Plus (+) -> Overlaps mainLeftPlus in gap when aligned -->
+                    <path id="leftRightPlus" d="M31 0 H39 M35 -4 V4" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" />
+                    <!-- Outer Top Minus (-) -->
+                    <path d="M-4 -35 H4" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" />
+                    <!-- Outer Bottom Minus (-) -->
+                    <path d="M-4 35 H4" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" />
+                  </g>
+
+                  <!-- 3. VERTICAL MEASURING MIRE (Top Circle with Outer Minuses) -->
+                  <!-- Aligns with Bottom-Right circle when vError = 0 (vShift = -35). Bottom Minus (+35) lands at Y = 0 -->
+                  <g id="mireCircleTop" transform="translate(35, -35)">
+                    <circle cx="0" cy="0" r="28" stroke="#ffffff" stroke-width="2.2" stroke-dasharray="7 3.5" fill="none" />
+                    <!-- Outer Right Plus (+) -->
+                    <path d="M31 0 H39 M35 -4 V4" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+                    <!-- Outer Left Plus (+) -->
+                    <path d="M-39 0 H-31 M-35 -4 V4" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+                    <!-- Outer Top Minus (-) -->
+                    <path d="M-4 -35 H4" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" />
+                    <!-- Outer Bottom Minus (-) -> Overlaps mainTopMinus in gap when aligned -->
+                    <path id="topBottomMinus" d="M-4 35 H4" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+                  </g>
+
+                  <!-- RED ALIGNMENT TARGET ARROW (Points to Vertical Minus Alignment in Gap between Circles) -->
+                  <g id="guideArrowGraphic" transform="translate(55, 0)" opacity="1">
+                    <line x1="28" y1="0" x2="8" y2="0" stroke="#ef4444" stroke-width="3" stroke-linecap="round" />
+                    <polygon points="8,0 16,-5 16,5" fill="#ef4444" />
+                    <text x="32" y="3" fill="#ef4444" font-size="6.5" font-weight="extrabold" font-family="sans-serif">MINUS (-) GAP ALIGNMENT</text>
+                  </g>
+
+                </g>
+              </g>
+            </g>
+
+          </svg>
+
+        </div>
+
+        <div class="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2.5 px-4 z-10 rounded-xl mt-4">
+          <div class="flex justify-center items-center gap-2 max-w-lg mx-auto">
+            <span class="text-[8px] bg-sky-100 dark:bg-sky-950 text-secondary border border-sky-200 dark:border-sky-800 font-black tracking-widest uppercase px-1.5 py-0.5 rounded flex-shrink-0 animate-pulse">Diagnostics Feed</span>
+            <p id="commentaryText" class="text-[10px] text-slate-600 dark:text-slate-300 font-mono truncate font-bold text-center flex-1">Use Joystick to center the eye, then adjust Focus Knob, Drums, and Axis.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Instrument Measuring Drums Readouts Card -->
+      <div class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
+          <h4 class="text-xs uppercase font-black text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+            <i class="fa-solid fa-gauge-high text-secondary"></i> Instrument Measuring Drums
+          </h4>
+          <span class="text-[9px] font-bold text-slate-400 font-mono" id="radiiConversionText">r = 7.76 mm / 7.58 mm</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 font-mono text-xs">
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest block">Horizontal Drum (K1)</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="readoutH" class="text-xl font-black text-slate-900 dark:text-white">43.50</span>
+              <span class="text-[9px] font-black text-slate-400">D</span>
+            </div>
+            <span class="text-[8px] text-slate-400 block pt-0.5" id="radiusHReadout">r1: 7.76 mm</span>
+          </div>
+
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-sky-600 dark:text-sky-400 uppercase tracking-widest block">Vertical Drum (K2)</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="readoutV" class="text-xl font-black text-slate-900 dark:text-white">44.50</span>
+              <span class="text-[9px] font-black text-slate-400">D</span>
+            </div>
+            <span class="text-[8px] text-slate-400 block pt-0.5" id="radiusVReadout">r2: 7.58 mm</span>
+          </div>
+
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest block">Axis Barrel</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="readoutAxis" class="text-xl font-black text-slate-900 dark:text-white">180°</span>
+              <span class="text-[9px] font-black text-slate-400">DEG</span>
+            </div>
+            <span class="text-[8px] text-slate-400 block pt-0.5" id="astigmatismTypeReadout">1.00 D WTR</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: Interactive Control Knobs & Assessment -->
+    <section class="lg:w-[42%] space-y-4">
+      
+      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-3xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-xs">
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-chalkboard-user"></i> Practice Mode
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-vial"></i> Assessment
+        </button>
+      </div>
+
+      <!-- PRACTICE CONTROLS CARD -->
+      <div id="practiceControlsCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-2">
+          <div>
+            <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-secondary"></i> Corneal Target Parameter Setup
+            </h3>
+            <p class="text-[10px] text-slate-400 font-bold">Simulate patient corneal power (36.00 to 52.00 D)</p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="autoMatchDrums()" class="px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 border border-sky-300 dark:bg-sky-950/20 dark:border-sky-900 rounded-xl text-[10px] font-black text-secondary transition flex items-center gap-1 cursor-pointer">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Align
+            </button>
+            <button onclick="resetSimulator()" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-300 dark:bg-rose-950/20 dark:border-rose-900 rounded-xl text-[10px] font-black text-rose-600 dark:text-rose-400 transition flex items-center gap-1 cursor-pointer">
+              <i class="fa-solid fa-arrow-rotate-left"></i> Reset
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 pt-1">
+          <div>
+            <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Target K1 (H)</label>
+            <input type="text" id="pracK1Input" value="43.50" onchange="handlePresetChange(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary text-center">
+          </div>
+          <div>
+            <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Target K2 (V)</label>
+            <input type="text" id="pracK2Input" value="44.50" onchange="handlePresetChange(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary text-center">
+          </div>
+          <div>
+            <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Target Axis</label>
+            <input type="number" id="pracAxisInput" min="0" max="180" step="1" value="180" onchange="updateCustomPracLens()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary text-center">
+          </div>
+        </div>
+
+        <!-- Centering Joystick Controller -->
+        <div class="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl space-y-2">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1">
+            <span class="text-[9px] font-black uppercase text-amber-500 tracking-widest"><i class="fa-solid fa-gamepad"></i> Joystick Patient Centering</span>
+            <button onclick="centerCornea()" class="text-[8px] font-black text-secondary uppercase hover:underline">Center Apex</button>
+          </div>
+          <div class="flex items-center justify-center gap-2 pt-1">
+            <button onclick="panCornea(-3, 0)" class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold transition text-xs cursor-pointer"><i class="fa-solid fa-arrow-left"></i></button>
+            <div class="flex flex-col gap-1">
+              <button onclick="panCornea(0, -3)" class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold transition text-xs cursor-pointer"><i class="fa-solid fa-arrow-up"></i></button>
+              <button onclick="panCornea(0, 3)" class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold transition text-xs cursor-pointer"><i class="fa-solid fa-arrow-down"></i></button>
+            </div>
+            <button onclick="panCornea(3, 0)" class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold transition text-xs cursor-pointer"><i class="fa-solid fa-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- Focus Knob Slider -->
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-secondary tracking-widest"><i class="fa-solid fa-bullseye"></i> Focus Knob (Scheiner Disc Sharpness)</span>
+          </div>
+          <div class="flex items-center gap-3 pt-1">
+            <button onclick="stepControl('focus', -0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">-</button>
+            <input type="range" id="focusSlider" min="36" max="52" step="0.25" value="40" oninput="slideControl('focus')" class="w-full">
+            <button onclick="stepControl('focus', 0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">+</button>
+          </div>
+        </div>
+
+        <!-- Horizontal Drum Slider -->
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-rose-500 tracking-widest"><i class="fa-solid fa-arrows-left-right"></i> Horizontal Drum (Align Outer Plus Signs +)</span>
+          </div>
+          <div class="flex items-center gap-3 pt-1">
+            <button onclick="stepControl('h', -0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">-</button>
+            <input type="range" id="hDrumSlider" min="36" max="52" step="0.25" value="41.50" oninput="slideControl('h')" class="w-full">
+            <button onclick="stepControl('h', 0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">+</button>
+          </div>
+        </div>
+
+        <!-- Vertical Drum Slider -->
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-sky-500 tracking-widest"><i class="fa-solid fa-arrows-up-down"></i> Vertical Drum (Align Outer Minus Signs -)</span>
+          </div>
+          <div class="flex items-center gap-3 pt-1">
+            <button onclick="stepControl('v', -0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">-</button>
+            <input type="range" id="vDrumSlider" min="36" max="52" step="0.25" value="42.50" oninput="slideControl('v')" class="w-full">
+            <button onclick="stepControl('v', 0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">+</button>
+          </div>
+        </div>
+
+        <!-- Axis Barrel Slider -->
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-purple-500 tracking-widest"><i class="fa-solid fa-rotate"></i> Axis Barrel (0° to 180°)</span>
+          </div>
+          <div class="flex items-center gap-3 pt-1">
+            <button onclick="stepControl('axis', -1)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer"><i class="fa-solid fa-rotate-left"></i></button>
+            <input type="range" id="axisSlider" min="0" max="180" step="1" value="160" oninput="slideControl('axis')" class="w-full">
+            <button onclick="stepControl('axis', 1)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer"><i class="fa-solid fa-rotate-right"></i></button>
+          </div>
+        </div>
+
+        <div id="beginnerInstructionCard" class="p-3.5 bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900 rounded-2xl text-[11px] space-y-2">
+          <span class="font-extrabold text-secondary uppercase tracking-widest text-[9px] block flex items-center gap-1">
+            <i class="fa-solid fa-lightbulb text-amber-500 animate-pulse"></i> Bausch &amp; Lomb Procedure Guide
+          </span>
+          <p class="text-slate-600 dark:text-slate-400 leading-relaxed">
+            1. Use <strong>Joystick</strong> to position central reticle inside the main circle.<br>
+            2. Turn <strong>Focus Knob</strong> until the doubled bottom-right circle merges into a single sharp circle (Scheiner disc principle).<br>
+            3. Turn <strong>Axis Barrel</strong> so outer horizontal plus ($+$) spur lines form a continuous straight line without scissoring.<br>
+            4. Turn <strong>Horizontal Drum</strong> to superimpose the outer plus ($+$) signs in the left gap.<br>
+            5. Turn <strong>Vertical Drum</strong> to superimpose the outer minus ($-$) signs in the top gap (pointed to by the red arrow).
+          </p>
+        </div>
+      </div>
+
+      <!-- TEST / ASSESSMENT CONSOLE -->
+      <div id="testModeConsole" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Verification Board</h3>
+            <p class="text-[10px] text-slate-600 dark:text-slate-400">Align mires on the unknown cornea and record your final readings.</p>
+          </div>
+          <span id="assessmentScoreReadout" class="text-xs font-black bg-slate-100 dark:bg-slate-800 border border-slate-300 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">Score: Unsubmitted</span>
+        </div>
+
+        <div class="space-y-3">
+          <!-- Centering Joystick Controller -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl space-y-2">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1">
+              <span class="text-[9px] font-black uppercase text-amber-500 tracking-widest"><i class="fa-solid fa-gamepad"></i> Joystick Patient Centering</span>
+              <button onclick="centerCornea()" class="text-[8px] font-black text-secondary uppercase hover:underline cursor-pointer">Center Apex</button>
+            </div>
+            <div class="flex items-center justify-center gap-2 pt-1">
+              <button onclick="panCornea(-3, 0)" class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold transition text-xs cursor-pointer"><i class="fa-solid fa-arrow-left"></i></button>
+              <div class="flex flex-col gap-1">
+                <button onclick="panCornea(0, -3)" class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold transition text-xs cursor-pointer"><i class="fa-solid fa-arrow-up"></i></button>
+                <button onclick="panCornea(0, 3)" class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold transition text-xs cursor-pointer"><i class="fa-solid fa-arrow-down"></i></button>
+              </div>
+              <button onclick="panCornea(3, 0)" class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold transition text-xs cursor-pointer"><i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+          </div>
+
+          <!-- Focus Knob Slider -->
+          <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+              <span class="text-[9px] font-black uppercase text-secondary tracking-widest"><i class="fa-solid fa-bullseye"></i> Focus Knob (Scheiner Disc Sharpness)</span>
+            </div>
+            <div class="flex items-center gap-3 pt-1">
+              <button onclick="stepControl('focus', -0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">-</button>
+              <input type="range" id="testFocusSlider" min="36" max="52" step="0.25" value="40" oninput="slideTestControl('focus')" class="w-full">
+              <button onclick="stepControl('focus', 0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">+</button>
+            </div>
+          </div>
+
+          <!-- Horizontal Drum Slider -->
+          <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+              <span class="text-[9px] font-black uppercase text-rose-500 tracking-widest"><i class="fa-solid fa-arrows-left-right"></i> Horizontal Drum (Align Outer Plus Signs +)</span>
+            </div>
+            <div class="flex items-center gap-3 pt-1">
+              <button onclick="stepControl('h', -0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">-</button>
+              <input type="range" id="testHDrumSlider" min="36" max="52" step="0.25" value="41.50" oninput="slideTestControl('h')" class="w-full">
+              <button onclick="stepControl('h', 0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">+</button>
+            </div>
+          </div>
+
+          <!-- Vertical Drum Slider -->
+          <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+              <span class="text-[9px] font-black uppercase text-sky-500 tracking-widest"><i class="fa-solid fa-arrows-up-down"></i> Vertical Drum (Align Outer Minus Signs -)</span>
+            </div>
+            <div class="flex items-center gap-3 pt-1">
+              <button onclick="stepControl('v', -0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">-</button>
+              <input type="range" id="testVDrumSlider" min="36" max="52" step="0.25" value="42.50" oninput="slideTestControl('v')" class="w-full">
+              <button onclick="stepControl('v', 0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">+</button>
+            </div>
+          </div>
+
+          <!-- Axis Barrel Slider -->
+          <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+            <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+              <span class="text-[9px] font-black uppercase text-purple-500 tracking-widest"><i class="fa-solid fa-rotate"></i> Axis Barrel (0° to 180°)</span>
+            </div>
+            <div class="flex items-center gap-3 pt-1">
+              <button onclick="stepControl('axis', -1)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer"><i class="fa-solid fa-rotate-left"></i></button>
+              <input type="range" id="testAxisSlider" min="0" max="180" step="1" value="160" oninput="slideTestControl('axis')" class="w-full">
+              <button onclick="stepControl('axis', 1)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div>
+              <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">K1 / H (D)</label>
+              <input type="text" id="testK1" placeholder="43.50" onchange="formatDiopter(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-secondary text-center">
+            </div>
+            <div>
+              <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">K2 / V (D)</label>
+              <input type="text" id="testK2" placeholder="44.50" onchange="formatDiopter(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-secondary text-center">
+            </div>
+            <div>
+              <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Axis (°)</label>
+              <input type="number" id="testAxis" step="1" min="0" max="180" placeholder="180" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-secondary text-center">
+            </div>
+          </div>
+        </div>
+        <div id="diagnosisFeedback" class="text-[11px] font-bold hidden px-3 py-2 rounded-lg"></div>
+
+        <div class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-900">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block">Keratometry Quiz (50% Marks)</span>
+          <div id="testMcqSuite" class="space-y-4"></div>
+        </div>
+
+        <button onclick="submitTestAssessment()" class="w-full py-3 bg-secondary text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+          Submit K-Readings &amp; Assessment Profile
+        </button>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- About Modal -->
+  <div id="aboutModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-eye text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">About Keratometry Lab</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Refraction &amp; Contact Lens Unit</p>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        This clinical simulation models standard Bausch &amp; Lomb one-position manual keratometry. It replicates Scheiner disc aperture focusing, image doubling prism displacement, astigmatic meridian scissoring, and radius of curvature conversion ($r = 337.5 / K$).
+      </p>
+    </div>
+  </div>
+
+  <!-- Reference Modal -->
+  <div id="referenceModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">Clinical References (AAO / EyeWiki)</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Keratometry Guidelines</p>
+        </div>
+      </div>
+      <div class="space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+        <p><strong>1. Corneal Refractive Index ($n$):</strong> Manual keratometers utilize $n = 1.3375$ to account for both anterior and posterior corneal surfaces.</p>
+        <p><strong>2. Radius Formula:</strong> Radius $r \text{ (mm)} = 337.5 / K \text{ (Diopters)}$. E.g., $45.00 \text{ D} = 7.50 \text{ mm}$.</p>
+        <p><strong>3. Alignment Protocol:</strong> Align central crosshair. Focus double mires. Turn Axis Barrel to untwist scissored plus ($+$) spur lines. Turn Horizontal Drum to superimpose outer plus signs ($+$). Turn Vertical Drum to superimpose outer minus signs ($-$).</p>
+        <p><strong>4. Astigmatism Rules:</strong> With-The-Rule (WTR) = vertical meridian steeper ($90^\circ \pm 30^\circ$). Against-The-Rule (ATR) = horizontal meridian steeper ($180^\circ \pm 30^\circ$).</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const clinicalMcqPool = [
+      {
+        question: "In a standard Bausch & Lomb one-position keratometer, what symbol is superimposed using the vertical measuring drum?",
+        options: { a: "The plus (+) signs of the mires", b: "The minus (-) signs of the mires", c: "The central reticle crosshair" },
+        correct: "b",
+        explanation: "In B&L manual keratometers, the vertical measuring drum adjusts the vertical prism displacement to superimpose the minus (-) signs."
+      },
+      {
+        question: "If a patient has K1 = 42.50 D @ 180° and K2 = 45.00 D @ 90°, what is the corneal astigmatism classification?",
+        options: { a: "2.50 D With-The-Rule astigmatism", b: "2.50 D Against-The-Rule astigmatism", c: "45.00 D Spherical cornea" },
+        correct: "a",
+        explanation: "Corneal astigmatism is K2 - K1 = 2.50 D. Since the vertical meridian (90°) is steeper than the horizontal meridian (180°), it is With-The-Rule (WTR) astigmatism."
+      },
+      {
+        question: "Which standardized corneal refractive index is used by manual keratometers to convert measured curvature radius (mm) into Diopters?",
+        options: { a: "1.3375", b: "1.5230", c: "1.4900" },
+        correct: "a",
+        explanation: "Keratometers use the standardized corneal refractive index of n = 1.3375 (allowing 45.00 D to correspond exactly to 7.50 mm)."
+      },
+      {
+        question: "What physical phenomenon occurs when the keratometer axis barrel is not aligned with the principal astigmatic meridian?",
+        options: { a: "The horizontal plus (+) spur lines appear broken or scissored", b: "The mires turn completely red", c: "The mires vanish from the field of view" },
+        correct: "a",
+        explanation: "Off-axis orientation causes the projected horizontal spur lines of the mires to scissor or break away from a continuous horizontal line."
+      }
+    ];
+
+    const simState = {
+      mode: 'practice',
+      soundMuted: false,
+      guideArrowOn: true,
+      practiceTarget: { k1: 43.50, k2: 44.50, axis: 180 },
+      customTestTarget: { k1: 43.50, k2: 44.50, axis: 180 },
+      userFocus: 40.00,
+      userH: 41.50,
+      userV: 42.50,
+      userAxis: 160,
+      panX: 0,
+      panY: 0,
+      selectedQuestions: [],
+      scores: { diagnosisScore: 0, mcqScore: 0 }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      syncCompletionBadge();
+      resetSimulator();
+    });
+
+    function formatDiopter(el) {
+      if (!el.value && el.value !== "0") return;
+      let val = parseFloat(el.value);
+      if (isNaN(val)) {
+        el.value = "";
+        return;
+      }
+      el.value = val.toFixed(2);
+    }
+
+    function handlePresetChange(el) {
+      formatDiopter(el);
+      updateCustomPracLens();
+    }
+
+    function toggleGuideArrow() {
+      simState.guideArrowOn = !simState.guideArrowOn;
+      document.getElementById('guideArrowStatus').innerText = simState.guideArrowOn ? 'ON' : 'OFF';
+      document.getElementById('guideArrowGraphic').style.opacity = simState.guideArrowOn ? '1' : '0';
+      soundFeedback('click');
+    }
+
+    function stepControl(type, amt) {
+      soundFeedback('dial');
+      let slider;
+      if (simState.mode === 'test') {
+        if (type === 'focus') slider = document.getElementById('testFocusSlider');
+        else if (type === 'h') slider = document.getElementById('testHDrumSlider');
+        else if (type === 'v') slider = document.getElementById('testVDrumSlider');
+        else if (type === 'axis') slider = document.getElementById('testAxisSlider');
+      } else {
+        if (type === 'focus') slider = document.getElementById('focusSlider');
+        else if (type === 'h') slider = document.getElementById('hDrumSlider');
+        else if (type === 'v') slider = document.getElementById('vDrumSlider');
+        else if (type === 'axis') slider = document.getElementById('axisSlider');
+      }
+
+      if (!slider) return;
+
+      let val = parseFloat(slider.value) + amt;
+      if (type === 'axis') {
+        if (val > 180) val = 0; if (val < 0) val = 180;
+      } else {
+        if (val > 52) val = 52; if (val < 36) val = 36;
+      }
+      slider.value = val;
+      if (simState.mode === 'test') {
+        slideTestControl(type);
+      } else {
+        slideControl(type);
+      }
+    }
+
+    function slideControl(type) {
+      if (type === 'focus') simState.userFocus = parseFloat(document.getElementById('focusSlider').value);
+      if (type === 'h') simState.userH = parseFloat(document.getElementById('hDrumSlider').value);
+      if (type === 'v') simState.userV = parseFloat(document.getElementById('vDrumSlider').value);
+      if (type === 'axis') simState.userAxis = parseInt(document.getElementById('axisSlider').value);
+      updateKeratometerPhysics();
+    }
+
+    function slideTestControl(type) {
+      if (type === 'focus') simState.userFocus = parseFloat(document.getElementById('testFocusSlider').value);
+      if (type === 'h') simState.userH = parseFloat(document.getElementById('testHDrumSlider').value);
+      if (type === 'v') simState.userV = parseFloat(document.getElementById('testVDrumSlider').value);
+      if (type === 'axis') simState.userAxis = parseInt(document.getElementById('testAxisSlider').value);
+      updateKeratometerPhysics();
+    }
+
+    function panCornea(dx, dy) {
+      soundFeedback('click');
+      simState.panX += dx;
+      simState.panY += dy;
+      if (simState.panX > 25) simState.panX = 25; if (simState.panX < -25) simState.panX = -25;
+      if (simState.panY > 25) simState.panY = 25; if (simState.panY < -25) simState.panY = -25;
+      updateKeratometerPhysics();
+    }
+
+    function centerCornea() {
+      soundFeedback('success');
+      simState.panX = 0;
+      simState.panY = 0;
+      updateKeratometerPhysics();
+    }
+
+    function autoMatchDrums() {
+      soundFeedback('success');
+      const target = simState.practiceTarget;
+      const avgK = (target.k1 + target.k2) / 2;
+      
+      simState.userFocus = avgK;
+      simState.userH = target.k1;
+      simState.userV = target.k2;
+      simState.userAxis = target.axis;
+      simState.panX = 0;
+      simState.panY = 0;
+
+      document.getElementById('focusSlider').value = avgK;
+      document.getElementById('hDrumSlider').value = target.k1;
+      document.getElementById('vDrumSlider').value = target.k2;
+      document.getElementById('axisSlider').value = target.axis;
+
+      updateKeratometerPhysics();
+    }
+
+    function updateCustomPracLens() {
+      let k1 = parseFloat(document.getElementById('pracK1Input').value) || 43.50;
+      let k2 = parseFloat(document.getElementById('pracK2Input').value) || 44.50;
+      let axis = parseInt(document.getElementById('pracAxisInput').value) || 180;
+      
+      simState.practiceTarget = { k1, k2, axis };
+      updateKeratometerPhysics();
+    }
+
+    function resetSimulator() {
+      soundFeedback('success');
+      simState.userFocus = 40.00;
+      simState.userH = 41.50;
+      simState.userV = 42.50;
+      simState.userAxis = 160;
+      simState.panX = 12;
+      simState.panY = -8;
+      
+      const focusS = document.getElementById('focusSlider');
+      if (focusS) focusS.value = 40.00;
+      const hS = document.getElementById('hDrumSlider');
+      if (hS) hS.value = 41.50;
+      const vS = document.getElementById('vDrumSlider');
+      if (vS) vS.value = 42.50;
+      const axisS = document.getElementById('axisSlider');
+      if (axisS) axisS.value = 160;
+
+      const testFocusS = document.getElementById('testFocusSlider');
+      if (testFocusS) testFocusS.value = 40.00;
+      const testHS = document.getElementById('testHDrumSlider');
+      if (testHS) testHS.value = 41.50;
+      const testVS = document.getElementById('testVDrumSlider');
+      if (testVS) testVS.value = 42.50;
+      const testAxisS = document.getElementById('testAxisSlider');
+      if (testAxisS) testAxisS.value = 160;
+
+      if (simState.mode === 'practice') {
+        document.getElementById('pracK1Input').value = "43.50";
+        document.getElementById('pracK2Input').value = "44.50";
+        document.getElementById('pracAxisInput').value = "180";
+        simState.practiceTarget = { k1: 43.50, k2: 44.50, axis: 180 };
+      }
+      updateKeratometerPhysics();
+    }
+
+    function updateKeratometerPhysics() {
+      // Numerical readouts
+      document.getElementById('readoutH').innerText = simState.userH.toFixed(2);
+      document.getElementById('readoutV').innerText = simState.userV.toFixed(2);
+      document.getElementById('readoutAxis').innerText = `${simState.userAxis.toString().padStart(3, '0')}°`;
+
+      // Radii conversion: r = 337.5 / K
+      const r1 = (337.5 / simState.userH).toFixed(2);
+      const r2 = (337.5 / simState.userV).toFixed(2);
+      document.getElementById('radiusHReadout').innerText = `r1: ${r1} mm`;
+      document.getElementById('radiusVReadout').innerText = `r2: ${r2} mm`;
+      document.getElementById('radiiConversionText').innerText = `r = ${r1} mm / ${r2} mm`;
+
+      // Astigmatism classification
+      const diffK = simState.userV - simState.userH;
+      let astigText = `${Math.abs(diffK).toFixed(2)} D `;
+      if (Math.abs(diffK) < 0.12) astigText += "Spherical";
+      else if (diffK > 0) astigText += "WTR";
+      else astigText += "ATR";
+      document.getElementById('astigmatismTypeReadout').innerText = astigText;
+
+      const target = simState.mode === 'practice' ? simState.practiceTarget : simState.customTestTarget;
+
+      // Centering pan translation
+      document.getElementById('corneaBackground').setAttribute('transform', `translate(${simState.panX}, ${simState.panY})`);
+      document.getElementById('mireCenteringGroup').setAttribute('transform', `translate(${simState.panX}, ${simState.panY})`);
+
+      // Target error calculations
+      const avgTargetK = (target.k1 + target.k2) / 2;
+      const focusError = Math.abs(simState.userFocus - avgTargetK);
+      let hError = (simState.userH - target.k1);
+      let vError = (simState.userV - target.k2);
+      
+      let axisDiff = Math.abs(simState.userAxis - target.axis) % 180;
+      if (axisDiff > 90) axisDiff = 180 - axisDiff;
+
+      // Snapping tolerance for realistic tactile feedback
+      if (Math.abs(hError) <= 0.08) hError = 0;
+      if (Math.abs(vError) <= 0.08) vError = 0;
+
+      // Scheiner focusing blur calculations
+      let blurDev = focusError * 1.2;
+      if (blurDev > 8) blurDev = 8;
+      document.getElementById('focusBlurStd').setAttribute('stdDeviation', blurDev.toFixed(2));
+
+      // Scheiner Doubling: Out-of-focus creates a displaced ghost image of the central main circle
+      const ghostOffset = focusError * 2.2;
+      const ghostOpacity = Math.min(0.85, focusError * 0.3);
+      
+      const ghostGroup = document.getElementById('scheinerGhostGroup');
+      const ghostCircle = document.getElementById('mainCircleGhost');
+      if (ghostCircle) {
+        ghostCircle.setAttribute('transform', `translate(${35 + ghostOffset}, ${35 - ghostOffset})`);
+      }
+      ghostGroup.setAttribute('opacity', ghostOpacity.toFixed(2));
+      document.getElementById('scheinerBlurStd').setAttribute('stdDeviation', (focusError * 0.8).toFixed(2));
+
+      // Axis scissoring shift along perpendicular axis when off-axis
+      let scissorY = 0;
+      if (Math.abs(target.k1 - target.k2) > 0.25 || axisDiff > 1) {
+        scissorY = Math.sin(axisDiff * Math.PI / 180) * 12;
+      }
+
+      // Translate Mires based on drum readings
+      // Exact alignment: At hError = 0, hShift = -35. Outer Right plus (+35) overlaps Main outer left plus (-35) at X = 0.
+      const hShift = -35 + (hError * 3.5);
+      document.getElementById('mireCircleLeft').setAttribute('transform', `translate(${hShift}, ${35 + scissorY})`);
+
+      // Exact alignment: At vError = 0, vShift = -35. Outer Bottom minus (+35) overlaps Main outer top minus (-35) at Y = 0.
+      const vShift = -35 + (vError * 3.5);
+      document.getElementById('mireCircleTop').setAttribute('transform', `translate(35, ${vShift})`);
+
+      // Axis rotation
+      document.getElementById('mireRotationGroup').setAttribute('transform', `rotate(${-simState.userAxis})`);
+
+      // Visual alignment highlights
+      const isHAligned = Math.abs(hError) === 0;
+      const isVAligned = Math.abs(vError) === 0;
+      const isAxisAligned = axisDiff <= 1;
+      const isFocused = focusError <= 0.2;
+      const isCentered = Math.abs(simState.panX) <= 5 && Math.abs(simState.panY) <= 5;
+
+      const mainLeftPlus = document.getElementById('mainLeftPlus');
+      const leftRightPlus = document.getElementById('leftRightPlus');
+      if (isHAligned && isAxisAligned) {
+        mainLeftPlus.setAttribute('stroke', '#22c55e');
+        leftRightPlus.setAttribute('stroke', '#22c55e');
+        mainLeftPlus.style.filter = 'drop-shadow(0 0 4px #22c55e)';
+        leftRightPlus.style.filter = 'drop-shadow(0 0 4px #22c55e)';
+      } else {
+        mainLeftPlus.setAttribute('stroke', '#ffffff');
+        leftRightPlus.setAttribute('stroke', '#ffffff');
+        mainLeftPlus.style.filter = 'none';
+        leftRightPlus.style.filter = 'none';
+      }
+
+      const mainTopMinus = document.getElementById('mainTopMinus');
+      const topBottomMinus = document.getElementById('topBottomMinus');
+      if (isVAligned) {
+        mainTopMinus.setAttribute('stroke', '#38bdf8');
+        topBottomMinus.setAttribute('stroke', '#38bdf8');
+        mainTopMinus.style.filter = 'drop-shadow(0 0 4px #38bdf8)';
+        topBottomMinus.style.filter = 'drop-shadow(0 0 4px #38bdf8)';
+      } else {
+        mainTopMinus.setAttribute('stroke', '#ffffff');
+        topBottomMinus.setAttribute('stroke', '#ffffff');
+        mainTopMinus.style.filter = 'none';
+        topBottomMinus.style.filter = 'none';
+      }
+
+      // Diagnostics Commentary
+      let commentary = "";
+      if (!isCentered) {
+        commentary = "Mires off-center! Use Joystick buttons to align central crosshair in the main circle.";
+      } else if (!isFocused) {
+        commentary = "Target out of focus! Turn Focus Knob to merge the doubled bottom-right circle into a single ring.";
+      } else if (!isAxisAligned && Math.abs(target.k1 - target.k2) > 0.25) {
+        commentary = "Horizontal spur lines scissored/broken! Rotate Axis Barrel to straighten alignment.";
+      } else if (!isHAligned) {
+        commentary = "Horizontal plus (+) signs unaligned in gap. Adjust Horizontal Drum slider.";
+      } else if (!isVAligned) {
+        commentary = "Vertical minus (-) signs unaligned in gap. Adjust Vertical Drum slider.";
+      } else {
+        commentary = "✨ PERFECT ALIGNMENT! K-readings match preset corneal parameters.";
+      }
+
+      if (simState.mode === 'practice') {
+        document.getElementById('commentaryText').innerText = commentary;
+      }
+    }
+
+    function changeMode(target) {
+      soundFeedback('switch');
+      simState.mode = target;
+
+      const pracBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      const pracConsole = document.getElementById('practiceControlsCard');
+      const testConsole = document.getElementById('testModeConsole');
+      const scoreCard = document.getElementById('finalScoreCard');
+      
+      if(scoreCard) scoreCard.classList.add('hidden');
+
+      if (target === 'practice') {
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer";
+        pracConsole.classList.remove('hidden');
+        testConsole.classList.add('hidden');
+      } else {
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 hover:bg-slate-900 shadow-xs cursor-pointer";
+        pracConsole.classList.add('hidden');
+        testConsole.classList.remove('hidden');
+
+        // Generate random hidden cornea target
+        let genK1 = (Math.floor(Math.random() * 41) + 152) * 0.25; // 38.00 to 48.00 D
+        let genK2 = genK1 + (Math.floor(Math.random() * 13) * 0.25); // +0.00 to +3.00 D astigmatism
+        let genAxis = Math.floor(Math.random() * 37) * 5;          // 0 to 180 degrees
+
+        simState.customTestTarget = { k1: genK1, k2: genK2, axis: genAxis };
+        
+        document.getElementById('testK1').value = "";
+        document.getElementById('testK2').value = "";
+        document.getElementById('testAxis').value = "";
+        document.getElementById('diagnosisFeedback').classList.add('hidden');
+        document.getElementById('commentaryText').innerText = "Assessment Active. Align mires on the unknown cornea and record values.";
+        
+        setupTestMcqSuite();
+      }
+      resetSimulator();
+    }
+
+    function setupTestMcqSuite() {
+      simState.selectedQuestions = [...clinicalMcqPool].sort(() => 0.5 - Math.random()).slice(0, 3);
+      const container = document.getElementById('testMcqSuite');
+      container.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const div = document.createElement('div');
+        div.className = "bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs shadow-xs text-slate-900 dark:text-slate-200";
+        div.innerHTML = `
+          <p class="font-extrabold">${idx + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1.5 pt-1">
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="a" class="accent-secondary"> ${q.options.a}</label>
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="b" class="accent-secondary"> ${q.options.b}</label>
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="c" class="accent-secondary"> ${q.options.c}</label>
+          </div>
+          <p id="mcq_${idx}_feedback" class="text-[10px] font-bold hidden mt-1"></p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function submitTestAssessment() {
+      if (simState.mode !== 'test') return;
+
+      const k1In = document.getElementById('testK1').value;
+      const k2In = document.getElementById('testK2').value;
+      const axisIn = document.getElementById('testAxis').value;
+      const feedback = document.getElementById('diagnosisFeedback');
+
+      let unanswered = false;
+      const answers = [];
+      simState.selectedQuestions.forEach((q, idx) => {
+        const checked = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+        if (!checked) unanswered = true;
+        else answers.push({ idx, selected: checked.value, correct: q.correct, explanation: q.explanation });
+      });
+
+      if (k1In === "" || k2In === "" || axisIn === "" || unanswered) {
+        soundFeedback('warning');
+        feedback.innerHTML = "<i class='fa-solid fa-triangle-exclamation mr-1'></i> Please input your final recorded K1, K2, and Axis values and complete all quiz items.";
+        feedback.className = "text-[11px] font-extrabold text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 block mt-3 px-3 py-2 rounded-lg animate-pulse";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      feedback.classList.remove('hidden');
+      
+      const target = simState.customTestTarget;
+      const uK1 = parseFloat(k1In);
+      const uK2 = parseFloat(k2In);
+      const uAxis = parseInt(axisIn);
+
+      const passK1 = Math.abs(uK1 - target.k1) <= 0.25;
+      const passK2 = Math.abs(uK2 - target.k2) <= 0.25;
+      let axisDiff = Math.abs(uAxis - target.axis) % 180;
+      if (axisDiff > 90) axisDiff = 180 - axisDiff;
+      const passAxis = Math.abs(target.k1 - target.k2) <= 0.25 || axisDiff <= 5;
+
+      if (passK1 && passK2 && passAxis) {
+        feedback.innerHTML = `<i class="fa-solid fa-check-circle mr-1"></i> Correct K-Readings! Target: ${target.k1.toFixed(2)} D / ${target.k2.toFixed(2)} D @ ${target.axis}° (+50 pts)`;
+        feedback.className = "text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 block mt-3 px-3 py-2 rounded-lg";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        feedback.innerHTML = `<i class="fa-solid fa-xmark-circle mr-1"></i> Incorrect. Target was: ${target.k1.toFixed(2)} D / ${target.k2.toFixed(2)} D @ ${target.axis}° (+0 pts)`;
+        feedback.className = "text-[11px] font-bold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 block mt-3 px-3 py-2 rounded-lg";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      let correctCount = 0;
+      answers.forEach((ans) => {
+        const box = document.getElementById(`mcq_${ans.idx}_feedback`);
+        box.classList.remove('hidden');
+        if (ans.selected === ans.correct) {
+          box.innerText = `Correct! (+16.6 pts) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+          correctCount++;
+        } else {
+          box.innerText = `Incorrect. (Answer: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-red-600 dark:text-red-400 block mt-1";
+        }
+      });
+      simState.scores.mcqScore = Math.round(correctCount * 16.66);
+
+      const totalScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('assessmentScoreReadout').innerText = `Score: ${totalScore}/100`;
+
+      let card = document.getElementById('finalScoreCard');
+      if (!card) {
+        const parent = document.getElementById('simulationViewport');
+        card = document.createElement('div');
+        card.id = "finalScoreCard";
+        parent.appendChild(card);
+      }
+
+      card.className = "p-5 rounded-3xl text-center space-y-3 transition-all duration-500 mt-4 ";
+      card.innerHTML = `
+        <div class="space-y-1">
+          <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText"></p>
+          <p class="text-xs text-slate-600 dark:text-slate-400" id="finalStatusDescription"></p>
+        </div>
+        <div id="practiceRedirectBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <button onclick="changeMode('practice')" class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+            <i class="fa-solid fa-graduation-cap mr-1"></i> Return to Practice Console
+          </button>
+        </div>
+      `;
+
+      card.classList.remove('hidden');
+      const statTxt = card.querySelector('#finalStatusText');
+      const statDsc = card.querySelector('#finalStatusDescription');
+      const rdrBlk = card.querySelector('#practiceRedirectBlock');
+
+      if (totalScore >= 80) {
+        soundFeedback('success');
+        card.className += "bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 animate-pulse";
+        statTxt.innerText = `PASSED (${totalScore}%)`;
+        statDsc.innerText = "Corneal keratometry verification assessment logged successfully.";
+        rdrBlk.classList.add('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completed.includes('Keratometry')) {
+          completed.push('Keratometry');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        }
+        syncCompletionBadge();
+      } else {
+        soundFeedback('warning');
+        card.className += "bg-red-50 dark:bg-red-950/25 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-300";
+        statTxt.innerText = `FAILED (${totalScore}%)`;
+        statDsc.innerText = "Assessment score falls below the 80% passing standard criteria.";
+        rdrBlk.classList.remove('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        completed = completed.filter(el => el !== 'Keratometry');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        syncCompletionBadge();
+      }
+    }
+
+    function syncCompletionBadge() {
+      const completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completed.includes('Keratometry')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/45 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+
+    // Modal control handlers
+    function openMenuModal(modalId) { soundFeedback('click'); document.getElementById(`${modalId}Modal`).classList.remove('hidden'); }
+    function closeMenuModal(modalId) { soundFeedback('click'); document.getElementById(`${modalId}Modal`).classList.add('hidden'); }
+    function toggleDarkMode() { const isDark = document.documentElement.classList.toggle('dark'); localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light'); soundFeedback('switch'); }
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const icon = document.getElementById('muteIcon');
+      const text = document.getElementById('muteText');
+      if (simState.soundMuted) {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400"; text.innerText = "Unmute";
+      } else {
+        icon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse"; text.innerText = "Mute"; soundFeedback('click');
+      }
+    }
+  </script>
+
+</body>
+</html>

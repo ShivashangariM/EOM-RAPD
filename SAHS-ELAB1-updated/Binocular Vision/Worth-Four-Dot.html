@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Clinical Worth Four Dot Lab</title>
+  
+  <!-- Fonts & Icon Packs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',    /* Slate 900 */
+            secondary: '#0284c7',  /* Sky 600 */
+            accent: '#0d9488',     /* Teal 600 */
+            lightbg: '#f8fafc',    /* Slate 50 */
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #0284c7;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    .dark .glass {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+    }
+
+    /* Worth Four Dot Visual Styling */
+    .w4d-dot {
+      transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+      box-shadow: 0 0 25px currentColor;
+    }
+    .dot-red { color: #ef4444; background: #ef4444; }
+    .dot-green { color: #22c55e; background: #22c55e; }
+    .dot-white { color: #f8fafc; background: #f8fafc; box-shadow: 0 0 25px rgba(255,255,255,0.6); }
+    .dot-hidden { opacity: 0; transform: scale(0.2) !important; pointer-events: none; }
+    
+    /* Pathological Shifts */
+    .shift-right { transform: translateX(50px) !important; }
+    .shift-left { transform: translateX(-50px) !important; }
+    .shift-up { transform: translateY(-30px) !important; }
+    .shift-down { transform: translateY(30px) !important; }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <!-- CLINICAL AUDIO SYNTHESIZER -->
+  <script>
+    let audioCtx = null;
+    
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("AudioContext blocked or unsupported.");
+      }
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click':
+          playAudioTone(720, 'sine', 0.08, 0.04);
+          break;
+        case 'tick':
+          playAudioTone(1000, 'triangle', 0.03, 0.015);
+          break;
+        case 'warning':
+          playAudioTone(190, 'sawtooth', 0.25, 0.05);
+          break;
+        case 'success':
+          playAudioTone(520, 'sine', 0.1, 0.05);
+          setTimeout(() => playAudioTone(640, 'sine', 0.15, 0.05), 80);
+          break;
+        case 'blip':
+          playAudioTone(480, 'sine', 0.06, 0.03);
+          break;
+        case 'switch':
+          playAudioTone(380, 'triangle', 0.12, 0.04);
+          break;
+      }
+    }
+  </script>
+
+  <!-- NAVIGATION BAR -->
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-500">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="../index.html" class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hover:bg-slate-800 transition cursor-pointer">
+          <i class="fa-solid fa-house text-sm"></i>
+        </a>
+        <div class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hidden sm:flex">
+          <i class="fa-solid fa-shapes text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+            SAHS-E-LAB | <span class="text-secondary">Worth Four Dot Lab</span>
+            <span class="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900">v2.0 PRO</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-extrabold">sensory fusion & suppression mapping</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+          <button onclick="toggleDarkMode()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke text-sky-600 dark:text-sky-400"></i>
+          </button>
+        </div>
+
+        <div class="relative md:hidden">
+          <button onclick="toggleMobileDropdown()" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-900 flex items-center justify-center text-slate-700 dark:text-slate-200 cursor-pointer">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </button>
+          <div id="mobileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 py-2">
+            <button onclick="openMenuModal('about'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-info text-secondary w-4 text-center"></i> About Us
+            </button>
+            <button onclick="toggleMute(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i id="mobileMuteIcon" class="fa-solid fa-volume-high text-teal-600 w-4 text-center"></i> <span id="mobileMuteText">Mute Sound</span>
+            </button>
+            <button onclick="openMenuModal('reference'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-book-bookmark text-amber-500 w-4 text-center"></i> Reference
+            </button>
+            <button onclick="toggleDarkMode(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-half-stroke text-sky-600 w-4 text-center"></i> Theme Toggle
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- MASTER CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-12 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-500" id="workspaceContainer">
+    
+    <!-- LEFT PANEL: Dynamic Eyes Viewport & W4D Overlay -->
+    <section class="lg:col-span-7 space-y-4 font-mono" id="simulationViewport">
+      
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs relative transition-all duration-500" id="examinationCard">
+        
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div class="flex items-center gap-3">
+            <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Patient Perception Display</span>
+            
+            <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700">
+              <i class="fa-solid fa-glasses text-secondary text-[10px]"></i>
+              <span class="text-[9px] font-black uppercase text-slate-600 dark:text-slate-300" id="goggleStatusTracker">Anaglyph: Red OD / Green OS</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- High-fidelity Patient Perception Canvas -->
+        <div class="bg-slate-950 rounded-2xl relative flex flex-col justify-center items-center h-[320px] md:h-[400px] overflow-hidden select-none shadow-inner border border-slate-800" id="eyesViewportBox">
+          
+          <div class="relative w-64 h-64 flex items-center justify-center" id="dotsContainer">
+            <!-- Normal 4 Dots -->
+            <div id="dot-top" class="w4d-dot dot-red w-12 h-12 rounded-full absolute top-0 transform scale-100"></div>
+            <div id="dot-left" class="w4d-dot dot-green w-12 h-12 rounded-full absolute left-0 top-1/2 -translate-y-1/2 transform scale-100"></div>
+            <div id="dot-right" class="w4d-dot dot-green w-12 h-12 rounded-full absolute right-0 top-1/2 -translate-y-1/2 transform scale-100"></div>
+            <div id="dot-bottom" class="w4d-dot dot-white w-12 h-12 rounded-full absolute bottom-0 transform scale-100"></div>
+            
+            <!-- Diplopia Extra Dots (Red View) -->
+            <div id="dip-red-top" class="w4d-dot dot-red w-12 h-12 rounded-full absolute top-0 dot-hidden"></div>
+            <div id="dip-red-bottom" class="w4d-dot dot-red w-12 h-12 rounded-full absolute bottom-0 dot-hidden"></div>
+
+            <!-- Diplopia Extra Dots (Green View) -->
+            <div id="dip-green-left" class="w4d-dot dot-green w-12 h-12 rounded-full absolute left-0 top-1/2 -translate-y-1/2 dot-hidden"></div>
+            <div id="dip-green-right" class="w4d-dot dot-green w-12 h-12 rounded-full absolute right-0 top-1/2 -translate-y-1/2 dot-hidden"></div>
+            <div id="dip-green-bottom" class="w4d-dot dot-green w-12 h-12 rounded-full absolute bottom-0 dot-hidden"></div>
+          </div>
+
+        </div>
+
+        <!-- Commentary overlay bar -->
+        <div class="bg-slate-900 border-t border-slate-900 p-2.5 px-4 z-10 rounded-xl mt-2" id="liveCommentaryBar">
+          <div class="flex justify-center items-center gap-2 max-w-lg mx-auto">
+            <span class="text-[8px] bg-sky-950 text-secondary border border-sky-800 font-black tracking-widest uppercase px-1.5 py-0.5 rounded flex-shrink-0 animate-pulse">Diagnostics Feed</span>
+            <p id="commentaryText" class="text-[10px] text-slate-300 font-mono truncate font-bold text-center flex-1">Awaiting simulator data...</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Quantitative Visual Monitor (Total Dots Seen) -->
+      <div id="separationMonitorCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <h4 class="text-xs uppercase font-black text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+          <i class="fa-solid fa-chart-line text-secondary"></i> Quantitative Patient Report
+        </h4>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono text-xs">
+          <!-- Dot Counter -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-sky-600 dark:text-sky-400 uppercase tracking-widest block">Total Dots Reported</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="dotCountValue" class="text-lg font-black text-slate-900 dark:text-white">4 Dots</span>
+              <span id="dotCountType" class="text-[9px] font-black text-emerald-500">NORMAL FUSION</span>
+            </div>
+          </div>
+
+          <!-- Color Balance -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest block">Perceptual Dominance</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="colorBalanceValue" class="text-lg font-black text-slate-900 dark:text-white">Mixed/Lustrous</span>
+              <span id="colorBalanceType" class="text-[9px] font-black text-slate-400">BALANCED</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT PANEL: Controllers, Syllabus & Assessment MCQs -->
+    <section class="lg:col-span-5 space-y-4">
+      
+      <!-- MODE TOGGLER -->
+      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-3xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-xs">
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-chalkboard-user"></i> Practice Mode
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-vial"></i> Assessment
+        </button>
+      </div>
+
+      <!-- PRACTICE CONTROLS CARD -->
+      <div id="practiceControlsCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-xs">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-secondary"></i> Practice Clinic Console
+            </h3>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 font-bold">Model sensory fusion, suppression, and diplopia.</p>
+          </div>
+          
+          <button onclick="resetSimulatorToPrimary()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-300 dark:bg-rose-950/20 dark:border-rose-900 rounded-xl text-[10px] font-black text-rose-600 dark:text-rose-400 transition flex items-center gap-1" title="Reset to Normal">
+            <i class="fa-solid fa-arrow-rotate-left"></i> Reset
+          </button>
+        </div>
+
+        <!-- Pathology selection dropdown -->
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Binocular Pathology Profile</label>
+          <select id="pathologySelect" onchange="updatePathology()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary shadow-sm">
+            <optgroup label="Normal">
+              <option value="normal">Normal Flat Fusion (4 Dots)</option>
+            </optgroup>
+            <optgroup label="Sensory Suppression">
+              <option value="suppress-od">Right Eye (OD) Constant Suppression</option>
+              <option value="suppress-os">Left Eye (OS) Constant Suppression</option>
+              <option value="alternating-suppression">Alternating Suppression (2 ⇌ 3 Dots)</option>
+            </optgroup>
+            <optgroup label="Manifest Diplopia (Strabismus)">
+              <option value="diplopia-uncrossed">Uncrossed Diplopia (Esotropia)</option>
+              <option value="diplopia-crossed">Crossed Diplopia (Exotropia)</option>
+              <option value="diplopia-r-hyper">Vertical Diplopia (Right Hypertropia)</option>
+              <option value="diplopia-l-hyper">Vertical Diplopia (Left Hypertropia)</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <!-- Anaglyph Glasses Toggle -->
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-secondary tracking-widest"><i class="fa-solid fa-glasses"></i> Anaglyph Filters</span>
+            <span class="text-[9px] font-mono font-black text-teal-700">Swap Lenses</span>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-2 pt-1.5">
+            <button onclick="setGlasses('red-right')" id="btnGlasses-red-right" class="py-2.5 text-[10px] font-black rounded-lg border bg-secondary text-white transition shadow-sm cursor-pointer text-center">
+              Red OD / Green OS
+            </button>
+            <button onclick="setGlasses('red-left')" id="btnGlasses-red-left" class="py-2.5 text-[10px] font-black rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-300 hover:bg-slate-50 transition shadow-xs cursor-pointer text-center">
+              Green OD / Red OS
+            </button>
+          </div>
+        </div>
+
+        <!-- Dynamic Beginner Instruction Guide -->
+        <div id="beginnerInstructionCard" class="p-3.5 bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900 rounded-2xl text-[11px] space-y-2">
+          <span class="font-extrabold text-secondary uppercase tracking-widest text-[9px] block flex items-center gap-1">
+            <i class="fa-solid fa-graduation-cap animate-pulse"></i> Educational Guide
+          </span>
+          <div id="beginnerInstructionsText" class="text-slate-600 dark:text-slate-400 leading-relaxed space-y-1">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TEST MODE INPUT CONSOLE -->
+      <div id="testModeConsole" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Diagnostic Assessment Board</h3>
+            <p class="text-[10px] text-slate-600 dark:text-slate-400">Swap the anaglyph filters to verify your findings.</p>
+          </div>
+          <span id="assessmentScoreReadout" class="text-xs font-black bg-slate-100 dark:bg-slate-800 border border-slate-300 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">Score: Unsubmitted</span>
+        </div>
+
+        <!-- Test Mode Glasses Toggle -->
+        <div class="space-y-1.5">
+          <span class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">Filter Settings:</span>
+          <div class="flex gap-2">
+            <button onclick="setGlasses('red-right')" id="testGlasses-red-right" class="flex-1 py-1.5 text-[10px] font-black rounded-lg border border-sky-400 bg-sky-600 text-white transition shadow-md cursor-pointer">Red OD / Green OS</button>
+            <button onclick="setGlasses('red-left')" id="testGlasses-red-left" class="flex-1 py-1.5 text-[10px] font-black rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-50">Green OD / Red OS</button>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Diagnostic Finding (50% Marks)</label>
+          <select id="testDiagnosisSelect" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary">
+            <option value="">-- Select Interpretation --</option>
+            <option value="normal">Normal Flat Fusion (Orthophoria)</option>
+            <option value="suppress-od">Right Eye (OD) Suppression</option>
+            <option value="suppress-os">Left Eye (OS) Suppression</option>
+            <option value="alternating-suppression">Alternating Suppression</option>
+            <option value="diplopia-uncrossed">Uncrossed Diplopia (Esotropia)</option>
+            <option value="diplopia-crossed">Crossed Diplopia (Exotropia)</option>
+            <option value="diplopia-r-hyper">Right Hypertropia (Vertical Diplopia)</option>
+            <option value="diplopia-l-hyper">Left Hypertropia (Vertical Diplopia)</option>
+          </select>
+          <p id="diagnosisFeedback" class="text-[11px] font-bold hidden"></p>
+        </div>
+
+        <!-- Symmetrical Pathway MCQ Quiz -->
+        <div class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-900">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block">Worth Four Dot Quiz (50% Marks)</span>
+          <div id="testMcqSuite" class="space-y-4"></div>
+        </div>
+
+        <button onclick="submitTestAssessment()" class="w-full py-3 bg-secondary text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+          Submit Assessment Profile
+        </button>
+      </div>
+
+      <!-- CLINICAL REFERENCES & SYLLABUS -->
+      <div id="clinicalSyllabusCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-book-open text-teal-600 animate-pulse"></i> Clinical Syllabus Guidelines
+          </h3>
+          <span class="bg-teal-50 dark:bg-teal-950/40 text-teal-600 border border-teal-100 dark:border-teal-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Sensory Keys</span>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <select id="pearlSelector" onchange="displayClinicalPearl()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-700 dark:text-slate-200 font-extrabold focus:outline-none shadow-xs">
+            <option value="worth_basics">Worth Four Dot Fundamentals</option>
+            <option value="suppression">Cortical Suppression Responses</option>
+            <option value="diplopia">Diplopia vs Anomalous Retinal Correspondence</option>
+          </select>
+
+          <!-- Selected pearl description -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800" id="pearlDescBox">
+            <p class="font-extrabold text-slate-900 dark:text-white text-xs" id="pearlTitle">Worth Four Dot Fundamentals</p>
+            <p class="text-slate-600 dark:text-slate-400 text-[11px] mt-2 leading-relaxed" id="pearlDesc">
+              The Worth Four Dot (W4D) test assesses flat fusion, suppression, and anomalous retinal correspondence (ARC). It utilizes red/green anaglyph glasses to dissociate the eyes visually, projecting 1 red, 2 green, and 1 white dot.
+            </p>
+            <div class="mt-3 flex items-center gap-2">
+              <span class="text-[9px] font-bold bg-sky-50 dark:bg-sky-950 text-secondary border border-sky-100 dark:border-sky-900 px-2 py-0.5 rounded">AAO Standard</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- CLINICAL SYSTEM CODE ENGINE -->
+  <script>
+    const conditions = [
+      'normal', 'suppress-od', 'suppress-os', 'alternating-suppression',
+      'diplopia-uncrossed', 'diplopia-crossed', 'diplopia-r-hyper', 'diplopia-l-hyper'
+    ];
+    
+    const simState = {
+      mode: 'practice',          // 'practice' or 'test'
+      activePathology: 'normal', // The actual underlying condition
+      glasses: 'red-right',      // 'red-right' (Red OD) or 'red-left' (Green OD)
+      soundMuted: false,
+      altInterval: null,         // Interval for alternating suppression
+      altState: 'OD',            // Tracks which eye is currently suppressing in alternate mode
+      selectedQuestions: [],
+      scores: {
+        diagnosisScore: 0,
+        mcqScore: 0
+      }
+    };
+
+    const pearlsDatabase = {
+      worth_basics: {
+        title: "Worth Four Dot Fundamentals",
+        desc: "The Worth Four Dot (W4D) test assesses flat fusion, suppression, and anomalous retinal correspondence (ARC). It utilizes red/green anaglyph glasses to dissociate the eyes visually, projecting 1 red, 2 green, and 1 white dot."
+      },
+      suppression: {
+        title: "Cortical Suppression Responses",
+        desc: "If the patient sees only 2 red dots, they are suppressing the eye with the green lens. If they see 3 green dots, they are suppressing the eye with the red lens. Rapid switching between 2 and 3 dots indicates Alternating Suppression."
+      },
+      diplopia: {
+        title: "Diplopia vs ARC",
+        desc: "Seeing 5 dots indicates diplopia. Uncrossed diplopia (red dots same side as red lens) occurs in esotropia. Crossed diplopia (red dots opposite side) occurs in exotropia. Seeing 4 dots with a known manifest tropia indicates ARC."
+      }
+    };
+
+    const clinicalMcqPool = [
+      {
+        id: "w1",
+        question: "A patient wearing red over the right eye (OD) and green over the left eye (OS) reports seeing exactly 2 red dots. What is the clinical diagnosis?",
+        options: {
+          a: "Normal flat fusion",
+          b: "Suppression of the left eye (OS)",
+          c: "Suppression of the right eye (OD)"
+        },
+        correct: "b",
+        explanation: "The green lens is over the left eye (OS). Because the patient only sees the red dots (visible only to the right eye), they are completely suppressing the image from the left eye."
+      },
+      {
+        id: "w2",
+        question: "During the W4D test, a patient with a known right esotropia reports seeing 5 dots. They wear a red lens over the right eye. The red dots appear to the right of the green dots. This is an example of:",
+        options: {
+          a: "Crossed Diplopia",
+          b: "Anomalous Retinal Correspondence (ARC)",
+          c: "Uncrossed Diplopia"
+        },
+        correct: "c",
+        explanation: "In esotropia, visual axes cross before the target, projecting the image to nasal retina. This results in uncrossed diplopia, where the image belongs to the same side as the eye seeing it (Red on right)."
+      },
+      {
+        id: "w3",
+        question: "A patient with an Exotropia reports seeing 5 dots while wearing Red OD / Green OS. Where will the red dots project relative to the green dots?",
+        options: {
+          a: "To the left (Crossed Diplopia)",
+          b: "To the right (Uncrossed Diplopia)",
+          c: "Directly above (Vertical Diplopia)"
+        },
+        correct: "a",
+        explanation: "Exotropia causes crossed diplopia because the visual axes diverge. The image lands on the temporal retina and is perceived nasally. The red image from the right eye crosses over to the left side."
+      },
+      {
+        id: "w4",
+        question: "A patient with a Right Hypertropia (right eye elevated) undergoes the W4D test with Red OD / Green OS. How will the diplopic images appear?",
+        options: {
+          a: "The red dots will appear lower than the green dots.",
+          b: "The red dots will appear higher than the green dots.",
+          c: "The red dots will perfectly overlap the green dots."
+        },
+        correct: "a",
+        explanation: "In vertical strabismus, the higher eye sees the lower image because the macula is elevated, causing the image to project superiorly on the retina and be perceived inferiorly in space."
+      }
+    ];
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      syncCompletionBadge();
+      updatePathology();
+    });
+
+    function setGlasses(type) {
+      soundFeedback('click');
+      simState.glasses = type;
+      
+      const pRight = document.getElementById('btnGlasses-red-right');
+      const pLeft = document.getElementById('btnGlasses-red-left');
+      const tRight = document.getElementById('testGlasses-red-right');
+      const tLeft = document.getElementById('testGlasses-red-left');
+
+      const activeClasses = "py-2.5 sm:py-1.5 text-[10px] font-black rounded-lg border bg-secondary border-sky-500 text-white transition shadow-sm cursor-pointer text-center";
+      const inactiveClasses = "py-2.5 sm:py-1.5 text-[10px] font-black rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-300 hover:bg-slate-50 transition shadow-xs cursor-pointer text-center opacity-60";
+
+      if (pRight && pLeft) {
+        pRight.className = type === 'red-right' ? activeClasses : inactiveClasses;
+        pLeft.className = type === 'red-left' ? activeClasses : inactiveClasses;
+      }
+      
+      if (tRight && tLeft) {
+        tRight.className = type === 'red-right' ? "flex-1 py-1.5 text-[10px] font-black rounded-lg border border-sky-400 bg-sky-600 text-white transition shadow-md cursor-pointer" : "flex-1 py-1.5 text-[10px] font-black rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-50";
+        tLeft.className = type === 'red-left' ? "flex-1 py-1.5 text-[10px] font-black rounded-lg border border-sky-400 bg-sky-600 text-white transition shadow-md cursor-pointer" : "flex-1 py-1.5 text-[10px] font-black rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-50";
+      }
+
+      document.getElementById('goggleStatusTracker').innerText = type === 'red-right' ? 'Anaglyph: Red OD / Green OS' : 'Anaglyph: Green OD / Red OS';
+      
+      executeVisionEngine();
+    }
+
+    function updatePathology() {
+      if (simState.mode === 'practice') {
+        const select = document.getElementById('pathologySelect');
+        if(select) simState.activePathology = select.value;
+      }
+      executeVisionEngine();
+    }
+
+    function executeVisionEngine() {
+      if (simState.altInterval) {
+        clearInterval(simState.altInterval);
+        simState.altInterval = null;
+      }
+
+      if (simState.activePathology === 'alternating-suppression') {
+        simState.altState = 'OD';
+        renderDots('suppress-od');
+        
+        simState.altInterval = setInterval(() => {
+          simState.altState = simState.altState === 'OD' ? 'OS' : 'OD';
+          renderDots(`suppress-${simState.altState}`);
+          
+          document.getElementById('commentaryText').innerText = "Alternating Suppression. Perception rapidly switches between 2 red and 3 green dots.";
+          document.getElementById('dotCountType').innerText = "ALTERNATING SCOTOMA";
+          document.getElementById('dotCountValue').innerText = "2 ⇌ 3 Dots";
+        }, 1500);
+
+        document.getElementById('commentaryText').innerText = "Alternating Suppression. Perception rapidly switches between 2 red and 3 green dots.";
+        document.getElementById('dotCountType').innerText = "ALTERNATING SCOTOMA";
+        document.getElementById('dotCountValue').innerText = "2 ⇌ 3 Dots";
+        
+        updateBeginnerTutorial();
+        return; 
+      }
+
+      renderDots(simState.activePathology);
+      updateBeginnerTutorial();
+    }
+
+    function renderDots(path) {
+      const top = document.getElementById('dot-top');
+      const left = document.getElementById('dot-left');
+      const right = document.getElementById('dot-right');
+      const bottom = document.getElementById('dot-bottom');
+      const dipRedTop = document.getElementById('dip-red-top');
+      const dipRedBottom = document.getElementById('dip-red-bottom');
+      const dipGreenLeft = document.getElementById('dip-green-left');
+      const dipGreenRight = document.getElementById('dip-green-right');
+      const dipGreenBottom = document.getElementById('dip-green-bottom');
+      const notes = document.getElementById('commentaryText');
+
+      // Reset DOM visual states completely
+      const allDots = [top, left, right, bottom, dipRedTop, dipRedBottom, dipGreenLeft, dipGreenRight, dipGreenBottom];
+      allDots.forEach(d => {
+        d.classList.add('dot-hidden');
+        d.classList.remove('shift-right', 'shift-left', 'shift-up', 'shift-down');
+      });
+      bottom.classList.remove('dot-red', 'dot-green', 'dot-white');
+
+      let redEye = simState.glasses === 'red-right' ? 'OD' : 'OS';
+      let dotCount, balance, typeLabel, typeClass, noteContent;
+
+      if (path === 'normal') {
+        top.classList.remove('dot-hidden');
+        left.classList.remove('dot-hidden');
+        right.classList.remove('dot-hidden');
+        bottom.classList.remove('dot-hidden');
+        bottom.classList.add('dot-white');
+        dotCount = 4; balance = "Mixed/Lustrous"; typeLabel = "NORMAL FUSION"; typeClass = "text-emerald-500";
+        noteContent = "Patient reports seeing 4 dots: 1 red, 2 green, 1 lustrous. Indicates normal flat fusion.";
+      } 
+      else if (path === 'suppress-od') {
+        if (redEye === 'OD') { 
+          // OD Suppressed + OD has Red Lens = Only sees Green dots
+          left.classList.remove('dot-hidden');
+          right.classList.remove('dot-hidden');
+          bottom.classList.remove('dot-hidden');
+          bottom.classList.add('dot-green');
+          dotCount = 3; balance = "Green Dominant"; typeLabel = "SUPPRESSION SCOTOMA"; typeClass = "text-amber-500";
+          noteContent = "OD Suppressed (Red Filter blocked). Patient sees only 3 green dots.";
+        } else { 
+          // OD Suppressed + OD has Green Lens = Only sees Red dots
+          top.classList.remove('dot-hidden');
+          bottom.classList.remove('dot-hidden');
+          bottom.classList.add('dot-red');
+          dotCount = 2; balance = "Red Dominant"; typeLabel = "SUPPRESSION SCOTOMA"; typeClass = "text-amber-500";
+          noteContent = "OD Suppressed (Green Filter blocked). Patient sees only 2 red dots.";
+        }
+      } 
+      else if (path === 'suppress-os') {
+        if (redEye === 'OS') { 
+          // OS Suppressed + OS has Red Lens = Only sees Green dots
+          left.classList.remove('dot-hidden');
+          right.classList.remove('dot-hidden');
+          bottom.classList.remove('dot-hidden');
+          bottom.classList.add('dot-green');
+          dotCount = 3; balance = "Green Dominant"; typeLabel = "SUPPRESSION SCOTOMA"; typeClass = "text-amber-500";
+          noteContent = "OS Suppressed (Red Filter blocked). Patient sees only 3 green dots.";
+        } else { 
+          // OS Suppressed + OS has Green Lens = Only sees Red dots
+          top.classList.remove('dot-hidden');
+          bottom.classList.remove('dot-hidden');
+          bottom.classList.add('dot-red');
+          dotCount = 2; balance = "Red Dominant"; typeLabel = "SUPPRESSION SCOTOMA"; typeClass = "text-amber-500";
+          noteContent = "OS Suppressed (Green Filter blocked). Patient sees only 2 red dots.";
+        }
+      } 
+      else if (path.startsWith('diplopia')) {
+        // All diplopia modes show 5 dots
+        dipRedTop.classList.remove('dot-hidden');
+        dipRedBottom.classList.remove('dot-hidden');
+        dipGreenLeft.classList.remove('dot-hidden');
+        dipGreenRight.classList.remove('dot-hidden');
+        dipGreenBottom.classList.remove('dot-hidden');
+        dotCount = 5; balance = "Unfused Images"; typeClass = "text-rose-500";
+
+        let redDots = [dipRedTop, dipRedBottom];
+        let greenDots = [dipGreenLeft, dipGreenRight, dipGreenBottom];
+
+        if (path === 'diplopia-uncrossed') {
+           typeLabel = "DIPLOPIA (UNCROSSED)";
+           if (redEye === 'OD') {
+              redDots.forEach(d => d.classList.add('shift-right'));
+              greenDots.forEach(d => d.classList.add('shift-left'));
+              noteContent = "Esotropia (Uncrossed). Red dots project to the right (same side as Red OD).";
+           } else {
+              redDots.forEach(d => d.classList.add('shift-left'));
+              greenDots.forEach(d => d.classList.add('shift-right'));
+              noteContent = "Esotropia (Uncrossed). Red dots project to the left (same side as Red OS).";
+           }
+        } 
+        else if (path === 'diplopia-crossed') {
+           typeLabel = "DIPLOPIA (CROSSED)";
+           if (redEye === 'OD') {
+              redDots.forEach(d => d.classList.add('shift-left'));
+              greenDots.forEach(d => d.classList.add('shift-right'));
+              noteContent = "Exotropia (Crossed). Red dots project to the left (opposite side of Red OD).";
+           } else {
+              redDots.forEach(d => d.classList.add('shift-right'));
+              greenDots.forEach(d => d.classList.add('shift-left'));
+              noteContent = "Exotropia (Crossed). Red dots project to the right (opposite side of Red OS).";
+           }
+        } 
+        else if (path === 'diplopia-r-hyper') {
+           typeLabel = "DIPLOPIA (R. HYPER)";
+           if (redEye === 'OD') {
+              redDots.forEach(d => d.classList.add('shift-down'));
+              greenDots.forEach(d => d.classList.add('shift-up'));
+              noteContent = "Right Hypertropia. The elevated right eye sees the image lower (Red dots fall).";
+           } else {
+              greenDots.forEach(d => d.classList.add('shift-down'));
+              redDots.forEach(d => d.classList.add('shift-up'));
+              noteContent = "Right Hypertropia. The elevated right eye sees the image lower (Green dots fall).";
+           }
+        } 
+        else if (path === 'diplopia-l-hyper') {
+           typeLabel = "DIPLOPIA (L. HYPER)";
+           if (redEye === 'OS') {
+              redDots.forEach(d => d.classList.add('shift-down'));
+              greenDots.forEach(d => d.classList.add('shift-up'));
+              noteContent = "Left Hypertropia. The elevated left eye sees the image lower (Red dots fall).";
+           } else {
+              greenDots.forEach(d => d.classList.add('shift-down'));
+              redDots.forEach(d => d.classList.add('shift-up'));
+              noteContent = "Left Hypertropia. The elevated left eye sees the image lower (Green dots fall).";
+           }
+        }
+      }
+
+      // Update UI panels
+      document.getElementById('dotCountValue').innerText = `${dotCount} Dots`;
+      const ctType = document.getElementById('dotCountType');
+      ctType.innerText = typeLabel;
+      ctType.className = `text-[9px] font-black uppercase ${typeClass}`;
+      document.getElementById('colorBalanceValue').innerText = balance;
+      
+      if (simState.mode === 'practice' && simState.activePathology !== 'alternating-suppression') {
+        notes.innerText = noteContent;
+      } else if (simState.mode === 'test') {
+        notes.innerText = "Assessment Mode Active. Swap glasses, observe dot orientation, and diagnose.";
+      }
+    }
+
+    function updateBeginnerTutorial() {
+      const guide = document.getElementById('beginnerInstructionsText');
+      if (!guide || simState.mode !== 'practice') return;
+
+      const path = simState.activePathology;
+      const redOD = simState.glasses === 'red-right';
+
+      if (path === 'normal') {
+        guide.innerHTML = `<p class="font-bold text-emerald-600">Normal Flat Fusion</p><p>The patient combines images from both eyes simultaneously, seeing the complete set of 4 dots. The bottom dot appears lustrous (mixed color) due to binocular rivalry.</p>`;
+      } else if (path === 'suppress-od') {
+        guide.innerHTML = `<p class="font-bold text-amber-500">Right Eye (OD) Suppression</p><p>The brain ignores the image from the right eye. Since the ${redOD ? 'RED' : 'GREEN'} lens is over the right eye, the patient cannot see the ${redOD ? 'red' : 'green'} dots.</p>`;
+      } else if (path === 'suppress-os') {
+        guide.innerHTML = `<p class="font-bold text-amber-500">Left Eye (OS) Suppression</p><p>The brain ignores the image from the left eye. Since the ${redOD ? 'GREEN' : 'RED'} lens is over the left eye, the patient cannot see the ${redOD ? 'green' : 'red'} dots.</p>`;
+      } else if (path === 'alternating-suppression') {
+        guide.innerHTML = `<p class="font-bold text-amber-500">Alternating Suppression</p><p>The brain rapidly alternates ignoring the right and left eye to prevent diplopia. The patient never sees 4 dots, instead reporting switching between 2 red and 3 green dots.</p>`;
+      } else if (path === 'diplopia-uncrossed') {
+        guide.innerHTML = `<p class="font-bold text-rose-500">Uncrossed Diplopia (Esotropia)</p><p>The visual axes converge (cross in front of the target). The image lands on the nasal retina and is projected temporally (Uncrossed), causing the red dots to appear on the same side as the red lens.</p>`;
+      } else if (path === 'diplopia-crossed') {
+        guide.innerHTML = `<p class="font-bold text-rose-500">Crossed Diplopia (Exotropia)</p><p>The visual axes diverge (cross behind the target). The image lands on the temporal retina and is projected nasally (Crossed), causing the red dots to appear on the opposite side of the red lens.</p>`;
+      } else if (path.includes('-hyper')) {
+        guide.innerHTML = `<p class="font-bold text-rose-500">Vertical Diplopia (Hypertropia)</p><p>In vertical deviations, the higher (elevated) eye sees the lower image. A patient with a Right Hypertropia will perceive the image corresponding to the right eye as sitting below the other.</p>`;
+      }
+    }
+
+    function changeMode(target) {
+      soundFeedback('switch');
+      simState.mode = target;
+
+      const pracBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      const pracConsole = document.getElementById('practiceControlsCard');
+      const testConsole = document.getElementById('testModeConsole');
+      const syllabusCard = document.getElementById('clinicalSyllabusCard');
+      const bodyFrame = document.getElementById('bodyFrame');
+
+      document.getElementById('testDiagnosisSelect').value = "";
+      const feedback = document.getElementById('diagnosisFeedback');
+      if(feedback) feedback.classList.add('hidden');
+
+      const scoreCard = document.getElementById('finalScoreCard');
+      if (scoreCard) scoreCard.classList.add('hidden');
+
+      if (target === 'practice') {
+        bodyFrame.className = "bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer";
+        
+        pracConsole.classList.remove('hidden');
+        testConsole.classList.add('hidden');
+        syllabusCard.classList.remove('hidden');
+
+        const select = document.getElementById('pathologySelect');
+        simState.activePathology = select ? select.value : 'normal';
+
+      } else {
+        bodyFrame.className = "bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-800 text-slate-400 hover:bg-slate-900 shadow-xs cursor-pointer";
+        
+        pracConsole.classList.add('hidden');
+        testConsole.classList.remove('hidden');
+        syllabusCard.classList.add('hidden');
+
+        // Choose random pathology for assessment
+        const randomKey = conditions[Math.floor(Math.random() * conditions.length)];
+        simState.activePathology = randomKey;
+
+        simState.scores.diagnosisScore = 0;
+        simState.scores.mcqScore = 0;
+        
+        setupTestMcqSuite();
+      }
+
+      setGlasses('red-right'); // Reset glasses and execute vision engine
+    }
+
+    function setupTestMcqSuite() {
+      const shuffled = [...clinicalMcqPool].sort(() => 0.5 - Math.random());
+      simState.selectedQuestions = shuffled.slice(0, 3);
+
+      const container = document.getElementById('testMcqSuite');
+      container.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const div = document.createElement('div');
+        div.className = "bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs text-slate-900 dark:text-slate-200 shadow-xs";
+        div.innerHTML = `
+          <p class="font-extrabold">${idx + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1.5 pt-1">
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 font-bold">
+              <input type="radio" name="mcq_${idx}" value="a" class="accent-secondary text-secondary">
+              <span>${q.options.a}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 font-bold">
+              <input type="radio" name="mcq_${idx}" value="b" class="accent-secondary text-secondary">
+              <span>${q.options.b}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800 font-bold">
+              <input type="radio" name="mcq_${idx}" value="c" class="accent-secondary text-secondary">
+              <span>${q.options.c}</span>
+            </label>
+          </div>
+          <p id="mcq_${idx}_feedback" class="text-[10px] font-bold hidden"></p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function submitTestAssessment() {
+      if (simState.mode !== 'test') return;
+
+      const selectedDiag = document.getElementById('testDiagnosisSelect').value;
+      let unanswered = false;
+      const answers = [];
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const checked = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+        if (!checked) {
+          unanswered = true;
+        } else {
+          answers.push({
+            idx: idx,
+            selected: checked.value,
+            correct: q.correct,
+            explanation: q.explanation
+          });
+        }
+      });
+
+      if (!selectedDiag || unanswered) {
+        soundFeedback('warning');
+        const feedback = document.getElementById('diagnosisFeedback');
+        feedback.innerText = "Please choose your diagnosis and complete all MCQs.";
+        feedback.className = "text-[11px] font-extrabold text-red-500 block mt-2 animate-pulse";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      // Check Diagnosis
+      const feedback = document.getElementById('diagnosisFeedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedDiag === simState.activePathology) {
+        feedback.innerText = "Correct Clinical Diagnosis! (+50 pts)";
+        feedback.className = "text-[11px] font-bold text-emerald-500 block mt-1";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        const accurateName = document.querySelector(`#testDiagnosisSelect option[value="${simState.activePathology}"]`).innerText;
+        feedback.innerText = `Incorrect. Active pathology profile was: ${accurateName}. (+0 pts)`;
+        feedback.className = "text-[11px] font-bold text-red-500 block mt-1";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      // Check MCQs
+      let correctCount = 0;
+      answers.forEach((ans) => {
+        const box = document.getElementById(`mcq_${ans.idx}_feedback`);
+        box.classList.remove('hidden');
+        if (ans.selected === ans.correct) {
+          box.innerText = `Correct! (+16.6 pts) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-emerald-500 block mt-1";
+          correctCount++;
+        } else {
+          box.innerText = `Incorrect. (Correct Answer: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-red-500 block mt-1";
+        }
+      });
+      simState.scores.mcqScore = Math.round(correctCount * 16.66);
+
+      const totalScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('assessmentScoreReadout').innerText = `Score: ${totalScore}/100`;
+
+      // Render Final Results Box
+      let card = document.getElementById('finalScoreCard');
+      if (!card) {
+        const parent = document.getElementById('simulationViewport');
+        card = document.createElement('div');
+        card.id = "finalScoreCard";
+        parent.appendChild(card);
+      }
+
+      card.className = "p-5 rounded-3xl text-center space-y-3 transition-all duration-500 ";
+      card.innerHTML = `
+        <div class="space-y-1">
+          <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText"></p>
+          <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed" id="finalStatusDescription"></p>
+        </div>
+        <div id="practiceRedirectBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <p class="text-[10px] text-red-500 font-extrabold">Return to practice mode to review Worth Four Dot principles.</p>
+          <button onclick="changeMode('practice')" class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+            <i class="fa-solid fa-graduation-cap mr-1"></i> Return to Practice
+          </button>
+        </div>
+      `;
+
+      card.classList.remove('hidden');
+      const statTxt = card.querySelector('#finalStatusText');
+      const statDsc = card.querySelector('#finalStatusDescription');
+      const rdrBlk = card.querySelector('#practiceRedirectBlock');
+
+      if (totalScore >= 80) {
+        soundFeedback('success');
+        card.className += "bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 animate-pulse";
+        statTxt.innerText = `PASSED (${totalScore}%)`;
+        statDsc.innerText = "Sensory fusion and suppression diagnostic evaluation logged successfully.";
+        rdrBlk.classList.add('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completed.includes('Worth-Four-Dot')) {
+          completed.push('Worth-Four-Dot');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        }
+        syncCompletionBadge();
+      } else {
+        soundFeedback('warning');
+        card.className += "bg-red-50 dark:bg-red-950/25 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-300";
+        statTxt.innerText = `FAILED (${totalScore}%)`;
+        statDsc.innerText = "Assessment score is below the 80% passing standard. Practice identifying filter suppression logic.";
+        rdrBlk.classList.remove('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        completed = completed.filter(el => el !== 'Worth-Four-Dot');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        syncCompletionBadge();
+      }
+    }
+
+    function resetSimulatorToPrimary() {
+      soundFeedback('success');
+      document.getElementById('pathologySelect').value = 'normal';
+      updatePathology();
+      setGlasses('red-right');
+    }
+
+    function displayClinicalPearl() {
+      soundFeedback('blip');
+      const val = document.getElementById('pearlSelector').value;
+      const pearl = pearlsDatabase[val];
+      if (pearl) {
+        document.getElementById('pearlTitle').innerText = pearl.title;
+        document.getElementById('pearlDesc').innerText = pearl.desc;
+      }
+    }
+
+    function syncCompletionBadge() {
+      const completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completed.includes('Worth-Four-Dot')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/45 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+
+    // Modal UI Control
+    function openMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.remove('hidden');
+    }
+
+    function closeMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.add('hidden');
+    }
+
+    function toggleMobileDropdown() {
+      document.getElementById('mobileDropdown').classList.toggle('hidden');
+    }
+
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const icon = document.getElementById('muteIcon');
+      const text = document.getElementById('muteText');
+      const mobileIcon = document.getElementById('mobileMuteIcon');
+      const mobileText = document.getElementById('mobileMuteText');
+
+      if (simState.soundMuted) {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400";
+        text.innerText = "Unmute";
+        if (mobileIcon) mobileIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+        if (mobileText) mobileText.innerText = "Unmute Sound";
+      } else {
+        icon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse";
+        text.innerText = "Mute";
+        if (mobileIcon) mobileIcon.className = "fa-solid fa-volume-high text-teal-700 animate-pulse";
+        if (mobileText) mobileText.innerText = "Mute Sound";
+        soundFeedback('blip');
+      }
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+      soundFeedback('switch');
+    }
+  </script>
+
+  <!-- ABOUT MODAL -->
+  <div id="aboutModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer text-slate-600 dark:text-slate-300">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-graduation-cap text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">About Worth Four Dot Lab</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Vinayaka Mission's Research Foundation</p>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        This high-fidelity educational module simulates flat fusion, suppression, and anomalous retinal correspondence testing using anaglyph dissociation logic.
+      </p>
+      <div class="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200/60 dark:border-slate-900 space-y-1.5 text-xs">
+        <p class="font-extrabold text-secondary tracking-widest text-[9px] uppercase">Faculty Architect &amp; Program Lead</p>
+        <p class="font-black text-slate-900 dark:text-white">Shivashangari M</p>
+        <p class="text-slate-500 dark:text-slate-400">Assistant Professor, Optometry Unit</p>
+        <p class="text-slate-500 dark:text-slate-400 text-[10px]">School of Allied Health Sciences (SAHS), Salem, Tamil Nadu, India.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- REFERENCE MODAL -->
+  <div id="referenceModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer text-slate-600 dark:text-slate-300">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">Clinical References</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Trusted Academic Guidelines &amp; Literature</p>
+        </div>
+      </div>
+      <div class="space-y-3 max-h-[350px] overflow-y-auto pr-1 text-xs">
+        <div class="space-y-1">
+          <span class="text-[9px] font-black uppercase text-secondary tracking-widest">AAO (Sensory Fusion)</span>
+          <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+            The Worth Four Dot test uses color-dissociation filters (traditionally Red OD / Green OS) to determine if a patient has normal flat sensory fusion, suppression of one eye, or diplopia.
+          </p>
+        </div>
+        <div class="space-y-1 border-t border-slate-200 dark:border-slate-800 pt-2">
+          <span class="text-[9px] font-black uppercase text-emerald-600 tracking-widest">EyeWiki Diagnostic Criteria</span>
+          <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+            When interpreting results, remember the color filter rules: the red lens only permits visualization of the red (top) and white (bottom) dots. The green lens permits visualization of the green (side) and white (bottom) dots.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,2534 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OculiDry™ | Clinical Dry Eye Diagnostic Compendium</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons for Premium UI Visuals -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- KaTeX for beautiful clinical math rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body);"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .placido-glow {
+            filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.6));
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+    <!-- Header & Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm transition-all">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center text-white shadow-md shadow-teal-100">
+                    <i data-lucide="eye" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900 tracking-tight flex items-center">
+                        OculiDry<span class="text-teal-600">Suite</span>
+                        <span class="ml-2 text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 px-2.5 py-0.5 rounded-full">v3.6 AAO/AOA Aligned</span>
+                    </h1>
+                    <p class="text-xs text-slate-500 font-medium">TFOS DEWS II Standard Operating Procedures & Clinical Directory</p>
+                </div>
+            </div>
+            
+            <div class="hidden md:flex items-center space-x-6">
+                <span class="text-sm text-slate-500 flex items-center">
+                    <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block mr-2 animate-pulse"></span>
+                    Diagnostic Resource Center
+                </span>
+                <button onclick="window.scrollTo({top: document.getElementById('searchSection').offsetTop - 100, behavior: 'smooth'})" 
+                        class="bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                    <i data-lucide="search" class="w-4 h-4"></i> Clinical Search
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero / Welcome Title section -->
+    <section class="bg-white border-b border-slate-200 py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto text-center md:text-left md:flex md:items-center md:justify-between gap-8">
+            <div class="max-w-3xl">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-100 text-teal-700 text-xs font-bold uppercase tracking-wider mb-4">
+                    <i data-lucide="award" class="w-3.5 h-3.5"></i> Standardized Clinical Protocols
+                </div>
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                    Ocular Surface & Tear Film Diagnostic Compendium
+                </h2>
+                <p class="mt-3 text-lg text-slate-600 leading-relaxed">
+                    An interactive master directory of the 15 standard clinical dry eye assessments based on consensus guidelines from the **American Academy of Ophthalmology (AAO)**, **American Optometric Association (AOA)**, and **EyeWiki**.
+                </p>
+            </div>
+            <div class="mt-8 md:mt-0 bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col sm:flex-row gap-6 max-w-md w-full shrink-0">
+                <div class="flex-1">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Clinical Library</p>
+                    <p class="text-3xl font-black text-teal-700 mt-1">15 / 15</p>
+                    <p class="text-xs font-medium text-slate-600 mt-1">SOPs with active simulators, indices, and research findings</p>
+                </div>
+                <div class="border-t sm:border-t-0 sm:border-l border-slate-200 pt-4 sm:pt-0 sm:pl-6 flex-1">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Validation</p>
+                    <div class="flex flex-col gap-1.5 mt-2">
+                        <span class="text-xs font-semibold text-slate-700 flex items-center gap-1.5"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-teal-600"></i> AAO Aligned</span>
+                        <span class="text-xs font-semibold text-slate-700 flex items-center gap-1.5"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-teal-600"></i> TFOS DEWS II</span>
+                        <span class="text-xs font-semibold text-slate-700 flex items-center gap-1.5"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-teal-600"></i> EyeWiki Standard</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Workspace Layout -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-grow flex flex-col lg:flex-row gap-8">
+        
+        <!-- Left Side Navigation: Clinical Index Matrix -->
+        <aside class="w-full lg:w-80 shrink-0 self-start lg:sticky lg:top-[165px] h-[calc(100vh-200px)] overflow-y-auto pr-2 hidden lg:block">
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
+                    <span>Clinical Index Matrix</span>
+                    <span id="activeCount" class="bg-teal-50 text-teal-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-teal-200">15 Tests</span>
+                </h3>
+                <nav class="space-y-1" id="sidebarNav">
+                    <!-- Dynamic updates through JavaScript -->
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Right Side: Interactive Diagnostics Portal -->
+        <section class="flex-grow space-y-12" id="clinicalDirectory">
+
+            <!-- 1A. CLEK Scheme -->
+            <article id="test-1a" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="staining">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 uppercase bg-teal-50 px-2.5 py-1 rounded-md border border-teal-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Ocular Surface Staining
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">1. Grading of Ocular Surface Staining</h3>
+                        <p class="text-lg font-bold text-slate-700 mt-1">A. CLEK Scheme (Collaborative Longitudinal Evaluation of Keratoconus)</p>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/fD_t8v_WpIk')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Slit Lamp Exam
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">To quantify corneal fluorescein staining and assess severity of ocular surface damage in keratoconus and dry eye syndrome.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Corneal epithelial barrier integrity & focal micro-abrasion patterns.</p>
+                    </div>
+                </div>
+
+                <!-- Interactive CLEK Area -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
+                        <span>Interactive Diagnostic Visual: CLEK 5-Zone Corneal Diagram</span>
+                        <span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 text-slate-500">Click Zones to Grade (0 - 3)</span>
+                    </h4>
+                    
+                    <div class="flex flex-col lg:flex-row items-center gap-8">
+                        <div class="relative w-64 h-64 shrink-0 flex items-center justify-center">
+                            <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-sm select-none">
+                                <circle cx="100" cy="100" r="95" fill="#f8fafc" stroke="#94a3b8" stroke-width="2" />
+                                <circle cx="100" cy="100" r="90" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4 2" />
+                                <line x1="36" y1="36" x2="164" y2="164" stroke="#e2e8f0" stroke-width="1.5" />
+                                <line x1="36" y1="164" x2="164" y2="36" stroke="#e2e8f0" stroke-width="1.5" />
+                                <circle cx="100" cy="100" r="40" fill="none" stroke="#cbd5e1" stroke-width="1.5" />
+                                
+                                <circle cx="100" cy="100" r="39" id="clek-central" class="cursor-pointer transition hover:fill-teal-50" fill="#ffffff" onclick="cycleCLEKZone('central')" />
+                                <path d="M 36,36 A 90,90 0 0,1 164,36 L 128,72 A 40,40 0 0,0 72,72 Z" id="clek-superior" class="cursor-pointer transition hover:fill-teal-50" fill="#ffffff" onclick="cycleCLEKZone('superior')" />
+                                <path d="M 164,36 A 90,90 0 0,1 164,164 L 128,128 A 40,40 0 0,0 128,72 Z" id="clek-nasal" class="cursor-pointer transition hover:fill-teal-50" fill="#ffffff" onclick="cycleCLEKZone('nasal')" />
+                                <path d="M 164,164 A 90,90 0 0,1 36,164 L 72,128 A 40,40 0 0,0 128,128 Z" id="clek-inferior" class="cursor-pointer transition hover:fill-teal-50" fill="#ffffff" onclick="cycleCLEKZone('inferior')" />
+                                <path d="M 36,164 A 90,90 0 0,1 36,36 L 72,72 A 40,40 0 0,0 72,128 Z" id="clek-temporal" class="cursor-pointer transition hover:fill-teal-50" fill="#ffffff" onclick="cycleCLEKZone('temporal')" />
+                                
+                                <text x="100" y="103" font-size="9" font-weight="bold" fill="#475569" text-anchor="middle" class="pointer-events-none">Central</text>
+                                <text x="100" y="30" font-size="9" font-weight="bold" fill="#475569" text-anchor="middle" class="pointer-events-none">Superior</text>
+                                <text x="155" y="103" font-size="9" font-weight="bold" fill="#475569" text-anchor="middle" class="pointer-events-none">Nasal</text>
+                                <text x="100" y="175" font-size="9" font-weight="bold" fill="#475569" text-anchor="middle" class="pointer-events-none">Inferior</text>
+                                <text x="45" y="103" font-size="9" font-weight="bold" fill="#475569" text-anchor="middle" class="pointer-events-none">Temporal</text>
+                            </svg>
+                        </div>
+
+                        <div class="flex-grow space-y-4 w-full">
+                            <h5 class="text-sm font-semibold text-slate-800">CLEK Score Assessor (0 - 3 per zone):</h5>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-col justify-center">
+                                    <span class="text-[10px] text-slate-500 font-bold uppercase">Central</span>
+                                    <span class="text-lg font-bold text-teal-700" id="clek-central-val">0 / 3</span>
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-col justify-center">
+                                    <span class="text-[10px] text-slate-500 font-bold uppercase">Superior</span>
+                                    <span class="text-lg font-bold text-teal-700" id="clek-superior-val">0 / 3</span>
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-col justify-center">
+                                    <span class="text-[10px] text-slate-500 font-bold uppercase">Nasal</span>
+                                    <span class="text-lg font-bold text-teal-700" id="clek-nasal-val">0 / 3</span>
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-col justify-center">
+                                    <span class="text-[10px] text-slate-500 font-bold uppercase">Inferior</span>
+                                    <span class="text-lg font-bold text-teal-700" id="clek-inferior-val">0 / 3</span>
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-col justify-center">
+                                    <span class="text-[10px] text-slate-500 font-bold uppercase">Temporal</span>
+                                    <span class="text-lg font-bold text-teal-700" id="clek-temporal-val">0 / 3</span>
+                                </div>
+                                <div class="bg-teal-50 border border-teal-200 p-3 rounded-xl flex flex-col justify-center">
+                                    <span class="text-[10px] text-teal-800 font-extrabold uppercase">Total Score</span>
+                                    <span class="text-xl font-black text-teal-800" id="clek-total-val">0 / 15</span>
+                                </div>
+                            </div>
+                            <div class="text-xs text-slate-500 italic mt-2">
+                                <span class="font-bold text-teal-700">Methodology Note:</span> In the CLEK study, grading assesses the density of punctate staining across all segments under slit lamp examination with an excitation filter.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800 text-right">Fluorescein strip, Sterile saline, Slit lamp, Cobalt blue filter</span>
+                            </div>
+                            <div class="p-4">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Interpretation Details</h5>
+                                <p class="text-slate-700">Higher cumulative scores correlate directly with advanced corneal micro-trauma. Inferior-dominant staining patterns suggest incomplete lid closure or evaporative stress.</p>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700">The <strong>CLEK Study Investigators</strong> showed that localized corneal staining patterns correlate with decreased functional visual acuity and worsening ocular comfort metrics.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Moisten a high-grade sodium fluorescein strip with one drop of sterile saline (shake off excess).</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Instill dye lightly into the patient's inferior conjunctival sac.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Instruct the patient to blink naturally 2 to 3 times to distribute dye evenly.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">4</span>
+                                <span>Visualize under high-illumination cobalt blue filter on the slit lamp.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">5</span>
+                                <span>Examine and score the five designated corneal quadrants individually.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 1B. Oxford Scheme -->
+            <article id="test-1b" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="staining">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 uppercase bg-teal-50 px-2.5 py-1 rounded-md border border-teal-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Ocular Surface Staining
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">1. Grading of Ocular Surface Staining</h3>
+                        <p class="text-lg font-bold text-slate-700 mt-1">B. Oxford Scheme</p>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/fD_t8v_WpIk')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Staining Guide
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">To provide a standardized diagnostic reference chart for evaluating corneal and conjunctival epithelial staining density.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Diffuse corneal and conjunctival tissue micro-damage.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive Oxford Visualizer -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Diagnostic Visual: Oxford Reference Chart Selector</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-6 gap-3">
+                        <div onclick="selectOxfordGrade(0)" id="oxford-card-0" class="cursor-pointer border-2 border-teal-600 bg-teal-50 p-3 rounded-xl text-center transition">
+                            <p class="text-xs font-bold text-slate-500 uppercase">Grade 0</p>
+                            <div class="h-10 flex items-center justify-center font-bold text-slate-800 text-sm">Normal</div>
+                            <span class="text-[10px] text-teal-700 font-extrabold bg-teal-100 px-2 py-0.5 rounded-full">Active</span>
+                        </div>
+                        <div onclick="selectOxfordGrade(1)" id="oxford-card-1" class="cursor-pointer border border-slate-200 bg-slate-50 p-3 rounded-xl text-center transition hover:border-teal-400">
+                            <p class="text-xs font-bold text-slate-500 uppercase">Grade I</p>
+                            <div class="h-10 flex items-center justify-center font-bold text-slate-800 text-sm">Minimal</div>
+                            <span class="text-[10px] text-slate-400">Select</span>
+                        </div>
+                        <div onclick="selectOxfordGrade(2)" id="oxford-card-2" class="cursor-pointer border border-slate-200 bg-slate-50 p-3 rounded-xl text-center transition hover:border-teal-400">
+                            <p class="text-xs font-bold text-slate-500 uppercase">Grade II</p>
+                            <div class="h-10 flex items-center justify-center font-bold text-slate-800 text-sm">Mild</div>
+                            <span class="text-[10px] text-slate-400">Select</span>
+                        </div>
+                        <div onclick="selectOxfordGrade(3)" id="oxford-card-3" class="cursor-pointer border border-slate-200 bg-slate-50 p-3 rounded-xl text-center transition hover:border-teal-400">
+                            <p class="text-xs font-bold text-slate-500 uppercase">Grade III</p>
+                            <div class="h-10 flex items-center justify-center font-bold text-slate-800 text-sm">Moderate</div>
+                            <span class="text-[10px] text-slate-400">Select</span>
+                        </div>
+                        <div onclick="selectOxfordGrade(4)" id="oxford-card-4" class="cursor-pointer border border-slate-200 bg-slate-50 p-3 rounded-xl text-center transition hover:border-teal-400">
+                            <p class="text-xs font-bold text-slate-500 uppercase">Grade IV</p>
+                            <div class="h-10 flex items-center justify-center font-bold text-slate-800 text-sm">Mod-Severe</div>
+                            <span class="text-[10px] text-slate-400">Select</span>
+                        </div>
+                        <div onclick="selectOxfordGrade(5)" id="oxford-card-5" class="cursor-pointer border border-slate-200 bg-slate-50 p-3 rounded-xl text-center transition hover:border-teal-400">
+                            <p class="text-xs font-bold text-slate-500 uppercase">Grade V</p>
+                            <div class="h-10 flex items-center justify-center font-bold text-slate-800 text-sm">Severe</div>
+                            <span class="text-[10px] text-slate-400">Select</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-4 border border-teal-100 bg-teal-50/50 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center shrink-0 border border-teal-200 overflow-hidden">
+                                <svg class="w-14 h-14" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="45" fill="none" stroke="#10b981" stroke-width="1.5" />
+                                    <g id="oxford-dot-group"></g>
+                                </svg>
+                            </div>
+                            <div>
+                                <h5 class="text-sm font-bold text-slate-900" id="oxford-title">Grade 0: Normal</h5>
+                                <p class="text-xs text-slate-600" id="oxford-desc">Perfect epithelial integrity with absent or isolated microdot staining.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Fluorescein, Lissamine Green, Slit lamp</span>
+                            </div>
+                            <div class="p-4">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Interpretation & Cut-offs</h5>
+                                <p class="text-slate-700">Grade 0 indicates clear tissue. Progression to Grade V reveals massive, coalesced cell death, often seen in severe keratoconjunctivitis sicca.</p>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700">Widely utilized across international dry eye consensus guidelines, the Oxford Scheme shows outstanding reproducibility across clinical evaluators.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Instill dye (fluorescein for cornea, lissamine green for conjunctiva).</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Wait 1 to 2 minutes to allow dye binding into disrupted cell boundaries.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Scan corneal and conjunctival planes under moderate magnification.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">4</span>
+                                <span>Compare staining densities directly with standard panel templates to determine Grade (0 - V).</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 2. TEAR BREAK-UP TIME (TBUT) -->
+            <article id="test-2" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="stability">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 uppercase bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Tear Stability
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">2. Tear Break-Up Time (TBUT)</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/e5_k-Zp5p6A')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch TBUT Procedure
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">To measure the stability of the tear film and rule out evaporative dry eye.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Tear film stability and mucin/lipid interface uniformity.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive stopwatch & fluorescein simulator -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: TBUT Simulation & Measurement Recorder</h4>
+                    <div class="flex flex-col md:flex-row items-center gap-8">
+                        <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800 text-center w-full md:w-64">
+                            <div class="relative w-40 h-40 mx-auto rounded-full border border-teal-500/30 overflow-hidden flex items-center justify-center">
+                                <svg class="w-full h-full" viewBox="0 0 100 100" id="tbut-fluorescein-svg">
+                                    <circle cx="50" cy="50" r="48" fill="#10b981" opacity="0.85" />
+                                    <!-- Dynamic dry spots will spawn here -->
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/40">
+                                    <span class="text-[9px] font-bold text-cyan-400 uppercase tracking-widest">Stopwatch</span>
+                                    <div class="text-3xl font-mono font-black text-white" id="tbut-timer">00.0s</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 justify-center mt-4">
+                                <button onclick="toggleTBUTTimer()" id="tbut-btn" class="bg-teal-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-teal-700 transition">Start Timer</button>
+                                <button onclick="resetTBUTTimer()" class="bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-700 transition">Reset</button>
+                            </div>
+                        </div>
+                        <div class="flex-grow space-y-4 w-full">
+                            <h5 class="text-xs font-bold text-slate-500 uppercase">Input 3 Trial times manually or use stopwatch:</h5>
+                            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between">
+                                    <span class="text-xs font-bold text-slate-500">Trial 1:</span>
+                                    <input type="number" id="tbut-t1" class="w-16 bg-white border border-slate-200 rounded p-1 text-center font-bold text-slate-800" value="0" step="0.1" onchange="calcTBUT()">
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between">
+                                    <span class="text-xs font-bold text-slate-500">Trial 2:</span>
+                                    <input type="number" id="tbut-t2" class="w-16 bg-white border border-slate-200 rounded p-1 text-center font-bold text-slate-800" value="0" step="0.1" onchange="calcTBUT()">
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between">
+                                    <span class="text-xs font-bold text-slate-500">Trial 3:</span>
+                                    <input type="number" id="tbut-t3" class="w-16 bg-white border border-slate-200 rounded p-1 text-center font-bold text-slate-800" value="0" step="0.1" onchange="calcTBUT()">
+                                </div>
+                                <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl flex flex-col justify-center text-center">
+                                    <span class="text-[9px] font-bold text-blue-800 uppercase">Average</span>
+                                    <span class="text-lg font-black text-blue-800" id="tbut-avg">0.0 sec</span>
+                                </div>
+                            </div>
+                            <div id="tbut-badge" class="mt-2 text-xs p-3 bg-slate-100 border border-slate-200 rounded-xl font-bold flex items-center justify-between">
+                                <span>Tear Stability Profile:</span>
+                                <span class="text-slate-500">Record trials</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Fluorescein strip, Slit lamp, Cobalt blue filter</span>
+                            </div>
+                            <div class="p-4">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Clinical Classification Standards</h5>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div class="p-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-center text-[11px]">
+                                        <div class="font-bold">&gt; 10 sec</div>
+                                        <div>Normal</div>
+                                    </div>
+                                    <div class="p-2 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-center text-[11px]">
+                                        <div class="font-bold">5 - 10 sec</div>
+                                        <div>Borderline</div>
+                                    </div>
+                                    <div class="p-2 bg-rose-50 text-rose-800 border border-rose-200 rounded-lg text-center text-[11px]">
+                                        <div class="font-bold">&lt; 5 sec</div>
+                                        <div>Unstable</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700"><strong>Mengher et al.</strong> and the <strong>TFOS DEWS II</strong> consensus report note that diminished TBUT serves as a highly sensitive biomarker for identifying lipid deficiency.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Gently apply a small amount of non-preserved sodium fluorescein into the conjunctival sac.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Have the patient blink naturally several times, then look straight ahead and hold eyes open.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Start the timer immediately following the final complete blink.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">4</span>
+                                <span>Observe the tear film using a broad slit-lamp beam under cobalt blue light; stop timer at the exact moment the first dark non-fluorescent spot appears on the cornea.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 3. SCHIRMER TEST -->
+            <article id="test-3" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="production">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 uppercase bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Volume & Flow
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">3. Schirmer Test</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/H0dZ78pY6Sg')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Demonstration
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">To measure the basic rate of aqueous tear secretion under controlled or reflex stimulation.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Lacrimal gland function and total aqueous tear production capacity.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive Schirmer Slider -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: Schirmer Strip Reading Tool</h4>
+                    <div class="space-y-6">
+                        <div class="relative pt-4">
+                            <div class="h-10 w-full bg-slate-100 border border-slate-200 rounded-lg relative overflow-hidden flex items-center">
+                                <div class="absolute left-0 top-0 bottom-0 bg-cyan-100 border-r border-cyan-300 transition-all duration-300" id="schirmer-wet-bar" style="width: 45%;"></div>
+                                <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-red-400" title="Notch Area"></div>
+                                <div class="absolute inset-0 flex justify-between px-6 pointer-events-none text-[10px] font-mono font-bold text-slate-600">
+                                    <span>Notch</span>
+                                    <span>5mm</span>
+                                    <span>10mm</span>
+                                    <span>15mm</span>
+                                    <span>20mm</span>
+                                    <span>25mm</span>
+                                    <span>30mm</span>
+                                    <span>35mm</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row items-center gap-6">
+                            <div class="w-full sm:w-1/2">
+                                <label class="text-xs font-bold text-slate-500 uppercase">Set Wetting Length (mm):</label>
+                                <input type="range" min="0" max="35" value="15" id="schirmer-slider" oninput="updateSchirmer(this.value)" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600 mt-2">
+                            </div>
+                            <div class="w-full sm:w-1/2 grid grid-cols-2 gap-4">
+                                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-center">
+                                    <span class="text-[10px] text-slate-500 uppercase">Wetted Depth</span>
+                                    <div class="text-2xl font-black text-slate-800" id="schirmer-value">15 mm</div>
+                                </div>
+                                <div class="p-3 rounded-xl text-center flex flex-col justify-center border" id="schirmer-status-card">
+                                    <span class="text-[10px]" id="schirmer-status-lbl">Category</span>
+                                    <div class="text-sm font-bold" id="schirmer-status-text">Normal</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Whatman filter paper strips (5 × 35 mm), Timer</span>
+                            </div>
+                            <div class="p-4 bg-white">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Standard Cut-offs</h5>
+                                <div class="grid grid-cols-4 gap-1 text-center text-[10px]">
+                                    <div class="p-1 bg-emerald-50 text-emerald-800 border rounded font-semibold">&gt; 15mm<br>Normal</div>
+                                    <div class="p-1 bg-blue-50 text-blue-800 border rounded font-semibold">10-15mm<br>Mild</div>
+                                    <div class="p-1 bg-amber-50 text-amber-800 border rounded font-semibold">5-10mm<br>Mod</div>
+                                    <div class="p-1 bg-rose-50 text-rose-800 border rounded font-semibold">&lt; 5mm<br>Severe</div>
+                                </div>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700">The <strong>TFOS DEWS II diagnostic report</strong> classifies the classic Schirmer-I test as a reflex-stimulated measurement of tear production capacity, invaluable for ruling out systemic Sjögren's syndrome.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Fold a standardized sterile strip at the notch mark.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Place folded end over the lower lid margin at the outer third of the lid (avoiding the cornea).</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Instruct patient to keep eyes closed gently for exactly 5 minutes.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">4</span>
+                                <span>Remove strip and read the length of wetting from the fold notch in millimeters.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 4. TEAR OSMOLARITY -->
+            <article id="test-4" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="stability">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 uppercase bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Tear Stability
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">4. Tear Osmolarity</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/e5_k-Zp5p6A')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Osmolarity Guide
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Tear film hyperosmolarity is recognized as a key step in dry eye development.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Tear film salt concentration and inter-eye dynamic variability.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive Osmometer -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: Tear Osmolarity Clinical Assessor</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Left Eye (OD):</label>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <input type="number" id="osmo-od" value="302" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold text-slate-800 text-center text-lg" onchange="calcOsmolarity()">
+                                    <span class="text-xs font-semibold text-slate-500">mOsm/L</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Right Eye (OS):</label>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <input type="number" id="osmo-os" value="315" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold text-slate-800 text-center text-lg" onchange="calcOsmolarity()">
+                                    <span class="text-xs font-semibold text-slate-500">mOsm/L</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center flex flex-col justify-center h-full">
+                            <span class="text-xs text-slate-500 font-semibold">Inter-Eye Difference</span>
+                            <div class="text-3xl font-black text-teal-700 my-1" id="osmo-diff">13</div>
+                            <span class="text-xs font-semibold text-slate-500">mOsm/L</span>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center flex flex-col justify-center h-full border-l-4 border-l-rose-500" id="osmo-card">
+                            <span class="text-xs text-slate-500 font-semibold">Tear Film Health Profile</span>
+                            <div class="text-lg font-bold text-slate-800 mt-2" id="osmo-result">Moderate Dry Eye</div>
+                            <p class="text-[10px] text-slate-500 mt-1" id="osmo-detail">Inter-eye variability exceeding 8 mOsm/L suggests tear film instability.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">TearLab/OcuSense Osmometer, microcapillary chip</span>
+                            </div>
+                            <div class="p-4">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Interpretation Details</h5>
+                                <p class="text-slate-700">Values above 308 mOsm/L, or a difference between eyes of over 8 mOsm/L, are indicative of dry eye disease.</p>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700"><strong>Tomlinson et al.</strong> and <strong>DEWS II</strong> report a sensitivity of 94% and specificity of 84% for tear osmolarity in dry eye diagnosis.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Insert a new disposable microchip into the collection pen.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Place the microchip tip against the lower tear meniscus, taking care not to touch the eyelid or cornea.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Verify fluid collection is complete via the automated indicator beep on the device.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">4</span>
+                                <span>Dock the collection pen into the analyzer base and note the value.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 5. TEAR MENISCUS RADIUS, HEIGHT & CROSS-SECTIONAL AREA -->
+            <article id="test-5" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="production">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 uppercase bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Volume & Flow
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">5. Tear Meniscus Radius, Height & Area</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/fD_t8v_WpIk')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Meniscus Exam
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">To measure total baseline tear reservoir volume at the eyelid-globe boundary non-invasively.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Tear lake reserve capacity and aqueous tear meniscus volume.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive TMH Profile -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: Tear Meniscus Profile Assessor</h4>
+                    <div class="flex flex-col md:flex-row items-center gap-8">
+                        <div class="w-full md:w-1/2 flex justify-center">
+                            <svg viewBox="0 0 200 150" class="w-full max-w-xs bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                                <path d="M 40,10 Q 55,75 40,140" stroke="#94a3b8" stroke-width="2" fill="none" />
+                                <path d="M 12,140 Q 75,135 150,140 L 150,150 L 12,150 Z" fill="#fecdd3" stroke="#f43f5e" stroke-width="1.5" />
+                                <path id="meniscus-shape" d="M 46,128 Q 75,128 75,138 Z" fill="#93c5fd" opacity="0.8" />
+                                <text x="140" y="30" font-size="9" font-weight="bold" fill="#475569">Cornea</text>
+                                <text x="110" y="125" font-size="9" font-weight="bold" fill="#e11d48">Lower Lid</text>
+                                <text x="85" y="100" font-size="9" font-weight="bold" fill="#1d4ed8" id="svg-tmh-text">TMH: 0.15mm</text>
+                            </svg>
+                        </div>
+                        <div class="flex-grow space-y-4 w-full">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase flex justify-between">
+                                    <span>Tear Meniscus Height (TMH):</span>
+                                    <span class="font-extrabold text-teal-600" id="tmh-val-disp">0.15 mm</span>
+                                </label>
+                                <input type="range" min="5" max="50" value="15" step="1" id="tmh-slider" oninput="updateTMH(this.value)" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600 mt-2">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase">Radius of Curvature</span>
+                                    <div class="text-base font-bold text-slate-800" id="tmh-radius">0.18 mm</div>
+                                </div>
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase">Cross-Sectional Area</span>
+                                    <div class="text-base font-bold text-slate-800" id="tmh-area">0.015 mm²</div>
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl text-xs font-bold border flex items-center justify-between" id="tmh-status-card">
+                                <span>Clinical Diagnosis:</span>
+                                <span id="tmh-status-text">Marginal Deficiency</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Slit lamp, Video meniscometer, AS-OCT</span>
+                            </div>
+                            <div class="p-4 bg-white">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Standard Cut-offs</h5>
+                                <p class="text-slate-700">A height measurement below **0.20 mm** points to aqueous deficiency.</p>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700"><strong>Mainstone et al.</strong> showed that non-invasive meniscus measurements correlate with the Schirmer test without triggering reflex tearing.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Have the patient look straight ahead to establish a stable tear lake level.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Align the measuring slit beam or optical coherence tomography scanner over the lower lid margin.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Capture a cross-sectional image of the tear wedge.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">4</span>
+                                <span>Measure the meniscus height and radius of curvature to determine tear volume.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 6. TEAR FILM LIPID LAYER INTERFEROMETRY -->
+            <article id="test-6" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="lipids">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 uppercase bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> MGD & Lipids
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">6. Tear Film Lipid Layer Interferometry</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/e5_k-Zp5p6A')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Interferometry Demo
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">To evaluate lipid layer thickness and help identify meibomian gland dysfunction.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Meibomian gland output and functional evaporation control mechanisms.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive Lipid Pattern Selector -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: Interference Fringe Pattern Reference</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                        <div onclick="selectLipid(1)" id="lipid-card-1" class="cursor-pointer border-2 border-teal-600 bg-teal-50 p-3 rounded-xl text-center">
+                            <span class="text-[10px] font-bold text-slate-500 block uppercase">Level 1</span>
+                            <div class="text-sm font-black text-slate-800 my-1">Open-work / Wave</div>
+                            <span class="text-xs text-teal-700 font-bold">&lt; 30nm (Thin)</span>
+                        </div>
+                        <div onclick="selectLipid(2)" id="lipid-card-2" class="cursor-pointer border border-slate-200 bg-slate-50 p-3 rounded-xl text-center">
+                            <span class="text-[10px] font-bold text-slate-500 block uppercase">Level 2</span>
+                            <div class="text-sm font-black text-slate-800 my-1">Closed-mesh</div>
+                            <span class="text-xs text-slate-500">30-50nm</span>
+                        </div>
+                        <div onclick="selectLipid(3)" id="lipid-card-3" class="cursor-pointer border border-slate-200 bg-slate-50 p-3 rounded-xl text-center">
+                            <span class="text-[10px] font-bold text-slate-500 block uppercase">Level 3</span>
+                            <div class="text-sm font-black text-slate-800 my-1">Normal Wave</div>
+                            <span class="text-xs text-slate-500">50-80nm (Ideal)</span>
+                        </div>
+                        <div onclick="selectLipid(4)" id="lipid-card-4" class="cursor-pointer border border-slate-200 bg-slate-50 p-3 rounded-xl text-center">
+                            <span class="text-[10px] font-bold text-slate-500 block uppercase">Level 4</span>
+                            <div class="text-sm font-black text-slate-800 my-1">Amorphous</div>
+                            <span class="text-xs text-slate-500">80-120nm</span>
+                        </div>
+                        <div onclick="selectLipid(5)" id="lipid-card-5" class="cursor-pointer border border-slate-200 bg-slate-50 p-3 rounded-xl text-center">
+                            <span class="text-[10px] font-bold text-slate-500 block uppercase">Level 5</span>
+                            <div class="text-sm font-black text-slate-800 my-1">Colored Fringes</div>
+                            <span class="text-xs text-slate-500">120-160nm (Thick)</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-4 border border-teal-100 bg-teal-50/30 rounded-xl flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-r from-cyan-400 via-pink-400 to-yellow-300 animate-pulse border border-white shadow-sm shrink-0" id="lipid-gradient"></div>
+                        <div>
+                            <h5 class="text-sm font-bold text-slate-900" id="lipid-title">Thin/Deficient Lipid Layer</h5>
+                            <p class="text-xs text-slate-600" id="lipid-desc">Minimal surface coverage. Prone to evaporation and ocular surface exposure.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Tearscope Plus, LipiView Interferometer</span>
+                            </div>
+                            <div class="p-4 bg-white">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Key Dynamic Assays</h5>
+                                <p class="text-slate-700">A thin or absent lipid layer pattern correlates with increased tear film evaporation and higher ocular symptom scores.</p>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700">Clinical trials show that lipid layer thickness is significantly decreased in evaporative dry eye and obstructive MGD.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Seat the patient and align their eye with the light source.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Instruct the patient to blink naturally while the device records the interference patterns.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Examine the fringe colors and movement speed to assess the thickness and distribution of the lipid layer.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 7. TEAR STABILITY ANALYSIS SYSTEM (TSAS) -->
+            <article id="test-7" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="stability">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 uppercase bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Tear Stability
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">7. Tear Stability Analysis System (TSAS)</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/fD_t8v_WpIk')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch TSAS Procedure
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Provides objective, computerized monitoring of tear break-up locations and progression without dye instillation.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Dynamic non-invasive tear film break-up topography.</p>
+                    </div>
+                </div>
+
+                <!-- Placido Rings interactive widget -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: Projected Placido Disc Analysis</h4>
+                    <div class="flex flex-col md:flex-row items-center gap-8">
+                        <div class="w-full md:w-1/2 flex justify-center bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                            <svg viewBox="0 0 160 160" class="w-40 h-40">
+                                <circle cx="80" cy="80" r="75" fill="#0f172a" />
+                                <circle cx="80" cy="80" r="10" fill="none" stroke="#22d3ee" stroke-width="2" class="placido-glow" />
+                                <circle cx="80" cy="80" r="25" fill="none" stroke="#22d3ee" stroke-width="2" id="ring-1" class="placido-glow" />
+                                <circle cx="80" cy="80" r="40" fill="none" stroke="#22d3ee" stroke-width="2" id="ring-2" class="placido-glow" />
+                                <circle cx="80" cy="80" r="55" fill="none" stroke="#22d3ee" stroke-width="2" id="ring-3" class="placido-glow" />
+                                <circle cx="80" cy="80" r="70" fill="none" stroke="#22d3ee" stroke-width="2" id="ring-4" class="placido-glow" />
+                            </svg>
+                        </div>
+                        <div class="flex-grow space-y-4 w-full">
+                            <span class="text-xs font-bold text-slate-500 uppercase block">Simulate Tear Film Break-up Profile:</span>
+                            <div class="flex gap-2">
+                                <button onclick="setPlacidoMode('stable')" class="flex-1 bg-teal-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-teal-700 transition" id="tsas-btn-stable">Stable Tear</button>
+                                <button onclick="setPlacidoMode('broken')" class="flex-1 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition" id="tsas-btn-broken">Break-up</button>
+                            </div>
+                            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs" id="tsas-interpretation">
+                                <strong>Stable tear profile active:</strong> Concentric placido rings appear uniform with no distortion.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Videokeratoscope, TSAS software</span>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700"><strong>Goto et al.</strong> introduced TSAS to reduce the patient variability associated with dye instillation and manual timing.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Have the patient fixate on the target at the center of the videokeratoscope rings.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Project the concentric placido ring array onto the tear film surface.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Begin high-speed software recording immediately following a full blink.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">4</span>
+                                <span>Analyze the captured data to identify and map areas of placido ring distortion.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 8. MEIBOMETRY -->
+            <article id="test-8" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="lipids">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 uppercase bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> MGD & Lipids
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">8. Meibometry</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/T60mH_nN1aY')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Meibometry Demo
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Provides a quantitative evaluation of total active meibum lipids residing on the lower lid margin reservoir.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Meibomian gland active lipid secretion output levels.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive Meibometry Slider -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: Spectrophotometric Lipids Tape Analyzer</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase flex justify-between">
+                                    <span>Lipid Density absorption level:</span>
+                                    <span class="font-extrabold text-amber-600" id="meibometry-val-disp">120 u.a.</span>
+                                </label>
+                                <input type="range" min="10" max="300" value="120" step="5" id="meibometry-slider" oninput="updateMeibometry(this.value)" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600 mt-2">
+                            </div>
+                            <div class="p-3 rounded-xl text-xs font-bold border flex items-center justify-between" id="meibometry-status-card">
+                                <span>Clinical Output:</span>
+                                <span id="meibometry-status-text">Normal Secretion</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-center bg-slate-100 p-4 rounded-xl border border-slate-200">
+                            <svg viewBox="0 0 160 80" class="w-40 h-20">
+                                <rect x="10" y="25" width="140" height="30" fill="#cbd5e1" rx="4" />
+                                <rect id="meibometry-tape-wet" x="10" y="25" width="60" height="30" fill="#fef08a" opacity="0.8" rx="4" />
+                                <text x="80" y="20" font-size="8" font-weight="bold" fill="#475569" text-anchor="middle">Collection Tape Strip</text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Meibometer device, specialized plastic collection tape strips</span>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700">Quantifiable meibometry serves as a valuable clinical research endpoint for determining tear film evaporation changes.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Apply the collection tape strip gently against the lower lid margin to collect meibum.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Place the tape strip into the meibometer.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Initiate spectrophotometric measurement to quantify the collected lipid volume.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 9. MEIBOGRAPHY / MEIBOSCOPY -->
+            <article id="test-9" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="lipids">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 uppercase bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> MGD & Lipids
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">9. Meibography / Meiboscopy</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/T60mH_nN1aY')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Meibography Scan
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Provides a high-definition anatomical visualization of meibomian gland structures inside the tarsal plates.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Meibomian gland structural dropout, truncation, or atrophy levels.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive Gland Dropout Tool -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
+                        <span>Interactive Diagnostic Visual: Meibomian Gland Dropout Assessor</span>
+                        <span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 text-slate-500">Drag Slider to Adjust Atrophy</span>
+                    </h4>
+                    <div class="flex flex-col md:flex-row items-center gap-8">
+                        <div class="w-full md:w-1/2 flex justify-center bg-slate-950 p-6 rounded-2xl border border-slate-800">
+                            <svg viewBox="0 0 200 120" class="w-full max-w-xs">
+                                <path d="M 10,10 Q 100,-5 190,10 L 190,110 Q 100,120 10,110 Z" fill="#1e293b" />
+                                <g id="meibo-glands">
+                                    <!-- Populated through script -->
+                                </g>
+                                <text x="100" y="105" font-size="8" font-weight="bold" fill="#94a3b8" text-anchor="middle">Everted Lower Tarsal Plate View</text>
+                            </svg>
+                        </div>
+                        <div class="flex-grow space-y-4 w-full">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase flex justify-between">
+                                    <span>Simulate Gland Dropout Percentage:</span>
+                                    <span class="font-extrabold text-teal-600" id="meibo-pct">0% Dropout</span>
+                                </label>
+                                <input type="range" min="0" max="100" value="0" step="10" id="meibo-slider" oninput="updateMeibography(this.value)" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600 mt-2">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase">Meiboscale Grade</span>
+                                    <div class="text-sm font-bold text-slate-800" id="meibo-grade">Grade 0</div>
+                                </div>
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase">Severity Description</span>
+                                    <div class="text-xs text-slate-700" id="meibo-desc">Healthy parallel gland structure.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Infrared Meibographer, Slit lamp Meiboscope attachment</span>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700">Widespread clinical evidence demonstrates a direct correlation between gland dropout percentage and evaporative tear film instability.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Gently evert the lower or upper eyelid to expose the inner tarsal mucosa.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Align the infrared imaging system to capture the meibomian gland anatomy.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Record scans and grade gland dropout from Grade 0 (no loss) to Grade 3 (severe loss).</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 10. BRUSH CYTOLOGY TECHNIQUE -->
+            <article id="test-10" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="cellular">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 uppercase bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Cytology & Immunology
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">10. Brush Cytology Technique</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/fD_t8v_WpIk')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Procedure Demo
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">To collect conjunctival epithelial cells for histological or immunological analysis.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Goblet cell density and squamous metaplasia changes.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive Cytology Microscope View -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: Cytological Smear Microscope Simulator</h4>
+                    <div class="flex flex-col md:flex-row items-center gap-8">
+                        <div class="w-full md:w-1/2 flex justify-center bg-slate-100 p-4 rounded-xl border border-slate-200">
+                            <svg viewBox="0 0 120 120" class="w-32 h-32 rounded-full border-4 border-slate-300 bg-white shadow-inner">
+                                <circle cx="60" cy="60" r="55" fill="#f8fafc" />
+                                <!-- Dynamic cell population based on slider -->
+                                <g id="microscope-cells"></g>
+                            </svg>
+                        </div>
+                        <div class="flex-grow space-y-4 w-full">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase flex justify-between">
+                                    <span>Adjust Metaplasia / Severity:</span>
+                                    <span class="font-extrabold text-indigo-600" id="cytology-severity-lbl">Normal</span>
+                                </label>
+                                <input type="range" min="0" max="3" value="0" step="1" id="cytology-slider" oninput="updateCytologySimulator(this.value)" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 mt-2">
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700" id="cytology-desc-card">
+                                Normal density of mucin-secreting goblet cells present.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Cytology brush, microscopic slide, fixative, stain</span>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700">A reliable method for evaluating changes in goblet cell density and surface inflammation in dry eye diseases.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Apply a single drop of topical anesthetic into the eye.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Gently rotate the cytological brush across the conjunctival surface.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Transfer cells onto a glass slide, fix, and prepare for histological staining.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 11. FLOW CYTOMETRY IN IMPRESSION CYTOLOGY -->
+            <article id="test-11" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="cellular">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 uppercase bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Cytology & Immunology
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">11. Flow Cytometry in Impression Cytology</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/fD_t8v_WpIk')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Assay Demo
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">To analyze and quantify inflammatory cell markers collected from the ocular surface.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Cellular immune activity and inflammatory marker levels (HLA-DR).</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive Cytometry Scatter Plot -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: Flow Cytometry Scatter Analyzer</h4>
+                    <div class="flex flex-col md:flex-row items-center gap-8">
+                        <div class="w-full md:w-1/2 flex justify-center bg-white p-4 border border-slate-200 rounded-xl shadow-sm">
+                            <svg viewBox="0 0 120 120" class="w-32 h-32">
+                                <line x1="10" y1="110" x2="110" y2="110" stroke="#475569" stroke-width="1.5" />
+                                <line x1="10" y1="110" x2="10" y2="10" stroke="#475569" stroke-width="1.5" />
+                                <text x="60" y="118" font-size="6" font-weight="bold" fill="#475569" text-anchor="middle">FSC</text>
+                                <text x="5" y="60" font-size="6" font-weight="bold" fill="#475569" text-anchor="middle" transform="rotate(-90 5 60)">SSC</text>
+                                <!-- Dynamic scatter plot dots -->
+                                <g id="cytometry-scatter"></g>
+                            </svg>
+                        </div>
+                        <div class="flex-grow space-y-4 w-full">
+                            <span class="text-xs font-bold text-slate-500 uppercase block">Simulate Ocular Surface Inflammation:</span>
+                            <div class="flex gap-2">
+                                <button onclick="setCytometryLevel('low')" class="flex-1 bg-teal-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-teal-700 transition" id="cyto-btn-low">Low HLA-DR</button>
+                                <button onclick="setCytometryLevel('high')" class="flex-1 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 transition" id="cyto-btn-high">High HLA-DR</button>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs" id="cyto-status-text">
+                                Normal baseline HLA-DR marker expression. Minimal inflammation present.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Cellulose acetate filter, Flow cytometer</span>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700"><strong>Pisella et al.</strong> demonstrated that tracking HLA-DR expression levels using flow cytometry helps quantify inflammatory changes on the ocular surface.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Collect conjunctival cell samples using cellulose acetate filter paper.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Suspend cells in assay buffer and label with fluorescent antibodies targeting HLA-DR.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Run sample through flow cytometer to measure antibody expression levels.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 12. TEAR FERNING TEST (TFT) -->
+            <article id="test-12" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="stability">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 uppercase bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Tear Stability
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">12. Tear Ferning Test (TFT)</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/H0dZ78pY6Sg')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Demonstration
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">To assess tear film chemistry and mucin content based on crystallization patterns.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Tear electrolyte-to-mucin ratio and osmolarity.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive Microscope view -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: Rolando Classification Microscope Simulator</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div onclick="selectFerning(1)" id="fern-card-1" class="cursor-pointer border-2 border-teal-600 bg-teal-50 p-4 rounded-xl text-center">
+                            <span class="text-xs font-bold text-slate-400 block uppercase">Type I</span>
+                            <div class="text-sm font-bold text-slate-800 my-1">Healthy Fern</div>
+                            <span class="text-xs text-teal-700 font-semibold bg-teal-100 px-2 py-0.5 rounded-full">Normal</span>
+                        </div>
+                        <div onclick="selectFerning(2)" id="fern-card-2" class="cursor-pointer border border-slate-200 bg-slate-50 p-4 rounded-xl text-center">
+                            <span class="text-xs font-bold text-slate-400 block uppercase">Type II</span>
+                            <div class="text-sm font-bold text-slate-800 my-1">Branching Fern</div>
+                            <span class="text-xs text-slate-500">Normal</span>
+                        </div>
+                        <div onclick="selectFerning(3)" id="fern-card-3" class="cursor-pointer border border-slate-200 bg-slate-50 p-4 rounded-xl text-center">
+                            <span class="text-xs font-bold text-slate-400 block uppercase">Type III</span>
+                            <div class="text-sm font-bold text-slate-800 my-1">Fragmented</div>
+                            <span class="text-xs text-rose-600 font-semibold bg-rose-50 px-2 py-0.5 rounded-full">Abnormal</span>
+                        </div>
+                        <div onclick="selectFerning(4)" id="fern-card-4" class="cursor-pointer border border-slate-200 bg-slate-50 p-4 rounded-xl text-center">
+                            <span class="text-xs font-bold text-slate-400 block uppercase">Type IV</span>
+                            <div class="text-sm font-bold text-slate-800 my-1">Degenerated</div>
+                            <span class="text-xs text-rose-700 font-bold bg-rose-100 px-2 py-0.5 rounded-full">Severe</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-4 border border-teal-100 bg-teal-50/20 rounded-xl flex items-center gap-6">
+                        <div class="w-16 h-16 rounded-full bg-slate-900 border-2 border-slate-700 flex items-center justify-center shrink-0">
+                            <svg class="w-12 h-12" viewBox="0 0 100 100" id="fern-svg"></svg>
+                        </div>
+                        <div>
+                            <h5 class="text-sm font-bold text-slate-900" id="fern-title">Type I</h5>
+                            <p class="text-xs text-slate-600" id="fern-desc">Dense, continuous branching crystal lattice.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Capillary tube, slide, light microscope</span>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700">Shows high sensitivity (~82–94%) and specificity (~75–92%) in clinical dry eye evaluations.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Collect a 1 µL tear sample from the lower meniscus using a capillary.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Place the sample on a clean glass slide and let dry for 10 minutes.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Analyze crystallization patterns under the light microscope.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 13. OCULAR PROTECTION INDEX (OPI) -->
+            <article id="test-13" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="stability">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 uppercase bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Tear Stability
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">13. Ocular Protection Index (OPI)</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/e5_k-Zp5p6A')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch OPI Demo
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Calculates the relationship between tear stability (TBUT) and blink interval to determine corneal exposure risk.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Tear film protection and corneal exposure risk profile.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive OPI Calculator -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: OPI Standard Calculator</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Tear Break-Up Time (TBUT):</label>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <input type="number" id="opi-tbut" value="8" step="0.5" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold text-slate-800 text-center" oninput="calculateOPI()">
+                                    <span class="text-xs font-medium text-slate-500">sec</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Interblink Interval (IBI):</label>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <input type="number" id="opi-ibi" value="10" step="0.5" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold text-slate-800 text-center" oninput="calculateOPI()">
+                                    <span class="text-xs font-medium text-slate-500">sec</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center flex flex-col justify-center h-full">
+                            <span class="text-xs text-slate-500 font-semibold">Calculated OPI Ratio</span>
+                            <div class="text-3xl font-black text-teal-700 my-1" id="opi-ratio">0.8</div>
+                            <span class="text-[10px] font-mono text-slate-400">Formula: TBUT / IBI</span>
+                        </div>
+                        <div class="p-4 rounded-2xl text-center flex flex-col justify-center h-full border border-rose-200 bg-rose-50/50" id="opi-card">
+                            <span class="text-xs text-rose-800 font-extrabold uppercase">Exposure Risk Level</span>
+                            <div class="text-lg font-bold text-rose-800 mt-2" id="opi-result">OPI &lt; 1 (Unprotected)</div>
+                            <p class="text-[10px] text-slate-600 mt-1" id="opi-desc">The tear film breaks down before the next blink, leaving corneal tissues exposed to dry spot damage.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 bg-white">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Index Calculations</h5>
+                                <div class="p-3 bg-slate-50 border border-slate-100 rounded-xl font-mono text-xs text-slate-700 text-center">
+                                    OPI = \frac{\text{TBUT (sec)}}{\text{Interblink Interval (sec)}}
+                                </div>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700"><strong>Ousler et al.</strong> proved that an OPI &lt; 1 correlates with increased corneal staining and discomfort.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Measure the patient's average TBUT value using standard fluorescein procedures.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Observe and count blinks over a 1-minute interval during a relaxed conversation to establish the Interblink Interval (IBI).</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Calculate the ratio by dividing TBUT by IBI to determine the Ocular Protection Index.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 14. FLUOROPHOTOMETRY (FLUORIMETRY) -->
+            <article id="test-14" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="production">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 uppercase bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Volume & Flow
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">14. Fluorophotometry (Fluorimetry)</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/fD_t8v_WpIk')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Demonstration
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Provides a quantitative, objective evaluation of tear clearance and tear turnover rates over time.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Tear turnover rate and dynamic clearance behavior.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive Dye Decay Simulator -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: Fluorophotometric Clearance Decay Plotter</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase flex justify-between">
+                                    <span>Tear Clearance Rate (TCR):</span>
+                                    <span class="font-extrabold text-emerald-600" id="fluorimetry-val-disp">Normal Decay (16%/min)</span>
+                                </label>
+                                <input type="range" min="2" max="25" value="16" step="1" id="fluorimetry-slider" oninput="updateFluorimetry(this.value)" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600 mt-2">
+                            </div>
+                            <div class="p-3 rounded-xl text-xs font-bold border flex items-center justify-between bg-slate-50" id="fluorimetry-status-card">
+                                <span>Clearance Profile:</span>
+                                <span id="fluorimetry-status-text">Normal Tear Flow</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-center bg-slate-100 p-4 rounded-xl border border-slate-200">
+                            <svg viewBox="0 0 160 80" class="w-40 h-20">
+                                <rect x="10" y="10" width="140" height="60" fill="#0f172a" rx="4" />
+                                <path id="fluorimetry-decay-curve" d="M 15,15 Q 80,45 145,65" fill="none" stroke="#22d3ee" stroke-width="2.5" />
+                                <text x="15" y="72" font-size="6" fill="#94a3b8">0m</text>
+                                <text x="145" y="72" font-size="6" fill="#94a3b8" text-anchor="end">20m</text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Fluorophotometer, fluorescein dye</span>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700">A slower fluorescence decay rate indicates reduced tear turnover, suggesting impaired tear clearance.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Instill a standardized volume of fluorescein dye into the eye.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Measure baseline fluorescence intensity using the fluorophotometer.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Measure fluorescence decay at regular intervals to compute tear clearance.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 15. TEAR FUNCTION INDEX (TFI) -->
+            <article id="test-15" class="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm hover:shadow-md transition-all relative overflow-hidden" data-category="production">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-teal-500 to-blue-500"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 uppercase bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 mb-2">
+                            <i data-lucide="tag" class="w-3 h-3"></i> Volume & Flow
+                        </div>
+                        <h3 class="text-2xl font-bold text-slate-900 tracking-tight">15. Tear Function Index (TFI)</h3>
+                    </div>
+                    <button onclick="openVideo('https://www.youtube.com/embed/H0dZ78pY6Sg')" class="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition shadow-sm">
+                        <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i> Watch Demonstration
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Why is it done?</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Integrates tear production output and tear clearance rate measurements into a single unified index value.</p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Function Assessed</h4>
+                        <p class="text-sm text-slate-700 leading-relaxed font-semibold">Overall tear functional output and dynamic clearance behavior.</p>
+                    </div>
+                </div>
+
+                <!-- Custom Interactive TFI Calculator -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 mb-8">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Interactive Clinical Tool: TFI Diagnostic Calculator</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Schirmer (With Anesthesia):</label>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <input type="number" id="tfi-schirmer" value="12" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold text-slate-800 text-center" oninput="calculateTFI()">
+                                    <span class="text-xs font-semibold text-slate-500">mm</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Tear Clearance Rate (TCR):</label>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <input type="number" id="tfi-tcr" value="12" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold text-slate-800 text-center" oninput="calculateTFI()">
+                                    <span class="text-xs font-semibold text-slate-500">/ 16</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center flex flex-col justify-center h-full">
+                            <span class="text-xs text-slate-500 font-semibold">Calculated TFI</span>
+                            <div class="text-3xl font-black text-teal-700 my-1" id="tfi-val">16.0</div>
+                            <span class="text-[10px] font-mono text-slate-400">Formula: Schirmer / TCR</span>
+                        </div>
+                        <div class="p-4 rounded-2xl text-center flex flex-col justify-center h-full border border-emerald-200 bg-emerald-50/50" id="tfi-card">
+                            <span class="text-xs text-emerald-800 font-extrabold uppercase">Tear Functional Health</span>
+                            <div class="text-lg font-bold text-emerald-800 mt-2" id="tfi-result">TFI &gt; 10 (Healthy)</div>
+                            <p class="text-[10px] text-slate-600 mt-1" id="tfi-desc">Indicates normal tear output with effective tear clearance.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4 text-slate-500"></i> Parameters & Instruments</h4>
+                        <div class="border border-slate-100 rounded-2xl divide-y divide-slate-100 overflow-hidden text-sm">
+                            <div class="p-4 flex justify-between bg-slate-50">
+                                <span class="font-semibold text-slate-600">Instruments Used</span>
+                                <span class="font-bold text-slate-800">Schirmer strips, Fluorescein</span>
+                            </div>
+                            <div class="p-4 bg-slate-50">
+                                <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Seminal Research Results</h5>
+                                <p class="text-slate-700"><strong>Xu et al.</strong> proposed the TFI to provide a more comprehensive indicator of overall tear film dynamics than Schirmer testing alone.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-4 h-4 text-teal-600"></i> Standard Operating Procedure (SOP)</h4>
+                        <ol class="space-y-3 text-sm text-slate-700">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">1</span>
+                                <span>Perform an anesthetized Schirmer test and record the value in millimeters.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">2</span>
+                                <span>Measure the tear clearance rate to evaluate dynamic fluid drainage.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700 text-xs font-bold shrink-0 mt-0.5">3</span>
+                                <span>Calculate the index by dividing the Schirmer value by the tear clearance rate.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </article>
+
+        </section>
+    </main>
+
+    <!-- Global Video Overlays Modal -->
+    <div id="videoModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl overflow-hidden max-w-3xl w-full shadow-2xl border border-slate-200 flex flex-col">
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                    <h3 class="font-bold text-slate-900 text-base">Standard Procedure Demonstration</h3>
+                </div>
+                <button onclick="closeVideo()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="relative pb-[56.25%] h-0 bg-slate-950">
+                <iframe id="videoPlayer" class="absolute top-0 left-0 w-full h-full" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+            <div class="p-4 bg-slate-50 text-xs text-slate-500 font-semibold flex items-center gap-2 border-t border-slate-100">
+                <i data-lucide="info" class="w-4 h-4 text-teal-600"></i> Video plays via secure educational YouTube embeds. Click outer backdrop or 'X' to return.
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-12 mt-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-sm font-bold text-slate-800">OculiDry™ Diagnostic Compendium &middot; Clinical Reference Portal</p>
+            <p class="text-xs text-slate-500 mt-2">Designed strictly for educational purposes and standard operating procedure standardization inside active ophthalmic practices.</p>
+        </div>
+    </footer>
+
+    <!-- Comprehensive interactive behavior script -->
+    <script>
+        // Global variables for states
+        let tbutInterval = null;
+        let tbutTime = 0.0;
+        let tbutRunning = false;
+
+        // Dataset representing the 15 items for dynamic navigation & lookup
+        const testsData = [
+            { id: 'test-1a', num: '1A', name: 'CLEK Scheme Staining', category: 'staining' },
+            { id: 'test-1b', num: '1B', name: 'Oxford Scheme Staining', category: 'staining' },
+            { id: 'test-2', num: '2', name: 'Tear Break-Up Time (TBUT)', category: 'stability' },
+            { id: 'test-3', num: '3', name: 'Schirmer Test (I, II, Basal)', category: 'production' },
+            { id: 'test-4', num: '4', name: 'Tear Osmolarity (TearLab)', category: 'stability' },
+            { id: 'test-5', num: '5', name: 'Tear Meniscus Height (OCT)', category: 'production' },
+            { id: 'test-6', num: '6', name: 'Lipid Interferometry', category: 'lipids' },
+            { id: 'test-7', num: '7', name: 'TSAS Topography Analysis', category: 'stability' },
+            { id: 'test-8', num: '8', name: 'Meibometry Output', category: 'lipids' },
+            { id: 'test-9', num: '9', name: 'Meibography Gland Dropout', category: 'lipids' },
+            { id: 'test-10', num: '10', name: 'Brush Cytology Surface Prep', category: 'cellular' },
+            { id: 'test-11', num: '11', name: 'Flow Cytometry Immunology', category: 'cellular' },
+            { id: 'test-12', num: '12', name: 'Tear Ferning Test (TFT)', category: 'stability' },
+            { id: 'test-13', num: '13', name: 'Ocular Protection Index (OPI)', category: 'stability' },
+            { id: 'test-14', num: '14', name: 'Fluorophotometry dynamics', category: 'production' },
+            { id: 'test-15', num: '15', name: 'Tear Function Index (TFI)', category: 'production' }
+        ];
+
+        // CLEK state tracking
+        const clekState = { central: 0, superior: 0, nasal: 0, inferior: 0, temporal: 0 };
+        const clekColors = ["#ffffff", "#ccfbf1", "#99f6e4", "#2dd4bf"]; // Grades 0, 1, 2, 3
+
+        window.onload = function() {
+            // Initialize Lucide icons
+            lucide.createIcons();
+
+            // Render navigation panel items
+            buildSidebarNav();
+
+            // Run initial calculators
+            calcOsmolarity();
+            calculateOPI();
+            calculateTFI();
+            updateSchirmer(15);
+            updateTMH(15);
+            selectFerning(1);
+            updateMeibography(0);
+            selectLipid(3);
+            selectOxfordGrade(0);
+            updateMeibometry(120);
+            updateCytologySimulator(0);
+            setCytometryLevel('low');
+            updateFluorimetry(16);
+
+            // Search implementation
+            document.getElementById('globalSearchInput').addEventListener('input', function(e) {
+                const keyword = e.target.value.toLowerCase();
+                filterBySearch(keyword);
+            });
+        };
+
+        // Sidebar Builder
+        function buildSidebarNav() {
+            const container = document.getElementById('sidebarNav');
+            container.innerHTML = '';
+            testsData.forEach(test => {
+                const navItem = document.createElement('a');
+                navItem.href = `#${test.id}`;
+                navItem.id = `nav-link-${test.id}`;
+                navItem.className = "flex items-center space-x-3 p-2.5 rounded-xl text-xs font-bold border border-transparent hover:bg-slate-50 transition text-slate-600";
+                
+                let iconHex = 'eye';
+                let iconColor = 'text-slate-400';
+                if(test.category === 'staining') { iconHex = 'paint-bucket'; iconColor = 'text-teal-600'; }
+                if(test.category === 'stability') { iconHex = 'zap'; iconColor = 'text-blue-600'; }
+                if(test.category === 'production') { iconHex = 'droplet'; iconColor = 'text-emerald-600'; }
+                if(test.category === 'lipids') { iconHex = 'flame'; iconColor = 'text-amber-500'; }
+                if(test.category === 'cellular') { iconHex = 'layers'; iconColor = 'text-indigo-600'; }
+
+                navItem.innerHTML = `
+                    <span class="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-700 shrink-0 text-[10px]">${test.num}</span>
+                    <span class="truncate flex-grow text-slate-800">${test.name}</span>
+                    <i data-lucide="${iconHex}" class="w-4 h-4 ${iconColor} shrink-0"></i>
+                `;
+                container.appendChild(navItem);
+            });
+            lucide.createIcons();
+        }
+
+        // Global Search Action
+        function filterBySearch(keyword) {
+            let foundCount = 0;
+            testsData.forEach(test => {
+                const element = document.getElementById(test.id);
+                const sidebarItem = document.getElementById(`nav-link-${test.id}`);
+                const matches = test.name.toLowerCase().includes(keyword) || 
+                                element.innerText.toLowerCase().includes(keyword);
+                
+                if (matches) {
+                    element.classList.remove('hidden');
+                    if(sidebarItem) sidebarItem.classList.remove('hidden');
+                    foundCount++;
+                } else {
+                    element.classList.add('hidden');
+                    if(sidebarItem) sidebarItem.classList.add('hidden');
+                }
+            });
+            document.getElementById('activeCount').innerText = `${foundCount} Tests`;
+        }
+
+        // Category Fast Filters
+        function filterCategory(cat) {
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.className = "cat-btn px-3.5 py-1.5 rounded-lg text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition bg-white";
+            });
+            const activeBtn = document.getElementById(`btn-${cat}`);
+            if(activeBtn) activeBtn.className = "cat-btn px-3.5 py-1.5 rounded-lg text-xs font-bold border transition bg-teal-600 border-teal-600 text-white";
+
+            let foundCount = 0;
+            testsData.forEach(test => {
+                const element = document.getElementById(test.id);
+                const sidebarItem = document.getElementById(`nav-link-${test.id}`);
+                if (cat === 'all' || test.category === cat) {
+                    element.classList.remove('hidden');
+                    if(sidebarItem) sidebarItem.classList.remove('hidden');
+                    foundCount++;
+                } else {
+                    element.classList.add('hidden');
+                    if(sidebarItem) sidebarItem.classList.add('hidden');
+                }
+            });
+            document.getElementById('activeCount').innerText = `${foundCount} Tests`;
+        }
+
+        // Interactive: CLEK Zone Click handler
+        function cycleCLEKZone(zone) {
+            clekState[zone] = (clekState[zone] + 1) % 4;
+            const element = document.getElementById(`clek-${zone}`);
+            element.setAttribute('fill', clekColors[clekState[zone]]);
+            
+            document.getElementById(`clek-${zone}-val`).innerText = `${clekState[zone]} / 3`;
+            
+            const total = clekState.central + clekState.superior + clekState.nasal + clekState.inferior + clekState.temporal;
+            document.getElementById('clek-total-val').innerText = `${total} / 15`;
+        }
+
+        // Interactive: Oxford Grade Selector
+        function selectOxfordGrade(grade) {
+            for(let i=0; i<=5; i++) {
+                const card = document.getElementById(`oxford-card-${i}`);
+                if(card) {
+                    if(i === grade) {
+                        card.className = "cursor-pointer border-2 border-teal-600 bg-teal-50 p-3 rounded-xl text-center transition";
+                        card.querySelector('span').className = "text-[10px] text-teal-700 font-extrabold bg-teal-100 px-2 py-0.5 rounded-full";
+                        card.querySelector('span').innerText = "Active";
+                    } else {
+                        card.className = "cursor-pointer border border-slate-200 bg-slate-50 p-3 rounded-xl text-center transition hover:border-teal-400";
+                        card.querySelector('span').className = "text-[10px] text-slate-400";
+                        card.querySelector('span').innerText = "Select";
+                    }
+                }
+            }
+
+            const titles = [
+                "Grade 0: Normal Surface",
+                "Grade I: Minimal Surface Disruption",
+                "Grade II: Mild Epithelial Disruption",
+                "Grade III: Moderate Epitheliopathy",
+                "Grade IV: Mod-Severe Surface Damage",
+                "Grade V: Severe Confluent Epitheliopathy"
+            ];
+            const descriptions = [
+                "Perfect epithelial integrity with absent or isolated micropunctate staining.",
+                "Occasional isolated staining spots on the lower cornea or conjunctival areas.",
+                "Scattered micropunctate staining across ocular surface planes.",
+                "Coalesced staining plaques beginning to form on lower/central corneal planes.",
+                "Densely packed confluent staining plaques.",
+                "Deep epithelial damage with confluent corneal staining."
+            ];
+
+            document.getElementById('oxford-title').innerText = titles[grade];
+            document.getElementById('oxford-desc').innerHTML = descriptions[grade];
+
+            const dotGroup = document.getElementById('oxford-dot-group');
+            dotGroup.innerHTML = '';
+            const numDots = grade * 20;
+            for(let i=0; i<numDots; i++) {
+                const cx = 30 + Math.random() * 40;
+                const cy = 30 + Math.random() * 40;
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute('cx', cx);
+                circle.setAttribute('cy', cy);
+                circle.setAttribute('r', '1');
+                circle.setAttribute('fill', '#10b981');
+                dotGroup.appendChild(circle);
+            }
+        }
+
+        // Interactive: TBUT stopwatch functions
+        function toggleTBUTTimer() {
+            const btn = document.getElementById('tbut-btn');
+            const svgContainer = document.getElementById('tbut-fluorescein-svg');
+            
+            if(!tbutRunning) {
+                // Clear any leftover dry spots from previous run
+                document.querySelectorAll('.tbut-dry-spot').forEach(el => el.remove());
+                
+                tbutRunning = true;
+                btn.innerText = "Stop Timer";
+                btn.className = "bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-rose-700 transition";
+                tbutInterval = setInterval(() => {
+                    tbutTime += 0.1;
+                    document.getElementById('tbut-timer').innerText = tbutTime.toFixed(1) + "s";
+                    
+                    // Periodically generate dynamic dry spots to visualize break-up
+                    if (tbutTime > 3.0 && Math.random() > 0.8) {
+                        const cx = 20 + Math.random() * 60;
+                        const cy = 20 + Math.random() * 60;
+                        const rx = 4 + Math.random() * 8;
+                        const ry = 2 + Math.random() * 4;
+                        const ellipse = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+                        ellipse.setAttribute('cx', cx);
+                        ellipse.setAttribute('cy', cy);
+                        ellipse.setAttribute('rx', rx);
+                        ellipse.setAttribute('ry', ry);
+                        ellipse.setAttribute('fill', '#020617'); // Dark slate background to mimic dry spots
+                        ellipse.setAttribute('class', 'tbut-dry-spot opacity-80 transition-all duration-300');
+                        svgContainer.appendChild(ellipse);
+                    }
+                }, 100);
+            } else {
+                tbutRunning = false;
+                btn.innerText = "Start Timer";
+                btn.className = "bg-teal-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-teal-700 transition";
+                clearInterval(tbutInterval);
+                
+                if(parseFloat(document.getElementById('tbut-t1').value) === 0) {
+                    document.getElementById('tbut-t1').value = tbutTime.toFixed(1);
+                } else if(parseFloat(document.getElementById('tbut-t2').value) === 0) {
+                    document.getElementById('tbut-t2').value = tbutTime.toFixed(1);
+                } else if(parseFloat(document.getElementById('tbut-t3').value) === 0) {
+                    document.getElementById('tbut-t3').value = tbutTime.toFixed(1);
+                }
+                calcTBUT();
+            }
+        }
+
+        function resetTBUTTimer() {
+            clearInterval(tbutInterval);
+            tbutTime = 0.0;
+            tbutRunning = false;
+            document.getElementById('tbut-timer').innerText = "00.0s";
+            document.getElementById('tbut-btn').innerText = "Start Timer";
+            document.getElementById('tbut-btn').className = "bg-teal-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-teal-700 transition";
+            
+            document.getElementById('tbut-t1').value = 0;
+            document.getElementById('tbut-t2').value = 0;
+            document.getElementById('tbut-t3').value = 0;
+            document.querySelectorAll('.tbut-dry-spot').forEach(el => el.remove());
+            calcTBUT();
+        }
+
+        function calcTBUT() {
+            const t1 = parseFloat(document.getElementById('tbut-t1').value) || 0;
+            const t2 = parseFloat(document.getElementById('tbut-t2').value) || 0;
+            const t3 = parseFloat(document.getElementById('tbut-t3').value) || 0;
+            
+            let avg = 0;
+            let activeCount = 0;
+            if(t1 > 0) { avg += t1; activeCount++; }
+            if(t2 > 0) { avg += t2; activeCount++; }
+            if(t3 > 0) { avg += t3; activeCount++; }
+            
+            const computedAvg = activeCount > 0 ? (avg / activeCount) : 0;
+            document.getElementById('tbut-avg').innerText = computedAvg.toFixed(1) + " sec";
+            
+            const badge = document.getElementById('tbut-badge');
+            if(computedAvg === 0) {
+                badge.className = "mt-2 text-xs p-3 bg-slate-100 border border-slate-200 rounded-xl font-bold flex items-center justify-between";
+                badge.innerHTML = "<span>Tear Stability Profile:</span> <span class='text-slate-500'>Record trials</span>";
+            } else if(computedAvg >= 10) {
+                badge.className = "mt-2 text-xs p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-bold flex items-center justify-between";
+                badge.innerHTML = "<span>Tear Stability Profile:</span> <span class='bg-emerald-100 px-3 py-0.5 rounded-full text-xs'>Normal Tear Film</span>";
+            } else if(computedAvg >= 5) {
+                badge.className = "mt-2 text-xs p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl font-bold flex items-center justify-between";
+                badge.innerHTML = "<span>Tear Stability Profile:</span> <span class='bg-amber-100 px-3 py-0.5 rounded-full text-xs'>Borderline Instability</span>";
+            } else {
+                badge.className = "mt-2 text-xs p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl font-bold flex items-center justify-between";
+                badge.innerHTML = "<span>Tear Stability Profile:</span> <span class='bg-rose-100 px-3 py-0.5 rounded-full text-xs'>Severe Instability</span>";
+            }
+        }
+
+        // Interactive: Schirmer Slider
+        function updateSchirmer(value) {
+            document.getElementById('schirmer-value').innerText = `${value} mm`;
+            const pct = (value / 35) * 100;
+            document.getElementById('schirmer-wet-bar').style.width = `${pct}%`;
+            
+            const card = document.getElementById('schirmer-status-card');
+            const lbl = document.getElementById('schirmer-status-lbl');
+            const txt = document.getElementById('schirmer-status-text');
+            
+            if(value >= 15) {
+                card.className = "p-3 rounded-xl text-center flex flex-col justify-center border border-emerald-200 bg-emerald-50 text-emerald-800";
+                lbl.innerText = "Category";
+                txt.innerText = "Normal Output";
+            } else if(value >= 10) {
+                card.className = "p-3 rounded-xl text-center flex flex-col justify-center border border-amber-200 bg-amber-50 text-amber-800";
+                lbl.innerText = "Category";
+                txt.innerText = "Mild Reduction";
+            } else if(value >= 5) {
+                card.className = "p-3 rounded-xl text-center flex flex-col justify-center border border-orange-200 bg-orange-50 text-orange-800";
+                lbl.innerText = "Category";
+                txt.innerText = "Moderate";
+            } else {
+                card.className = "p-3 rounded-xl text-center flex flex-col justify-center border border-rose-200 bg-rose-50 text-rose-800";
+                lbl.innerText = "Category";
+                txt.innerText = "Severe Def.";
+            }
+        }
+
+        // Interactive: Osmolarity
+        function calcOsmolarity() {
+            const od = parseInt(document.getElementById('osmo-od').value) || 0;
+            const os = parseInt(document.getElementById('osmo-os').value) || 0;
+            const diff = Math.abs(od - os);
+            document.getElementById('osmo-diff').innerText = diff;
+            
+            const maxVal = Math.max(od, os);
+            const card = document.getElementById('osmo-card');
+            const result = document.getElementById('osmo-result');
+            const detail = document.getElementById('osmo-detail');
+            
+            if(maxVal < 308 && diff < 8) {
+                card.className = "bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center flex flex-col justify-center h-full border-l-4 border-l-emerald-500";
+                result.innerText = "Healthy Tear Film";
+                result.className = "text-sm font-bold text-emerald-700 mt-2";
+                detail.innerText = "Balanced osmotic pressure. No indicators of surface stress.";
+            } else if (maxVal <= 316 && diff < 8) {
+                card.className = "bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center flex flex-col justify-center h-full border-l-4 border-l-amber-500";
+                result.innerText = "Mild Dry Eye";
+                result.className = "text-sm font-bold text-amber-700 mt-2";
+                detail.innerText = "Slightly elevated salt content. Suggestive of early dry eye.";
+            } else {
+                card.className = "bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center flex flex-col justify-center h-full border-l-4 border-l-rose-500";
+                result.innerText = "Severe / Unstable";
+                result.className = "text-sm font-bold text-rose-700 mt-2";
+                detail.innerText = (diff >= 8) ? "Significant inter-eye variability (>8 mOsm/L) indicates tear instability." : "Ocular hyperosmolarity detected.";
+            }
+        }
+
+        // Interactive: Tear Meniscus Height
+        function updateTMH(sliderValue) {
+            const tmh = (sliderValue / 100).toFixed(2);
+            document.getElementById('tmh-val-disp').innerText = `${tmh} mm`;
+            document.getElementById('svg-tmh-text').innerText = `TMH: ${tmh}mm`;
+            
+            const shape = document.getElementById('meniscus-shape');
+            const widthOffset = 46 + (sliderValue * 0.8);
+            shape.setAttribute('d', `M ${widthOffset},128 Q 75,128 75,138 Z`);
+            
+            const radius = (tmh * 1.2).toFixed(2);
+            const area = (tmh * tmh * 0.7).toFixed(3);
+            
+            document.getElementById('tmh-radius').innerText = `${radius} mm`;
+            document.getElementById('tmh-area').innerText = `${area} mm²`;
+            
+            const card = document.getElementById('tmh-status-card');
+            const statusText = document.getElementById('tmh-status-text');
+            if(tmh >= 0.20) {
+                card.className = "p-3 rounded-xl text-xs font-bold border flex items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800";
+                statusText.innerText = "Normal Reservoir Volume";
+            } else {
+                card.className = "p-3 rounded-xl text-xs font-bold border flex items-center justify-between border-rose-200 bg-rose-50 text-rose-800";
+                statusText.innerText = "Aqueous Tear Deficiency";
+            }
+        }
+
+        // Interactive: Lipid Layer selection
+        function selectLipid(level) {
+            for(let i=1; i<=5; i++) {
+                const card = document.getElementById(`lipid-card-${i}`);
+                if(card) {
+                    if(i === level) {
+                        card.className = "cursor-pointer border-2 border-teal-600 bg-teal-50 p-3 rounded-xl text-center";
+                    } else {
+                        card.className = "cursor-pointer border border-slate-200 bg-slate-50 p-3 rounded-xl text-center hover:border-teal-400";
+                    }
+                }
+            }
+            const patterns = [
+                "Marble wave / Open work pattern (&lt;30 nm)",
+                "Fine closed-mesh pattern (30-50 nm)",
+                "Ideal waves / Colorful fringes (50-80 nm)",
+                "Amorphous structure pattern (80-120 nm)",
+                "Excess colored heavy patterns (120-160 nm)"
+            ];
+            const descriptions = [
+                "Extremely thin lipid layer. Prone to immediate dry spot formation and excessive evaporation.",
+                "Marginal lipid coverage. Prone to evaporative dry eye distress over moderate intervals.",
+                "Healthy, robust lipid layer thickness offering complete coverage against tear film evaporation.",
+                "Thick, robust lipid layer ensuring outstanding evaporation defense.",
+                "Excessive lipid pooling. Highly common in chronic obstructive Meibomian Gland Dysfunction (MGD)."
+            ];
+            const gradients = [
+                "linear-gradient(90deg, #38bdf8, #f43f5e)",
+                "linear-gradient(90deg, #22d3ee, #e879f9)",
+                "linear-gradient(90deg, #10b981, #3b82f6)",
+                "linear-gradient(90deg, #facc15, #10b981)",
+                "linear-gradient(90deg, #fb923c, #ef4444)"
+            ];
+
+            document.getElementById('lipid-title').innerHTML = patterns[level-1];
+            document.getElementById('lipid-desc').innerHTML = descriptions[level-1];
+            document.getElementById('lipid-gradient').style.background = gradients[level-1];
+        }
+
+        // Interactive: TSAS placido rings distortion
+        function setPlacidoMode(mode) {
+            const btnStable = document.getElementById('tsas-btn-stable');
+            const btnBroken = document.getElementById('tsas-btn-broken');
+            const interp = document.getElementById('tsas-interpretation');
+            
+            const r1 = document.getElementById('ring-1');
+            const r2 = document.getElementById('ring-2');
+            const r3 = document.getElementById('ring-3');
+            const r4 = document.getElementById('ring-4');
+
+            if(mode === 'stable') {
+                btnStable.className = "flex-1 bg-teal-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-teal-700 transition";
+                btnBroken.className = "flex-1 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition";
+                interp.innerHTML = "<strong>Stable tear profile active:</strong> Projected placido rings appear perfectly concentric with no distortions. Ideal topography.";
+                interp.className = "p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700";
+                
+                r1.setAttribute('cx', '80'); r1.setAttribute('cy', '80'); r1.setAttribute('r', '25');
+                r2.setAttribute('cx', '80'); r2.setAttribute('cy', '80'); r2.setAttribute('r', '40');
+                r3.setAttribute('cx', '80'); r3.setAttribute('cy', '80'); r3.setAttribute('r', '55');
+                r4.setAttribute('cx', '80'); r4.setAttribute('cy', '80'); r4.setAttribute('r', '70');
+            } else {
+                btnStable.className = "flex-1 bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-50 transition";
+                btnBroken.className = "flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-rose-700 transition";
+                interp.innerHTML = "<strong>Break-up detected:</strong> Concentric placido lines demonstrate severe localized distortion & spatial collapsing. Micro-breakups mapped.";
+                interp.className = "p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-semibold";
+                
+                // Add dramatic local distortions
+                r1.setAttribute('cx', '78'); r1.setAttribute('cy', '82');
+                r2.setAttribute('cx', '84'); r2.setAttribute('cy', '76');
+                r3.setAttribute('cx', '75'); r3.setAttribute('cy', '85'); r4.setAttribute('r', '63');
+                r4.setAttribute('cx', '85'); r4.setAttribute('cy', '75');
+            }
+        }
+
+        // Interactive: Meibometry
+        function updateMeibometry(value) {
+            document.getElementById('meibometry-val-disp').innerText = `${value} u.a.`;
+            
+            // Adjust the wet indicator width inside SVG
+            const wetWidth = 10 + (value / 300) * 140;
+            document.getElementById('meibometry-tape-wet').setAttribute('width', Math.min(wetWidth, 140));
+
+            const card = document.getElementById('meibometry-status-card');
+            const statusText = document.getElementById('meibometry-status-text');
+            if (value >= 100) {
+                card.className = "p-3 rounded-xl text-xs font-bold border flex items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800";
+                statusText.innerText = "Normal Secretion";
+            } else {
+                card.className = "p-3 rounded-xl text-xs font-bold border flex items-center justify-between border-rose-200 bg-rose-50 text-rose-800";
+                statusText.innerText = "Obstructed / Low Lipids";
+            }
+        }
+
+        // Interactive: Meibography Gland Dropout renderer
+        function updateMeibography(dropoutValue) {
+            document.getElementById('meibo-pct').innerText = `${dropoutValue}% Gland Dropout`;
+            
+            const grade = document.getElementById('meibo-grade');
+            const desc = document.getElementById('meibo-desc');
+            const container = document.getElementById('meibo-glands');
+            container.innerHTML = '';
+
+            const numGlands = 12;
+            const thresholdIdx = Math.floor(numGlands * (1 - (dropoutValue / 100)));
+
+            for (let i = 0; i < numGlands; i++) {
+                const x = 20 + (i * 14);
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                
+                if (i < thresholdIdx) {
+                    path.setAttribute('d', `M ${x},20 Q ${x + 2},50 ${x},90`);
+                    path.setAttribute('stroke', '#ffffff');
+                    path.setAttribute('stroke-width', '4');
+                    path.setAttribute('stroke-linecap', 'round');
+                } else {
+                    if (Math.random() > 0.5) {
+                        path.setAttribute('d', `M ${x},20 L ${x + 2},35`); // Atrophied stub
+                        path.setAttribute('stroke', '#ef4444');
+                        path.setAttribute('stroke-width', '3');
+                    } else {
+                        continue; // Completely dropped out (atrophy)
+                    }
+                }
+                container.appendChild(path);
+            }
+
+            if(dropoutValue == 0) {
+                grade.innerText = "Grade 0 (Healthy)";
+                desc.innerText = "Healthy parallel gland structure. No significant dropout detected.";
+            } else if (dropoutValue <= 33) {
+                grade.innerText = "Grade I (Mild MGD)";
+                desc.innerText = "Mild localized gland loss and early signs of structural distortion.";
+            } else if (dropoutValue <= 66) {
+                grade.innerText = "Grade II (Moderate MGD)";
+                desc.innerText = "Significant gland loss across the tarsal plate. Prominent structural damage.";
+            } else {
+                grade.innerText = "Grade III (Severe MGD)";
+                desc.innerText = "Severe gland dropout with extensive structural loss and tissue atrophy.";
+            }
+        }
+
+        // Interactive Cytology smearing
+        function updateCytologySimulator(stage) {
+            const container = document.getElementById('microscope-cells');
+            container.innerHTML = '';
+            const label = document.getElementById('cytology-severity-lbl');
+            const descCard = document.getElementById('cytology-desc-card');
+
+            // Set content based on slider state
+            if(stage == 0) {
+                label.innerText = "Grade 0: Normal";
+                descCard.innerText = "Abundant PAS-positive Goblet cells with plump nuclei. Healthy mucosal epithelium.";
+                // Draw healthy cells
+                for(let i=0; i<12; i++) {
+                    const cx = 30 + Math.random() * 60;
+                    const cy = 30 + Math.random() * 60;
+                    container.innerHTML += `<circle cx="${cx}" cy="${cy}" r="6" fill="#ec4899" opacity="0.6"/>`;
+                    container.innerHTML += `<circle cx="${cx}" cy="${cy}" r="2" fill="#1e293b"/>`;
+                }
+            } else if(stage == 1) {
+                label.innerText = "Grade I: Early Change";
+                descCard.innerText = "Early reduction of Goblet cells. Epithelial cell enlargement starting.";
+                for(let i=0; i<6; i++) {
+                    const cx = 30 + Math.random() * 60;
+                    const cy = 30 + Math.random() * 60;
+                    container.innerHTML += `<circle cx="${cx}" cy="${cy}" r="6" fill="#ec4899" opacity="0.4"/>`;
+                }
+                for(let i=0; i<8; i++) {
+                    const cx = 30 + Math.random() * 60;
+                    const cy = 30 + Math.random() * 60;
+                    container.innerHTML += `<rect x="${cx}" y="${cy}" width="14" height="14" rx="2" fill="#93c5fd" opacity="0.5"/>`;
+                }
+            } else {
+                label.innerText = `Grade ${stage}: Metaplasia`;
+                descCard.innerText = "Marked goblet cell loss. Squamous metaplasia with enlarged, keratinized epithelial cells and small, dense nuclei.";
+                for(let i=0; i<15; i++) {
+                    const cx = 20 + Math.random() * 80;
+                    const cy = 20 + Math.random() * 80;
+                    container.innerHTML += `<rect x="${cx}" y="${cy}" width="18" height="18" rx="2" fill="#f87171" opacity="0.4"/>`;
+                    container.innerHTML += `<circle cx="${cx+9}" cy="${cy+9}" r="1.5" fill="#0f172a"/>`;
+                }
+            }
+        }
+
+        // Interactive Flow Cytometry levels
+        function setCytometryLevel(level) {
+            const btnLow = document.getElementById('cyto-btn-low');
+            const btnHigh = document.getElementById('cyto-btn-high');
+            const desc = document.getElementById('cyto-status-text');
+            const container = document.getElementById('cytometry-scatter');
+            container.innerHTML = '';
+
+            if (level === 'low') {
+                btnLow.className = "flex-1 bg-teal-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-teal-700 transition";
+                btnHigh.className = "flex-1 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 transition";
+                desc.innerHTML = "<strong>Normal profile:</strong> Baseline HLA-DR marker levels are low. Ocular surface inflammation is within physiological range.";
+                // Generate lower scatter dot clusters
+                for(let i=0; i<40; i++) {
+                    const cx = 20 + Math.random() * 40;
+                    const cy = 60 + Math.random() * 40;
+                    container.innerHTML += `<circle cx="${cx}" cy="${cy}" r="1.5" fill="#0d9488" opacity="0.7"/>`;
+                }
+            } else {
+                btnLow.className = "flex-1 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-50 transition";
+                btnHigh.className = "flex-1 bg-rose-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-rose-700 transition";
+                desc.innerHTML = "<strong>Elevated inflammation:</strong> Dense cluster shifts toward high forward scatter (FSC) & side scatter (SSC), signifying extensive HLA-DR biomarker expression.";
+                // Generate higher inflammatory clusters
+                for(let i=0; i<70; i++) {
+                    const cx = 50 + Math.random() * 50;
+                    const cy = 20 + Math.random() * 50;
+                    container.innerHTML += `<circle cx="${cx}" cy="${cy}" r="1.5" fill="#e11d48" opacity="0.7"/>`;
+                }
+            }
+        }
+
+        // Interactive: Tear Ferning Types
+        function selectFerning(type) {
+            for(let i=1; i<=4; i++) {
+                const card = document.getElementById(`fern-card-${i}`);
+                if(card) {
+                    if(i === type) {
+                        card.className = "cursor-pointer border-2 border-teal-600 bg-teal-50 p-4 rounded-xl text-center";
+                    } else {
+                        card.className = "cursor-pointer border border-slate-200 bg-slate-50 p-4 rounded-xl text-center hover:border-teal-400";
+                    }
+                }
+            }
+
+            const titles = [
+                "Type I: Ideal Ferning Pattern",
+                "Type II: Good Ferning with mild spacing",
+                "Type III: Fragmented Crystals with wide gaps",
+                "Type IV: Amorphous Mucus/No Crystallization"
+            ];
+            const descriptions = [
+                "Normal tear film chemistry with healthy mucus and electrolyte parameters.",
+                "Slight spacing but branching remains robust. Typically seen in healthy to borderline eyes.",
+                "Fragmented crystals with minimal branching. Points to mucin depletion and hyperosmolarity.",
+                "Severely degenerated crystallizations. Strong indicator of clinical keratoconjunctivitis sicca."
+            ];
+
+            document.getElementById('fern-title').innerText = titles[type-1];
+            document.getElementById('fern-desc').innerText = descriptions[type-1];
+
+            const svg = document.getElementById('fern-svg');
+            svg.innerHTML = '';
+            
+            if (type === 1) {
+                svg.innerHTML = `
+                    <path d="M 50,50 L 50,10 M 50,50 L 50,90 M 50,50 L 10,50 M 50,50 L 90,50" stroke="#22d3ee" stroke-width="2" />
+                    <path d="M 50,30 L 35,20 M 50,30 L 65,20 M 50,70 L 35,80 M 50,70 L 65,80" stroke="#22d3ee" stroke-width="1.5" />
+                    <path d="M 30,50 L 20,35 M 30,50 L 20,65 M 70,50 L 80,35 M 70,50 L 80,65" stroke="#22d3ee" stroke-width="1.5" />
+                `;
+            } else if (type === 2) {
+                svg.innerHTML = `
+                    <path d="M 50,50 L 50,15 M 50,50 L 50,85 M 50,50 L 15,50 M 50,50 L 85,50" stroke="#22d3ee" stroke-width="2" />
+                    <path d="M 50,35 L 40,25 M 50,65 L 60,75 M 35,50 L 25,60" stroke="#22d3ee" stroke-width="1.5" />
+                `;
+            } else if (type === 3) {
+                svg.innerHTML = `
+                    <circle cx="50" cy="30" r="2" fill="#22d3ee" />
+                    <circle cx="30" cy="60" r="3" fill="#22d3ee" />
+                    <circle cx="70" cy="70" r="2" fill="#22d3ee" />
+                    <line x1="45" y1="45" x2="55" y2="55" stroke="#22d3ee" stroke-width="1.5" />
+                    <line x1="25" y1="25" x2="35" y2="30" stroke="#22d3ee" stroke-width="1.5" />
+                `;
+            } else {
+                svg.innerHTML = `
+                    <circle cx="50" cy="50" r="4" fill="#64748b" opacity="0.5" />
+                    <circle cx="30" cy="30" r="5" fill="#64748b" opacity="0.5" />
+                    <circle cx="70" cy="70" r="3" fill="#64748b" opacity="0.5" />
+                `;
+            }
+        }
+
+        // Interactive: OPI Calculator
+        function calculateOPI() {
+            const tbut = parseFloat(document.getElementById('opi-tbut').value) || 0;
+            const ibi = parseFloat(document.getElementById('opi-ibi').value) || 0;
+            
+            if(ibi === 0) return;
+            const ratio = (tbut / ibi).toFixed(2);
+            document.getElementById('opi-ratio').innerText = ratio;
+            
+            const card = document.getElementById('opi-card');
+            const result = document.getElementById('opi-result');
+            const desc = document.getElementById('opi-desc');
+            
+            if(ratio >= 1.0) {
+                card.className = "p-4 rounded-2xl text-center flex flex-col justify-center h-full border border-emerald-200 bg-emerald-50/50";
+                result.innerText = "OPI ≥ 1 (Protected)";
+                result.className = "text-lg font-bold text-emerald-800 mt-2";
+                desc.innerText = "The tear film remains stable between blinks, protecting the ocular surface.";
+            } else {
+                card.className = "p-4 rounded-2xl text-center flex flex-col justify-center h-full border border-rose-200 bg-rose-50/50";
+                result.innerText = "OPI < 1 (Exposure Risk)";
+                result.className = "text-lg font-bold text-rose-800 mt-2";
+                desc.innerText = "The tear film breaks down before the next blink, leaving corneal tissues exposed to dry spot damage.";
+            }
+        }
+
+        // Interactive: Fluorophotometry
+        function updateFluorimetry(decayRate) {
+            const display = document.getElementById('fluorimetry-val-disp');
+            const curve = document.getElementById('fluorimetry-decay-curve');
+            const card = document.getElementById('fluorimetry-status-card');
+            const text = document.getElementById('fluorimetry-status-text');
+
+            // Map curve styling based on decay values
+            if (decayRate >= 15) {
+                display.innerText = `Normal tear turnover (${decayRate}%/min)`;
+                curve.setAttribute('d', 'M 15,15 Q 40,65 145,68'); // Sharp, rapid drop
+                card.className = "p-3 rounded-xl text-xs font-bold border flex items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800";
+                text.innerText = "Normal Tear Flow";
+            } else if (decayRate >= 8) {
+                display.innerText = `Borderline tear turnover (${decayRate}%/min)`;
+                curve.setAttribute('d', 'M 15,15 Q 60,45 145,50');
+                card.className = "p-3 rounded-xl text-xs font-bold border flex items-center justify-between border-amber-200 bg-amber-50 text-amber-800";
+                text.innerText = "Mild Tear Stagnation";
+            } else {
+                display.innerText = `Delayed tear clearance (${decayRate}%/min)`;
+                curve.setAttribute('d', 'M 15,15 Q 80,25 145,30'); // Minimal slope
+                card.className = "p-3 rounded-xl text-xs font-bold border flex items-center justify-between border-rose-200 bg-rose-50 text-rose-800";
+                text.innerText = "Severe Tear Clearance Delay";
+            }
+        }
+
+        // Interactive: TFI Calculator
+        function calculateTFI() {
+            const schirmer = parseFloat(document.getElementById('tfi-schirmer').value) || 0;
+            const tcr = parseFloat(document.getElementById('tfi-tcr').value) || 1;
+            
+            if(tcr === 0) return;
+            const tfi = (schirmer / (tcr / 16)).toFixed(1);
+            document.getElementById('tfi-val').innerText = tfi;
+            
+            const card = document.getElementById('tfi-card');
+            const result = document.getElementById('tfi-result');
+            const desc = document.getElementById('tfi-desc');
+            
+            if(tfi >= 10.0) {
+                card.className = "p-4 rounded-2xl text-center flex flex-col justify-center h-full border border-emerald-200 bg-emerald-50/50";
+                result.innerText = "TFI ≥ 10 (Healthy)";
+                result.className = "text-lg font-bold text-emerald-800 mt-2";
+                desc.innerText = "Normal tear output with effective tear clearance.";
+            } else {
+                card.className = "p-4 rounded-2xl text-center flex flex-col justify-center h-full border border-rose-200 bg-rose-50/50";
+                result.innerText = "TFI < 10 (Impaired)";
+                result.className = "text-lg font-bold text-rose-800 mt-2";
+                desc.innerText = "Impaired tear function, indicative of tear deficiency or stagnation.";
+            }
+        }
+
+        // Video Modal Controls
+        function openVideo(embedUrl) {
+            const modal = document.getElementById('videoModal');
+            const player = document.getElementById('videoPlayer');
+            player.src = embedUrl;
+            modal.classList.remove('hidden');
+        }
+
+        function closeVideo() {
+            const modal = document.getElementById('videoModal');
+            const player = document.getElementById('videoPlayer');
+            player.src = '';
+            modal.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

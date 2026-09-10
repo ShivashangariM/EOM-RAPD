@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Clinical Cover Test Simulator & Strabismus Lab</title>
+  
+  <!-- Fonts & Icon Packs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',    /* Slate 900 */
+            secondary: '#0284c7',  /* Sky 600 */
+            accent: '#0d9488',     /* Teal 600 */
+            lightbg: '#f8fafc',    /* Slate 50 */
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #0284c7;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    .dark .glass {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+    }
+    
+    /* Physiological eye movement transition speeds mimicking biological kinetics */
+    .saccadic-speed {
+      transition: transform 0.12s cubic-bezier(0.1, 0.9, 0.2, 1); /* Fast saccadic refixation */
+    }
+    .phoric-speed {
+      transition: transform 1.5s cubic-bezier(0.3, 0, 0.2, 1);   /* Slow phoric fusion drift */
+    }
+    .normal-speed {
+      transition: transform 0.35s ease-out;                        /* Standard gaze movements */
+    }
+
+    /* Occluding Paddle Slide Animation */
+    .paddle-transition {
+      transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
+    }
+    
+    /* Glowing Fixation Pin animation */
+    @keyframes pin-glow {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 1; }
+    }
+    .glowing-pin {
+      animation: pin-glow 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <!-- CLINICAL AUDIO SYNTHESIZER -->
+  <script>
+    let audioCtx = null;
+    
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("AudioContext blocked or unsupported.");
+      }
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click':
+          playAudioTone(720, 'sine', 0.08, 0.04);
+          break;
+        case 'tick':
+          playAudioTone(1000, 'triangle', 0.03, 0.015); // sharp snap on occluder apply
+          break;
+        case 'warning':
+          playAudioTone(190, 'sawtooth', 0.25, 0.05);
+          break;
+        case 'success':
+          playAudioTone(520, 'sine', 0.1, 0.05);
+          setTimeout(() => playAudioTone(640, 'sine', 0.15, 0.05), 80);
+          break;
+        case 'blip':
+          playAudioTone(480, 'sine', 0.06, 0.03);
+          break;
+        case 'switch':
+          playAudioTone(380, 'triangle', 0.12, 0.04);
+          break;
+      }
+    }
+  </script>
+
+  <!-- NAVIGATION BAR -->
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-500">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800">
+          <i class="fa-solid fa-eye-slash text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+            SAHS-E-LAB | <span class="text-secondary">Binocular Cover Test Lab</span>
+            <span class="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900">v1.5</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-extrabold">monocular manifest vs latent deviation diagnostics</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+          <button onclick="toggleDarkMode()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke text-sky-600 dark:text-sky-400"></i>
+          </button>
+        </div>
+
+        <div class="relative md:hidden">
+          <button onclick="toggleMobileDropdown()" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-900 flex items-center justify-center text-slate-700 dark:text-slate-200 cursor-pointer">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </button>
+          <div id="mobileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 py-2">
+            <button onclick="openMenuModal('about'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-info text-secondary w-4 text-center"></i> About Us
+            </button>
+            <button onclick="toggleMute(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i id="mobileMuteIcon" class="fa-solid fa-volume-high text-teal-600 w-4 text-center"></i> <span id="mobileMuteText">Mute Sound</span>
+            </button>
+            <button onclick="openMenuModal('reference'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-book-bookmark text-amber-500 w-4 text-center"></i> Reference
+            </button>
+            <button onclick="toggleDarkMode(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-half-stroke text-sky-600 w-4 text-center"></i> Theme Toggle
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- MASTER CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-12 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-500" id="workspaceContainer">
+    
+    <!-- LEFT PANEL: Dynamic Eyes Viewport & Occluder Overlay -->
+    <section class="lg:col-span-7 space-y-4 font-mono" id="simulationViewport">
+      
+      <!-- Patient Facial SVG Box with moveable Occlusion paddles -->
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs relative transition-all duration-500" id="examinationCard">
+        
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div class="flex items-center gap-3">
+            <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Monocular Fixation Examination Screen</span>
+            
+            <!-- Physical Symmetrical Fixation Target Pin -->
+            <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500 glowing-pin"></span>
+              </span>
+              <span class="text-[9px] font-black uppercase text-slate-600 dark:text-slate-300">Fixation Target Active</span>
+            </div>
+          </div>
+
+          <div class="flex gap-2 items-center">
+            <!-- Frosted Goggles option to peek under occluding paddle -->
+            <label class="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 text-[10px] font-black cursor-pointer select-none">
+              <input type="checkbox" id="chkTranslucent" onchange="toggleOccluderTranslucency()" class="accent-secondary text-secondary rounded">
+              <span>Frosted Occluder (Peek Under)</span>
+            </label>
+            <span class="text-[10px] font-mono text-secondary px-2 py-1 bg-sky-50 dark:bg-sky-950/40 rounded border border-sky-100 dark:border-sky-900/60 font-bold" id="currentFusionStatus">FUSION ACHIEVED</span>
+          </div>
+        </div>
+
+        <!-- High-fidelity biological Eye viewport -->
+        <div class="bg-slate-950 rounded-2xl relative flex flex-col justify-between items-stretch h-[240px] md:h-[280px] overflow-hidden select-none shadow-inner" id="eyesViewportBox">
+          
+          <!-- dual biological eyes -->
+          <div class="flex-1 flex justify-around items-center px-4 relative" id="eyesParentContainer">
+            
+            <!-- Patient Right OD -->
+            <div class="flex flex-col items-center space-y-2 relative" id="eyeOD-wrapper">
+              <span class="text-[8px] font-black text-slate-500 tracking-widest">PATIENT RIGHT (OD)</span>
+              <div class="w-[125px] h-[85px] sm:w-[175px] sm:h-[115px] bg-white rounded-full border-2 border-slate-800 overflow-hidden relative flex items-center justify-center">
+                <svg id="eyeOD-svg" viewBox="0 0 160 100" class="w-full h-full">
+                  <path d="M 10 50 Q 80 -10 150 50 Q 80 110 10 50 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+                  <g id="irisOD-group" class="normal-speed">
+                    <circle cx="80" cy="50" r="32" fill="url(#irisGrad)"/>
+                    <circle cx="80" cy="50" r="14" fill="#020617"/>
+                    <circle cx="70" cy="40" r="4.5" fill="#ffffff" opacity="0.8"/>
+                    <circle cx="90" cy="60" r="2" fill="#ffffff" opacity="0.4"/>
+                  </g>
+                  
+                  <!-- VISUAL CLINICAL TRANSRARENT PRISM WEDGE OVER OD -->
+                  <g id="prismOverlayOD" class="opacity-0 transition-opacity duration-300 pointer-events-none">
+                    <polygon points="40,10 120,10 110,90 30,90" fill="rgba(56, 189, 248, 0.25)" stroke="#0284c7" stroke-width="2.5" />
+                    <polygon points="120,10 130,20 120,95 110,90" fill="rgba(2, 132, 199, 0.35)" stroke="#0284c7" stroke-width="1.2" />
+                    <line x1="45" y1="15" x2="35" y2="85" stroke="#ffffff" stroke-width="1.5" opacity="0.75" />
+                    <line x1="115" y1="15" x2="105" y2="85" stroke="#ffffff" stroke-width="0.7" opacity="0.5" />
+                    <text id="prismOverlayODText" x="75" y="55" fill="#ffffff" font-size="13" font-weight="900" font-family="sans-serif" text-anchor="middle" dominant-baseline="middle" stroke="#000000" stroke-width="0.5">0Δ</text>
+                  </g>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Patient Left OS -->
+            <div class="flex flex-col items-center space-y-2 relative" id="eyeOS-wrapper">
+              <span class="text-[8px] font-black text-slate-500 tracking-widest">PATIENT LEFT (OS)</span>
+              <div class="w-[125px] h-[85px] sm:w-[175px] sm:h-[115px] bg-white rounded-full border-2 border-slate-800 overflow-hidden relative flex items-center justify-center">
+                <svg id="eyeOS-svg" viewBox="0 0 160 100" class="w-full h-full">
+                  <path d="M 10 50 Q 80 -10 150 50 Q 80 110 10 50 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+                  <g id="irisOS-group" class="normal-speed">
+                    <circle cx="80" cy="50" r="32" fill="url(#irisGrad)"/>
+                    <circle cx="80" cy="50" r="14" fill="#020617"/>
+                    <circle cx="70" cy="40" r="4.5" fill="#ffffff" opacity="0.8"/>
+                    <circle cx="90" cy="60" r="2" fill="#ffffff" opacity="0.4"/>
+                  </g>
+                  
+                  <!-- VISUAL CLINICAL TRANSRARENT PRISM WEDGE OVER OS -->
+                  <g id="prismOverlayOS" class="opacity-0 transition-opacity duration-300 pointer-events-none">
+                    <polygon points="40,10 120,10 110,90 30,90" fill="rgba(56, 189, 248, 0.25)" stroke="#0284c7" stroke-width="2.5" />
+                    <polygon points="120,10 130,20 120,95 110,90" fill="rgba(2, 132, 199, 0.35)" stroke="#0284c7" stroke-width="1.2" />
+                    <line x1="45" y1="15" x2="35" y2="85" stroke="#ffffff" stroke-width="1.5" opacity="0.75" />
+                    <line x1="115" y1="15" x2="105" y2="85" stroke="#ffffff" stroke-width="0.7" opacity="0.5" />
+                    <text id="prismOverlayOSText" x="75" y="55" fill="#ffffff" font-size="13" font-weight="900" font-family="sans-serif" text-anchor="middle" dominant-baseline="middle" stroke="#000000" stroke-width="0.5">0Δ</text>
+                  </g>
+                </svg>
+              </div>
+            </div>
+
+            <svg style="width:0; height:0; position:absolute;">
+              <defs>
+                <radialGradient id="irisGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#1e3a8a"/> <!-- Premium Sapphire Blue iris -->
+                  <stop offset="75%" stop-color="#1d4ed8"/>
+                  <stop offset="100%" stop-color="#0f172a"/>
+                </radialGradient>
+              </defs>
+            </svg>
+
+            <!-- VIRTUAL PLASTIC OCCLUSION PADDLE OVERLAY -->
+            <div id="virtualOccluder" class="absolute w-[150px] h-[260px] top-0 left-0 pointer-events-none z-30 opacity-0 paddle-transition" style="transform: translate(0px, -300px);">
+              <svg viewBox="0 0 100 200" class="w-full h-full drop-shadow-lg">
+                <!-- Frost/Paddle structure -->
+                <ellipse cx="50" cy="50" rx="45" ry="45" id="paddleHead" fill="rgba(15, 23, 42, 0.98)" stroke="#475569" stroke-width="2.5"/>
+                <!-- Paddle handle -->
+                <rect x="44" y="95" width="12" height="100" fill="#1e293b" rx="4"/>
+                <circle cx="50" cy="180" r="3.5" fill="#475569"/>
+              </svg>
+            </div>
+
+          </div>
+
+          <!-- Commentary overlay bar -->
+          <div class="bg-slate-900 border-t border-slate-900 p-2.5 px-4 z-10" id="liveCommentaryBar">
+            <div class="flex justify-center items-center gap-2 max-w-lg mx-auto">
+              <span class="text-[8px] bg-sky-950 text-secondary border border-sky-800 font-black tracking-widest uppercase px-1.5 py-0.5 rounded flex-shrink-0 animate-pulse">Diagnostics Feed</span>
+              <p id="commentaryText" class="text-[10px] text-slate-300 font-mono truncate font-bold text-center flex-1">Awaiting test paddle occlusion triggers...</p>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1" id="gogglesWarningLabel">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-hand-pointer text-secondary animate-bounce"></i>
+            <span>Use direct monocular occluder switches below to test fixation recovery sweeps.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quantitative Visual Separation and Alignment Monitors -->
+      <div id="separationMonitorCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <h4 class="text-xs uppercase font-black text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+          <i class="fa-solid fa-chart-line text-secondary"></i> Quantitative Positional Deviation Gauges
+        </h4>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
+          <!-- OD Pupil Deviation -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-sky-600 dark:text-sky-400 uppercase tracking-widest block">Right Eye (OD) Target Offset</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="odDevValue" class="text-lg font-black text-slate-900 dark:text-white">0.0 mm</span>
+              <span id="odDevType" class="text-[9px] font-black text-slate-400">FIXATING</span>
+            </div>
+          </div>
+
+          <!-- OS Pupil Deviation -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block">Left Eye (OS) Target Offset</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="osDevValue" class="text-lg font-black text-slate-900 dark:text-white">0.0 mm</span>
+              <span id="osDevType" class="text-[9px] font-black text-slate-400">FIXATING</span>
+            </div>
+          </div>
+
+          <!-- Total Deviation -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest block">Angle of Deviation</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="totalDevValue" class="text-lg font-black text-slate-900 dark:text-white">0.0 Δ</span>
+              <span id="totalDevType" class="text-[9px] font-black text-slate-400">Orthotropic</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT PANEL: Controllers, Syllabus & Assessment MCQs -->
+    <section class="lg:col-span-5 space-y-4">
+      
+      <!-- MODE TOGGLER -->
+      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-3xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-xs">
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-chalkboard-user"></i> Practice Mode
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-vial"></i> Assessment
+        </button>
+      </div>
+
+      <!-- PRACTICE CONTROLS CARD -->
+      <div id="practiceControlsCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-xs">
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-secondary"></i> Practice Clinic Console
+            </h3>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 font-bold">Model heterotropias & heterophorias to perform monocular cover alignments.</p>
+          </div>
+          
+          <!-- Symmetrical Reset All parameters Button -->
+          <button onclick="resetSimulatorToPrimary()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-300 dark:bg-rose-950/20 dark:border-rose-900 rounded-xl text-[10px] font-black text-rose-600 dark:text-rose-400 transition flex items-center gap-1" title="Reset eyes to center and uncover">
+            <i class="fa-solid fa-arrow-rotate-left"></i> Reset
+          </button>
+        </div>
+
+        <!-- Pathology selection dropdown -->
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Ocular Binocular Profile</label>
+          <select id="pathologySelect" onchange="updatePathology()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary shadow-sm">
+            <optgroup label="Normal Baseline" class="font-bold text-slate-400">
+              <option value="normal">Normal Binocular Alignment (Orthophoria)</option>
+            </optgroup>
+            <optgroup label="Right Eye Deviations (OD)" class="font-bold text-sky-600">
+              <option value="eso_tropia">Right Esotropia (Manifest Inward Turn OD)</option>
+              <option value="exo_tropia">Right Exotropia (Manifest Outward Turn OD)</option>
+              <option value="hyper_tropia">Right Hypertropia (Manifest Upward Turn OD)</option>
+              <option value="hypo_tropia">Right Hypotropia (Manifest Downward Turn OD)</option>
+            </optgroup>
+            <optgroup label="Left Eye Deviations (OS)" class="font-bold text-emerald-600">
+              <option value="eso_tropia_os">Left Esotropia (Manifest Inward Turn OS)</option>
+              <option value="exo_tropia_os">Left Exotropia (Manifest Outward Turn OS)</option>
+              <option value="hyper_tropia_os">Left Hypertropia (Manifest Upward Turn OS)</option>
+              <option value="hypo_tropia_os">Left Hypotropia (Manifest Downward Turn OS)</option>
+            </optgroup>
+            <optgroup label="Latent Deviations (Phorias)" class="font-bold text-purple-600">
+              <option value="eso_phoria">Esophoria (Latent Inward Drift under cover)</option>
+              <option value="exo_phoria">Exophoria (Latent Outward Drift under cover)</option>
+            </optgroup>
+            <optgroup label="Syndromes & Cranial Nerve Palsies" class="font-bold text-teal-600">
+              <option value="cn3_palsy_od">Right CN III (Oculomotor) Palsy (Down-&-Out OD)</option>
+              <option value="cn4_palsy_od">Right CN IV (Trochlear) Palsy (Elevated OD)</option>
+              <option value="cn6_palsy_od">Right CN VI (Abducens) Palsy (Inward OD)</option>
+              <option value="duane_syndrome_od">Duane Retraction Syndrome Type I (OD Limitation)</option>
+              <option value="brown_syndrome_os">Brown's Syndrome (OS Restrictive Elevation)</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <!-- Dynamic Beginner Instruction Guide -->
+        <div id="beginnerInstructionCard" class="p-3.5 bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900 rounded-2xl text-[11px] space-y-2">
+          <span class="font-extrabold text-secondary uppercase tracking-widest text-[9px] block flex items-center gap-1">
+            <i class="fa-solid fa-graduation-cap animate-pulse"></i> Beginner's Guidance Tutorial
+          </span>
+          <div id="beginnerInstructionsText" class="text-slate-600 dark:text-slate-400 leading-relaxed space-y-1">
+            <!-- Populated dynamically by JS engine -->
+          </div>
+        </div>
+
+        <!-- Interactive Occluding Paddle Buttons -->
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-secondary tracking-widest"><i class="fa-solid fa-eye-slash"></i> Occluding Paddle Controller</span>
+            <span id="occlusionLabel" class="text-[9px] font-mono font-black text-teal-700">State: Eyes Uncovered</span>
+          </div>
+          
+          <div class="grid grid-cols-4 gap-2 pt-1.5">
+            <button onclick="applyPaddle('none')" id="btnPaddle-none" class="py-2.5 text-[9px] font-black uppercase rounded-lg border bg-secondary text-white transition shadow-sm cursor-pointer text-center">Uncover</button>
+            <button onclick="applyPaddle('OD')" id="btnPaddle-OD" class="py-2.5 text-[9px] font-black uppercase rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-300 hover:bg-slate-50 transition shadow-xs cursor-pointer text-center">Cover OD</button>
+            <button onclick="applyPaddle('OS')" id="btnPaddle-OS" class="py-2.5 text-[9px] font-black uppercase rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-300 hover:bg-slate-50 transition shadow-xs cursor-pointer text-center">Cover OS</button>
+            <button onclick="alternateOcclusion()" id="btnPaddle-alternate" class="py-2.5 text-[9px] font-black uppercase rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/20 text-amber-600 hover:bg-amber-100/30 transition shadow-xs cursor-pointer text-center">Alternate</button>
+          </div>
+        </div>
+
+        <!-- Prism Bar Cover Test Toggle Action Panel -->
+        <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col items-center gap-2">
+          <span class="text-[9px] font-black uppercase text-secondary tracking-widest flex items-center gap-1">
+            <i class="fa-solid fa-bars-staggered"></i> Quantitative Measurement Mode
+          </span>
+          <p class="text-[10px] text-slate-600 text-center leading-normal">
+            Click below to activate the Prism Bar Cover Test (PBCT) to neutralize and measure deviations.
+          </p>
+          <button onclick="togglePrismBarCoverTest()" id="btnTogglePBCT" class="w-full py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-800 font-black rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-xs">
+            <i class="fa-solid fa-rectangle-list text-secondary"></i> Activate Prism Bar Cover Test (PBCT)
+          </button>
+        </div>
+
+        <!-- Prismatic Neutralization Dial Controls (Now toggleable under PBCT mode only) -->
+        <div id="prismDialsContainer" class="hidden space-y-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex justify-between items-center text-[10px] uppercase font-black text-slate-500 dark:text-slate-500 tracking-wider">
+            <span>Prism Bar Placement</span>
+            <div class="flex gap-1">
+              <button onclick="setPrismEye('OD')" id="btnPrismEye-OD" class="px-2.5 py-1 bg-secondary text-white font-bold rounded cursor-pointer text-[9px]">OD (Right)</button>
+              <button onclick="setPrismEye('OS')" id="btnPrismEye-OS" class="px-2.5 py-1 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold rounded cursor-pointer text-[9px]">OS (Left)</button>
+            </div>
+          </div>
+
+          <!-- Horizontal Prism -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400">
+              <span>Horizontal Prism Neutralization</span>
+              <span id="prismHorizLabel" class="font-mono text-secondary font-black">0 Δ (None)</span>
+            </div>
+            <input type="range" id="prismHorizSlider" min="-30" max="30" value="0" oninput="adjustPrisms()" class="w-full accent-secondary">
+            <div class="flex justify-between text-[9px] font-bold text-slate-400 dark:text-slate-500">
+              <span class="flex items-center gap-1"><i class="fa-solid fa-angles-left"></i> Base-In (BI) - Exodeviations</span>
+              <span class="flex items-center gap-1">Base-Out (BO) - Esodeviations <i class="fa-solid fa-angles-right"></i></span>
+            </div>
+          </div>
+
+          <!-- Vertical Prism -->
+          <div class="space-y-1">
+            <div class="flex justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400">
+              <span>Vertical Prism Neutralization</span>
+              <span id="prismVertLabel" class="font-mono text-secondary font-black">0 Δ (None)</span>
+            </div>
+            <input type="range" id="prismVertSlider" min="-20" max="20" value="0" oninput="adjustPrisms()" class="w-full accent-secondary">
+            <div class="flex justify-between text-[9px] font-bold text-slate-400 dark:text-slate-500">
+              <span class="flex items-center gap-1"><i class="fa-solid fa-angles-down"></i> Base-Down (BD) - Hyperdeviations</span>
+              <span class="flex items-center gap-1">Base-Up (BU) - Hypodeviations <i class="fa-solid fa-angles-up"></i></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TEST MODE INPUT CONSOLE (Only visible in Assessment mode) -->
+      <div id="testModeConsole" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Diagnostic Assessment Board</h3>
+            <p class="text-[10px] text-slate-600 dark:text-slate-400">Examine the cover sweeps, align the prisms, and state your finding.</p>
+          </div>
+          <span id="assessmentScoreReadout" class="text-xs font-black bg-slate-100 dark:bg-slate-800 border border-slate-300 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">Score: Unsubmitted</span>
+        </div>
+
+        <!-- Paddle triggers for test mode -->
+        <div class="space-y-1.5">
+          <span class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">Apply Occluder:</span>
+          <div class="flex gap-2">
+            <button onclick="applyPaddle('none')" id="testPaddle-none" class="px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer">Uncover</button>
+            <button onclick="applyPaddle('OD')" id="testPaddle-OD" class="px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer">Cover OD</button>
+            <button onclick="applyPaddle('OS')" id="testPaddle-OS" class="px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer">Cover OS</button>
+            <button onclick="alternateOcclusion()" id="testPaddle-alternate" class="px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer">Alternate</button>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Clinical Ocular Pathology Diagnosis (50% Marks)</label>
+          <select id="testDiagnosisSelect" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary">
+            <option value="">-- Choose Strabismus Profile --</option>
+            <option value="normal">Orthophoria (Normal Binocular Alignment)</option>
+            <option value="eso_tropia">Manifest Right Esotropia (Esotropia)</option>
+            <option value="exo_tropia">Manifest Right Exotropia (Exotropia)</option>
+            <option value="hyper_tropia">Manifest Right Hypertropia (Hypertropia)</option>
+            <option value="hypo_tropia">Manifest Right Hypotropia (Hypotropia)</option>
+            <option value="eso_phoria">Latent Esophoria (Esophoria)</option>
+            <option value="exo_phoria">Latent Exophoria (Exophoria)</option>
+          </select>
+          <p id="diagnosisFeedback" class="text-[11px] font-bold hidden"></p>
+        </div>
+
+        <!-- Symmetrical Pathway MCQ Quiz -->
+        <div class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-900">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block">Pathway Mechanics Quiz (50% Marks)</span>
+          <div id="testMcqSuite" class="space-y-4"></div>
+        </div>
+
+        <button onclick="submitTestAssessment()" class="w-full py-3 bg-secondary text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+          Submit Assessment Profile
+        </button>
+      </div>
+
+      <!-- CLINICAL REFERENCES & SYLLABUS -->
+      <div id="clinicalSyllabusCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-book-open text-teal-600 animate-pulse"></i> Clinical Syllabus Guidelines
+          </h3>
+          <span class="bg-teal-50 dark:bg-teal-950/40 text-teal-600 border border-teal-100 dark:border-teal-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Fixation Keys</span>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <select id="pearlSelector" onchange="displayClinicalPearl()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-700 dark:text-slate-200 font-extrabold focus:outline-none shadow-xs">
+            <option value="monoc_vs_alt">Monocular Cover-Uncover vs. Alternate Cover Tests</option>
+            <option value="esotropia">Esotropia (Manifest) vs. Esophoria (Latent)</option>
+            <option value="exotropia">Exotropia (Manifest) vs. Exophoria (Latent)</option>
+            <option value="prisms">Symmetrical Prism Cover Test (SPCT) Neutralization</option>
+          </select>
+
+          <!-- Selected pearl description -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800" id="pearlDescBox">
+            <p class="font-extrabold text-slate-900 dark:text-white text-xs" id="pearlTitle">Monocular Cover-Uncover vs. Alternate Cover Tests</p>
+            <p class="text-slate-600 dark:text-slate-400 text-[11px] mt-2 leading-relaxed" id="pearlDesc">
+              The monocular cover test identifies heterotropias (manifest strabismus) by observing if the uncovered eye makes a corrective saccade to take up foveal fixation. The alternate cover test breaks binocular fusion completely, revealing heterophorias (latent deviations) as the eye under the cover drifts.
+            </p>
+            <div class="mt-3 flex items-center gap-2">
+              <span class="text-[9px] font-bold bg-sky-50 dark:bg-sky-950 text-secondary border border-sky-100 dark:border-sky-900 px-2 py-0.5 rounded">EyeWiki Standard</span>
+              <a href="https://eyewiki.org/Cover_Test" target="_blank" class="text-[9px] font-bold text-red-600 hover:underline flex items-center gap-1">
+                <i class="fa-brands fa-youtube animate-pulse"></i> Clinical Video Ref
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- CLINICAL SYSTEM CODE ENGINE -->
+  <script>
+    const simState = {
+      mode: 'practice',          // 'practice' or 'test'
+      activeTest: 'monocular_cover', // 'monocular_cover', 'cover_uncover', 'alternate_cover'
+      pathology: 'normal',       // chosen strabismus profile
+      activePathology: 'normal', // dynamic runtime target
+      soundMuted: false,
+      isOccluderTranslucent: false, // frosted glass peek option
+      coverState: 'none',        // 'none', 'OD' (Right Eye), 'OS' (Left Eye)
+      prismH: 0,                 // trial horizontal prisms diopters
+      prismV: 0,                 // trial vertical prisms diopters
+      pbctActive: false,         // Prism Bar Cover Test active state
+      prismEye: 'OD',            // Active eye receiving the visual prism overlay
+      selectedQuestions: [],
+      scores: {
+        diagnosisScore: 0,
+        mcqScore: 0
+      }
+    };
+
+    // Deviation parameter definitions for eye easing loops
+    // OD/OS resting coordinates (positive values = rightward/nasal for OD, negative = leftward/nasal for OS)
+    const pathologyMatrix = {
+      normal: {
+        baseOD_x: 0, baseOD_y: 0, baseOS_x: 0, baseOS_y: 0,
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Orthophoria. Symmetrical baseline ocular alignment."
+      },
+      // Right Eye Deviations (OD)
+      eso_tropia: {
+        baseOD_x: 16, baseOD_y: 0, baseOS_x: 0, baseOS_y: 0, // OD turned inward nasally (+16)
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Right Esotropia (OD). Cover Left OS forces OD to make a temporal corrective saccade."
+      },
+      exo_tropia: {
+        baseOD_x: -16, baseOD_y: 0, baseOS_x: 0, baseOS_y: 0, // OD turned outward temporally (-16)
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Right Exotropia (OD). Cover Left OS forces OD to make a nasal corrective saccade."
+      },
+      hyper_tropia: {
+        baseOD_x: 0, baseOD_y: 12, baseOS_x: 0, baseOS_y: 0, // OD turned upward (+12)
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Right Hypertropia (OD). Cover Left OS forces OD to make a downward corrective saccade."
+      },
+      hypo_tropia: {
+        baseOD_x: 0, baseOD_y: -12, baseOS_x: 0, baseOS_y: 0, // OD turned downward (-12)
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Right Hypotropia (OD). Cover Left OS forces OD to make an upward corrective saccade."
+      },
+      // Left Eye Deviations (OS)
+      eso_tropia_os: {
+        baseOD_x: 0, baseOD_y: 0, baseOS_x: -16, baseOS_y: 0, // OS turned inward nasally (-16)
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Left Esotropia (OS). Cover Right OD forces OS to make a temporal corrective saccade."
+      },
+      exo_tropia_os: {
+        baseOD_x: 0, baseOD_y: 0, baseOS_x: 16, baseOS_y: 0, // OS turned outward temporally (+16)
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Left Exotropia (OS). Cover Right OD forces OS to make a nasal corrective saccade."
+      },
+      hyper_tropia_os: {
+        baseOD_x: 0, baseOD_y: 0, baseOS_x: 0, baseOS_y: 12, // OS turned upward (+12)
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Left Hypertropia (OS). Cover Right OD forces OS to make a downward corrective saccade."
+      },
+      hypo_tropia_os: {
+        baseOD_x: 0, baseOD_y: 0, baseOS_x: 0, baseOS_y: -12, // OS turned downward (-12)
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Left Hypotropia (OS). Cover Right OD forces OS to make an upward corrective saccade."
+      },
+      // Latent Deviations (Phorias)
+      eso_phoria: {
+        baseOD_x: 0, baseOD_y: 0, baseOS_x: 0, baseOS_y: 0,
+        driftOD_x: 12, driftOD_y: 0, driftOS_x: -12, driftOS_y: 0, // drifts inward nasally under cover (+12 OD, -12 OS)
+        desc: "Esophoria. Eyes aligned binocularly. Covered eye drifts nasally, sweeping outward on uncover."
+      },
+      exo_phoria: {
+        baseOD_x: 0, baseOD_y: 0, baseOS_x: 0, baseOS_y: 0,
+        driftOD_x: -12, driftOD_y: 0, driftOS_x: 12, driftOS_y: 0, // drifts outward temporally (-12 OD, +12 OS)
+        desc: "Exophoria. Eyes aligned binocularly. Covered eye drifts temporally, sweeping inward on uncover."
+      },
+      // Syndromes & Cranial Nerve Palsies
+      cn3_palsy_od: {
+        baseOD_x: -16, baseOD_y: -12, baseOS_x: 0, baseOS_y: 0, // Right EOM down & out
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Right CN III Palsy. Right eye rests 'Down and Out'. Cover left eye triggers corrective inward/upward movement."
+      },
+      cn4_palsy_od: {
+        baseOD_x: 0, baseOD_y: 12, baseOS_x: 0, baseOS_y: 0, // Right elevated due to SO paresis
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Right CN IV Palsy. Right eye elevated (Hypertropia). Cover left eye forces right eye to depress."
+      },
+      cn6_palsy_od: {
+        baseOD_x: 16, baseOD_y: 0, baseOS_x: 0, baseOS_y: 0, // Right inward esotropic due to LR paresis
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Right CN VI Palsy. Right eye esotropic (unable to abduct). Cover left eye triggers outward corrective saccade."
+      },
+      duane_syndrome_od: {
+        baseOD_x: 12, baseOD_y: 0, baseOS_x: 0, baseOS_y: 0, // OD limitation
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Duane Retraction Syndrome Type I (OD). Limitation of abduction. Right eye turns slightly inward nasally."
+      },
+      brown_syndrome_os: {
+        baseOD_x: 0, baseOD_y: 0, baseOS_x: 0, baseOS_y: -10, // OS restrictive depression
+        driftOD_x: 0, driftOD_y: 0, driftOS_x: 0, driftOS_y: 0,
+        desc: "Brown's Syndrome (OS). Restrictive elevation in adduction. Left eye rests slightly depressed."
+      }
+    };
+
+    // Deep binocular vision MCQs
+    const clinicalMcqPool = [
+      {
+        id: "v1",
+        question: "A patient presents with a right esotropia. During the monocular cover test, what corrective eye movement will be observed in the right eye when the left eye is covered?",
+        options: {
+          a: "The right eye will make a corrective saccade outward (temple-ward)",
+          b: "The right eye will make a corrective saccade inward (nose-ward)",
+          c: "The right eye will remain completely stationary"
+        },
+        correct: "a",
+        explanation: "Right esotropia means the right eye rests turned inward (nasally). When the fixating left eye is covered, the right eye must move outward (temporally) to take up center fixation."
+      },
+      {
+        id: "v2",
+        question: "Which of the following clinical test outcomes confirms the presence of a latent heterophoria rather than a manifest heterotropia?",
+        options: {
+          a: "No eye movement is observed on monocular cover-uncover, but a refixation sweep occurs on alternate cover",
+          b: "The uncovered eye drifts downward immediately under binocular conditions",
+          c: "Visual axes fail to intersect under light-reflex corneal tests"
+        },
+        correct: "a",
+        explanation: "Monocular cover-uncover tests reveal manifest tropias. If no movement occurs on cover-uncover, but the eyes show refixation sweeps when alternates break fusion, the patient has a phoria."
+      },
+      {
+        id: "v3",
+        question: "To neutralize a left hypotropia (downward manifest deviation) during a symmetrical prism cover test, how should the trial prism be oriented?",
+        options: {
+          a: "Base-Up (BU) prism over the left eye",
+          b: "Base-Down (BD) prism over the left eye",
+          c: "Base-In (BI) prism over the left eye"
+        },
+        correct: "a",
+        explanation: "Base-Up (BU) prisms shift the incoming light downward toward the hypotropic foveal visual axis, neutralizing downward deviations."
+      }
+    ];
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      syncCompletionBadge();
+      updatePathology();
+    });
+
+    // Toggle frosted/translucent occluding paddle properties
+    function toggleOccluderTranslucency() {
+      soundFeedback('switch');
+      simState.isOccluderTranslucent = document.getElementById('chkTranslucent').checked;
+      
+      const paddleHead = document.getElementById('paddleHead');
+      if (simState.isOccluderTranslucent) {
+        paddleHead.setAttribute('fill', 'rgba(15, 23, 42, 0.45)'); // Translucent frosted paddle
+        paddleHead.setAttribute('stroke', '#0284c7'); // glowing sky blue boundary
+      } else {
+        paddleHead.setAttribute('fill', 'rgba(15, 23, 42, 0.98)'); // Opaque standard paddle
+        paddleHead.setAttribute('stroke', '#475569');
+      }
+      executeOcularKinetics();
+    }
+
+    // Toggle active clinical Prism Bar Cover Test (PBCT) interface view block
+    function togglePrismBarCoverTest() {
+      soundFeedback('switch');
+      simState.pbctActive = !simState.pbctActive;
+      
+      const btn = document.getElementById('btnTogglePBCT');
+      const dials = document.getElementById('prismDialsContainer');
+
+      if (simState.pbctActive) {
+        btn.innerHTML = `<i class="fa-solid fa-rectangle-list text-teal-500 animate-pulse"></i> Deactivate Prism Bar Cover Test (PBCT)`;
+        btn.className = "w-full py-2.5 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/50 text-teal-700 dark:text-teal-300 border-2 border-teal-500 font-black rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-md scale-98 animate-none";
+        dials.classList.remove('hidden');
+        dials.classList.add('block');
+      } else {
+        btn.innerHTML = `<i class="fa-solid fa-rectangle-list text-secondary"></i> Activate Prism Bar Cover Test (PBCT)`;
+        btn.className = "w-full py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-800 font-black rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-xs";
+        dials.classList.remove('block');
+        dials.classList.add('hidden');
+        
+        // Reset prism parameters when deactivating
+        document.getElementById('prismHorizSlider').value = 0;
+        document.getElementById('prismVertSlider').value = 0;
+        simState.prismH = 0;
+        simState.prismV = 0;
+        setPrismLabels(0, 0);
+      }
+
+      executeOcularKinetics();
+    }
+
+    // Set target eye receiving the visual prism overlay
+    function setPrismEye(eye) {
+      soundFeedback('click');
+      simState.prismEye = eye;
+      
+      const btnOD = document.getElementById('btnPrismEye-OD');
+      const btnOS = document.getElementById('btnPrismEye-OS');
+
+      if (eye === 'OD') {
+        btnOD.className = "px-2.5 py-1 bg-secondary text-white font-bold rounded cursor-pointer text-[9px]";
+        btnOS.className = "px-2.5 py-1 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold rounded cursor-pointer text-[9px]";
+      } else {
+        btnOS.className = "px-2.5 py-1 bg-secondary text-white font-bold rounded cursor-pointer text-[9px]";
+        btnOD.className = "px-2.5 py-1 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold rounded cursor-pointer text-[9px]";
+      }
+
+      executeOcularKinetics();
+    }
+
+    // Positions virtual paddle group smoothly over selected OD or OS targets
+    function applyPaddle(eye) {
+      soundFeedback('tick');
+      simState.coverState = eye;
+
+      // Update UI button highlights
+      const items = ['none', 'OD', 'OS', 'alternate'];
+      items.forEach(item => {
+        const pBtn = document.getElementById(`btnPaddle-${item}`);
+        const tBtn = document.getElementById(`testPaddle-${item}`);
+        const active = item === eye;
+
+        if (pBtn) {
+          pBtn.className = active ? 
+            "py-2.5 text-[9px] font-black uppercase rounded-lg border bg-secondary text-white transition shadow-sm cursor-pointer text-center" :
+            "py-2.5 text-[9px] font-black uppercase rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-300 hover:bg-slate-50 transition shadow-xs cursor-pointer text-center";
+        }
+        if (tBtn) {
+          tBtn.className = active ? 
+            "px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border-sky-400 bg-sky-600 text-white transition shadow-md cursor-pointer" :
+            "px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border border-slate-300 dark:border-slate-800 bg-white text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-50";
+        }
+      });
+
+      const label = document.getElementById('occlusionLabel');
+      const occluder = document.getElementById('virtualOccluder');
+
+      if (eye === 'none') {
+        label.innerText = "State: Eyes Uncovered";
+        occluder.style.opacity = "0";
+        occluder.style.transform = "translate(0px, -300px)"; // slide completely out of frame
+      } else if (eye === 'OD') {
+        label.innerText = "State: Right Eye Covered (OD)";
+        occluder.style.opacity = "1";
+        
+        // Symmetrical responsive offset positions
+        const wrapperOD = document.getElementById('eyeOD-wrapper');
+        const posX = wrapperOD.offsetLeft + (wrapperOD.clientWidth / 2) - 75; // Center over OD
+        const posY = wrapperOD.offsetTop + (wrapperOD.clientHeight / 2) - 100;
+        occluder.style.transform = `translate(${posX}px, ${posY}px)`;
+      } else if (eye === 'OS') {
+        label.innerText = "State: Left Eye Covered (OS)";
+        occluder.style.opacity = "1";
+        
+        const wrapperOS = document.getElementById('eyeOS-wrapper');
+        const posX = wrapperOS.offsetLeft + (wrapperOS.clientWidth / 2) - 75; // Center over OS
+        const posY = wrapperOS.offsetTop + (wrapperOS.clientHeight / 2) - 100;
+        occluder.style.transform = `translate(${posX}px, ${posY}px)`;
+      }
+
+      executeOcularKinetics();
+    }
+
+    // Toggle alternate occlusion back-and-forth breaking binocular fusion
+    function alternateOcclusion() {
+      if (simState.coverState === 'none' || simState.coverState === 'OS') {
+        applyPaddle('OD');
+      } else {
+        applyPaddle('OS');
+      }
+    }
+
+    function adjustPrisms() {
+      soundFeedback('tick');
+      simState.prismH = parseInt(document.getElementById('prismHorizSlider').value);
+      simState.prismV = parseInt(document.getElementById('prismVertSlider').value);
+
+      setPrismLabels(simState.prismH, simState.prismV);
+      executeOcularKinetics();
+    }
+
+    function setPrismLabels(h, v) {
+      const labelH = document.getElementById('prismHorizLabel');
+      const labelV = document.getElementById('prismVertLabel');
+
+      if (h === 0) labelH.innerText = "0 Δ (None)";
+      else labelH.innerText = h > 0 ? `${h} Δ Base-Out (BO)` : `${Math.abs(h)} Δ Base-In (BI)`;
+
+      if (v === 0) labelV.innerText = "0 Δ (None)";
+      else labelV.innerText = v > 0 ? `${v} Δ Base-Up (BU)` : `${Math.abs(v)} Δ Base-Down (BD)`;
+    }
+
+    // Updates active cover test method configurations
+    function updateCoverTestType() {
+      soundFeedback('switch');
+      simState.activeTest = document.getElementById('activeTestSelector').value;
+      
+      // Symmetrically reset occluders on test type changes to ensure baseline calibration
+      applyPaddle('none');
+      updateBeginnerTutorial();
+    }
+
+    // Dynamic Symmetrical Easing loops updating eye iris vectors
+    function executeOcularKinetics() {
+      const path = pathologyMatrix[simState.activePathology];
+      const irisOD = document.getElementById('irisOD-group');
+      const irisOS = document.getElementById('irisOS-group');
+      
+      let targetOD_x = 0;
+      let targetOD_y = 0;
+      let targetOS_x = 0;
+      let targetOS_y = 0;
+
+      // Symmetrical prism offset values
+      const neutH = simState.prismH * 0.8; 
+      const neutV = simState.prismV * 0.8;
+
+      // Applying neutralizing prisms to affected vectors
+      const pathOD_x = path.baseOD_x - (path.baseOD_x !== 0 ? neutH : 0);
+      const pathOD_y = path.baseOD_y - (path.baseOD_y !== 0 ? neutV : 0);
+      const pathOS_x = path.baseOS_x - (path.baseOS_x !== 0 ? -neutH : 0); // Opposite direction correction
+      const pathOS_y = path.baseOS_y - (path.baseOS_y !== 0 ? -neutV : 0);
+
+      // Determine movement type for appropriate physiological speed transition
+      let odSpeedClass = "normal-speed";
+      let osSpeedClass = "normal-speed";
+
+      const isPhoria = simState.activePathology.endsWith('_phoria');
+
+      if (simState.coverState === 'none') {
+        // Binocular conditions: Both eyes open
+        targetOD_x = pathOD_x;
+        targetOD_y = pathOD_y;
+        targetOS_x = pathOS_x;
+        targetOS_y = pathOS_y;
+
+        // Cover-Uncover Test: watch newly uncovered eye recover slowly
+        if (isPhoria && simState.activeTest === 'cover_uncover') {
+          odSpeedClass = "phoric-speed";
+          osSpeedClass = "phoric-speed";
+        } else {
+          odSpeedClass = "saccadic-speed";
+          osSpeedClass = "saccadic-speed";
+        }
+      } 
+      else if (simState.coverState === 'OD') {
+        // Monocular OD covered: Left eye (OS) is uncovered and takes up central fixation
+        targetOS_x = 0;
+        targetOS_y = 0;
+        osSpeedClass = "saccadic-speed"; // Fast corrective saccade
+
+        if (isPhoria) {
+          // Phoric eye drifts under cover slowly
+          targetOD_x = path.driftOD_x;
+          targetOD_y = path.driftOD_y;
+          odSpeedClass = "phoric-speed"; // Slow drift under occluder
+        } else {
+          // Tropia: OD sits relaxed in paretic deviated state under cover
+          targetOD_x = pathOD_x;
+          targetOD_y = pathOD_y;
+          odSpeedClass = "normal-speed";
+        }
+      } 
+      else if (simState.coverState === 'OS') {
+        // Monocular OS covered: Right eye (OD) is uncovered and takes up central fixation
+        targetOD_x = 0;
+        targetOD_y = 0;
+        odSpeedClass = "saccadic-speed"; // Fast corrective saccade
+
+        if (isPhoria) {
+          // Phoric eye drifts under cover slowly
+          targetOS_x = path.driftOS_x;
+          targetOS_y = path.driftOS_y;
+          osSpeedClass = "phoric-speed"; // Slow drift under occluder
+        } else {
+          // Tropia: Hering's law consensual response sweeps the covered OS symmetrically
+          targetOS_x = -pathOD_x; 
+          targetOS_y = -pathOD_y;
+          osSpeedClass = "saccadic-speed";
+        }
+      }
+
+      // Apply speeds dynamically to irises
+      if (irisOD) irisOD.className = odSpeedClass;
+      if (irisOS) irisOS.className = osSpeedClass;
+
+      // Dynamic Glass Prism Overlay logic (PBCT parameters)
+      const prismODEl = document.getElementById('prismOverlayOD');
+      const prismOSEl = document.getElementById('prismOverlayOS');
+      const prismODText = document.getElementById('prismOverlayODText');
+      const prismOSText = document.getElementById('prismOverlayOSText');
+
+      // Reset active visibilities
+      if (prismODEl) prismODEl.setAttribute('class', 'opacity-0 transition-opacity duration-300 pointer-events-none');
+      if (prismOSEl) prismOSEl.setAttribute('class', 'opacity-0 transition-opacity duration-300 pointer-events-none');
+
+      let refractiveOffsetOD_x = 0;
+      let refractiveOffsetOD_y = 0;
+      let refractiveOffsetOS_x = 0;
+      let refractiveOffsetOS_y = 0;
+
+      if (simState.pbctActive && (simState.prismH !== 0 || simState.prismV !== 0)) {
+        let hType = simState.prismH > 0 ? "BO" : "BI";
+        let vType = simState.prismV > 0 ? "BU" : "BD";
+        
+        let prismString = "";
+        if (simState.prismH !== 0 && simState.prismV !== 0) {
+          prismString = `${Math.abs(simState.prismH)}Δ${hType}/${Math.abs(simState.prismV)}Δ${vType}`;
+        } else if (simState.prismH !== 0) {
+          prismString = `${Math.abs(simState.prismH)}Δ ${hType}`;
+        } else {
+          prismString = `${Math.abs(simState.prismV)}Δ ${vType}`;
+        }
+
+        // Apex Displacement Pupil Refraction Offset Simulation
+        const refrFactor = 0.28; // scaling factor
+        
+        if (simState.prismEye === 'OD') {
+          if (prismODEl) prismODEl.setAttribute('class', 'opacity-100 transition-opacity duration-300 pointer-events-none');
+          if (prismODText) prismODText.textContent = prismString;
+
+          // Apex opposite of base shifts
+          refractiveOffsetOD_x = -simState.prismH * refrFactor;
+          refractiveOffsetOD_y = -simState.prismV * refrFactor;
+        } else {
+          if (prismOSEl) prismOSEl.setAttribute('class', 'opacity-100 transition-opacity duration-300 pointer-events-none');
+          if (prismOSText) prismOSText.textContent = prismString;
+
+          // OS horizontal opposite
+          refractiveOffsetOS_x = simState.prismH * refrFactor;
+          refractiveOffsetOS_y = -simState.prismV * refrFactor;
+        }
+      }
+
+      // Apply base target coordinates + physical refraction offsets
+      const finalOD_x = targetOD_x + refractiveOffsetOD_x;
+      const finalOD_y = targetOD_y + refractiveOffsetOD_y;
+      const finalOS_x = targetOS_x + refractiveOffsetOS_x;
+      const finalOS_y = targetOS_y + refractiveOffsetOS_y;
+
+      // Symmetrical visual metrics readout updates
+      document.getElementById('odDevValue').innerText = `${Math.abs(targetOD_x).toFixed(1)} mm`;
+      document.getElementById('odDevType').innerText = targetOD_x === 0 ? "FIXATING" : targetOD_x > 0 ? "Nasal (Esodeviate)" : "Temporal (Exodeviate)";
+
+      document.getElementById('osDevValue').innerText = `${Math.abs(targetOS_x).toFixed(1)} mm`;
+      document.getElementById('osDevType').innerText = targetOS_x === 0 ? "FIXATING" : targetOS_x < 0 ? "Nasal (Esodeviate)" : "Temporal (Exodeviate)";
+
+      // Total residual manifest angle calculation
+      const residualH = Math.max(Math.abs(targetOD_x), Math.abs(targetOS_x)) / 0.8;
+      const residualV = Math.max(Math.abs(targetOD_y), Math.abs(targetOS_y)) / 0.8;
+      
+      const angleOfDev = Math.sqrt(residualH * residualH + residualV * residualV);
+      document.getElementById('totalDevValue').innerText = `${angleOfDev.toFixed(1)} Δ`;
+      
+      const isOrthotropic = angleOfDev < 0.5;
+
+      document.getElementById('totalDevType').innerText = isOrthotropic ? "Orthotropic" : isPhoria ? "Phoria Deviation" : "Strabismus (Tropia)";
+
+      const status = document.getElementById('currentFusionStatus');
+      if (isOrthotropic && simState.activePathology !== 'normal') {
+        status.innerText = "FUSION ACHIEVED";
+        status.className = "text-[10px] font-mono text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 rounded border border-emerald-100 dark:border-emerald-900/60 font-black px-2 py-1 animate-pulse";
+      } else if (simState.activePathology === 'normal') {
+        status.innerText = "Symmetrical Baseline";
+        status.className = "text-[10px] font-mono text-slate-400 bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800 font-bold";
+      } else {
+        status.innerText = "DEVIATION DETECTED";
+        status.className = "text-[10px] font-mono text-rose-500 bg-rose-50 dark:bg-rose-950/40 rounded border border-rose-100 dark:border-rose-900/60 font-black px-2 py-1";
+      }
+
+      // Apply coordinates straight onto SVG group elements with fluid transitions
+      if (irisOD) irisOD.style.transform = `translate(${finalOD_x}px, ${-finalOD_y}px)`;
+      if (irisOS) irisOS.style.transform = `translate(${finalOS_x}px, ${-finalOS_y}px)`;
+
+      // Hydrate dynamic live clinical commentary feed
+      const commentary = buildClinicalCommentary(angleOfDev, isOrthotropic);
+      document.getElementById('commentaryText').innerText = commentary;
+    }
+
+    function buildClinicalCommentary(angleOfDev, isOrthotropic) {
+      if (simState.coverState === 'none') {
+        if (simState.activePathology === 'normal') return "Eyes aligned binocularly. Standard binocular fusion active.";
+        if (simState.activePathology.endsWith('_tropia') || simState.activePathology.includes('_palsy') || simState.activePathology.includes('_syndrome')) return `Manifest strabismus visible (${angleOfDev.toFixed(1)} Δ unneutralized). Apply prisms.`;
+        return "Heterophoria suspected. Eyes are aligned under binocular conditions. Use alternate cover.";
+      }
+      if (simState.coverState === 'OD') {
+        if (simState.activePathology.endsWith('_phoria')) return `OD covered. Latent phoric drift developing under occluder.`;
+        return "Left eye OS fixates straight ahead. OD rests relaxed in paretic state.";
+      }
+      if (simState.coverState === 'OS') {
+        if (isOrthotropic) return "Neutralization complete. No refixation saccades observed.";
+        return `OS covered. OD makes rapid refixation corrective saccade to take up target.`;
+      }
+      return "Broken fusion. Evaluating full magnitude of binocular deviation.";
+    }
+
+    // Dynamic Beginner's Tutorial text populator
+    function updateBeginnerTutorial() {
+      const guide = document.getElementById('beginnerInstructionsText');
+      if (!guide) return;
+
+      const path = simState.activePathology;
+      const test = simState.activeTest;
+
+      let testHeader = "Test Method: Cover-Uncover Test";
+      let testBody = "Designed primarily to detect monocular deviations. Watch the eye as the paddle is removed. Tropias present instant refixation saccades, while Phorias drift slowly back to central alignment.";
+
+      if (path === 'normal') {
+        guide.innerHTML = `
+          <p class="font-extrabold text-emerald-600">${testHeader}</p>
+          <p class="mb-1">${testBody}</p>
+          <p class="font-semibold text-slate-500 mt-2">Ocular profile is <strong>Orthophoric</strong> (perfectly aligned). Placing or removing the paddle over either eye causes zero movement.</p>
+        `;
+      } 
+      else if (path === 'eso_tropia') {
+        guide.innerHTML = `
+          <p class="font-extrabold text-secondary">${testHeader}</p>
+          <p class="mb-2">${testBody}</p>
+          <p class="font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-angles-left"></i> Condition: Right Esotropia (Manifest)</p>
+          <p class="mb-1">The right eye rests turned inward (nasally). Covering the fixating Left eye (OS) forces the right eye to sweep <strong>outward (temporally)</strong> to capture the target fovea.</p>
+          <p class="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-900 rounded-xl mt-1">
+            <strong>How to Neutralize (Prism BO):</strong> Manifest esodeviations are aligned using <strong>Base-Out (BO)</strong> prisms. Activate the **Prism Bar Cover Test (PBCT)** and slide towards BO until the corrective movement is eliminated.
+          </p>
+        `;
+      }
+      else if (path === 'exo_tropia') {
+        guide.innerHTML = `
+          <p class="font-extrabold text-secondary">${testHeader}</p>
+          <p class="mb-2">${testBody}</p>
+          <p class="font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-angles-right"></i> Condition: Right Exotropia (Manifest)</p>
+          <p class="mb-1">The right eye rests turned outward (temporally). Covering the fixating Left eye (OS) forces the right eye to sweep <strong>inward (nasally)</strong> to capture the target fovea.</p>
+          <p class="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-900 rounded-xl mt-1">
+            <strong>How to Neutralize (Prism BI):</strong> Align using <strong>Base-In (BI)</strong> prisms (slide horizontal left, negative numbers) in the PBCT pane.
+          </p>
+        `;
+      }
+      else if (path === 'eso_tropia_os') {
+        guide.innerHTML = `
+          <p class="font-extrabold text-secondary">${testHeader}</p>
+          <p class="mb-2">${testBody}</p>
+          <p class="font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-angles-right"></i> Condition: Left Esotropia (Manifest)</p>
+          <p class="mb-1">The left eye rests turned inward (nasally). Covering the Right eye (OD) forces the left eye to sweep <strong>outward (temporally)</strong> to capture the target fovea.</p>
+          <p class="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-900 rounded-xl mt-1">
+            <strong>How to Neutralize (Prism BO):</strong> Symmetrically align with Base-Out (BO) prisms in the PBCT pane. Select **OS (Left)** prism placement.
+          </p>
+        `;
+      }
+      else if (path === 'exo_tropia_os') {
+        guide.innerHTML = `
+          <p class="font-extrabold text-secondary">${testHeader}</p>
+          <p class="mb-2">${testBody}</p>
+          <p class="font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-angles-left"></i> Condition: Left Exotropia (Manifest)</p>
+          <p class="mb-1">The left eye rests turned outward (temporally). Covering the Right eye (OD) forces the left eye to sweep <strong>inward (nasally)</strong> to capture foveal fixation.</p>
+        `;
+      }
+      else if (path === 'hyper_tropia') {
+        guide.innerHTML = `
+          <p class="font-extrabold text-secondary">${testHeader}</p>
+          <p class="mb-2">${testBody}</p>
+          <p class="font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-angles-up"></i> Condition: Right Hypertropia (Manifest)</p>
+          <p class="mb-1">The right eye rests elevated upward. Covering the Left eye (OS) forces the right eye to sweep <strong>downward</strong> to capture the target fovea.</p>
+          <p class="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-900 rounded-xl mt-1">
+            <strong>How to Neutralize (Prism BD):</strong> Symmetrically align using <strong>Base-Down (BD)</strong> prism (negative vertical range) over OD.
+          </p>
+        `;
+      }
+      else if (path === 'hypo_tropia') {
+        guide.innerHTML = `
+          <p class="font-extrabold text-secondary">${testHeader}</p>
+          <p class="mb-2">${testBody}</p>
+          <p class="font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-angles-down"></i> Condition: Right Hypotropia (Manifest)</p>
+          <p class="mb-1">The right eye rests depressed downward. Covering the Left eye (OS) forces the right eye to sweep <strong>upward</strong> to capture the target fovea.</p>
+        `;
+      }
+      else if (path === 'eso_phoria') {
+        guide.innerHTML = `
+          <p class="font-extrabold text-secondary">${testHeader}</p>
+          <p class="mb-2">${testBody}</p>
+          <p class="font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-eye-slash"></i> Condition: Esophoria (Latent)</p>
+          <p class="mb-1">Both eyes look straight under binocular conditions. However, breaking binocular fusion by covering an eye causes that eye to slowly drift <strong>inward (nasally)</strong> under the occluder.</p>
+          <p class="mt-1">Toggle the <strong class="text-secondary">Frosted Occluder ON</strong> to peek *under* the occluder and watch the latent nasal drift develop.</p>
+        `;
+      }
+      else if (path === 'exo_phoria') {
+        guide.innerHTML = `
+          <p class="font-extrabold text-secondary">${testHeader}</p>
+          <p class="mb-2">${testBody}</p>
+          <p class="font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-eye-slash"></i> Condition: Exophoria (Latent)</p>
+          <p class="mb-1">Both eyes look straight under binocular conditions. However, breaking binocular fusion by covering an eye causes that eye to slowly drift <strong>outward (temporally)</strong> under the occluder.</p>
+        `;
+      }
+      else {
+        guide.innerHTML = `
+          <p class="font-extrabold text-secondary">${testHeader}</p>
+          <p class="mb-2">${testBody}</p>
+          <p class="font-bold text-teal-700 dark:text-teal-400">Condition: Complex Neuro-Ophthalmic Syndrome</p>
+          <p class="mb-1">This models complex EOM innervation paresis. The affected eye presents a resting gaze deviation that cannot be maintained binocularly without abnormal head postures.</p>
+        `;
+      }
+    }
+
+    function updatePathology() {
+      const selected = document.getElementById('pathologySelect').value;
+      if (simState.mode === 'practice') {
+        simState.activePathology = selected;
+      }
+
+      // Symmetrically reset trial frames and cover states on selection to ensure clean test conditions
+      document.getElementById('prismHorizSlider').value = 0;
+      document.getElementById('prismVertSlider').value = 0;
+      simState.prismH = 0;
+      simState.prismV = 0;
+
+      // Sync categories labels
+      const label = document.getElementById('currentWaveLabel');
+      const niceName = document.querySelector(`#pathologySelect option[value="${simState.activePathology}"]`).innerText;
+      label.innerText = `Binocular Profile: ${niceName.split('(')[0].trim()}`;
+
+      setPrismLabels(0, 0);
+      applyPaddle('none'); // Reset occluder on selection
+      updateBeginnerTutorial();
+    }
+
+    // Symmetrical Reset All parameters function
+    function resetSimulatorToPrimary() {
+      soundFeedback('success');
+      
+      // Reset State
+      simState.activePathology = 'normal';
+      simState.pathology = 'normal';
+      simState.prismH = 0;
+      simState.prismV = 0;
+      simState.coverState = 'none';
+      simState.pbctActive = false;
+      simState.prismEye = 'OD';
+      
+      // Update DOM values
+      const pathSelect = document.getElementById('pathologySelect');
+      if (pathSelect) pathSelect.value = 'normal';
+      
+      const hSlider = document.getElementById('prismHorizSlider');
+      if (hSlider) hSlider.value = 0;
+      
+      const vSlider = document.getElementById('prismVertSlider');
+      if (vSlider) vSlider.value = 0;
+
+      const frostCheck = document.getElementById('chkTranslucent');
+      if (frostCheck) {
+        frostCheck.checked = false;
+        toggleOccluderTranslucency();
+      }
+
+      const pbctBtn = document.getElementById('btnTogglePBCT');
+      if (pbctBtn) {
+        pbctBtn.innerHTML = `<i class="fa-solid fa-rectangle-list text-secondary"></i> Activate Prism Bar Cover Test (PBCT)`;
+        pbctBtn.className = "w-full py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-800 font-black rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-xs";
+      }
+
+      const dials = document.getElementById('prismDialsContainer');
+      if (dials) {
+        dials.classList.remove('block');
+        dials.classList.add('hidden');
+      }
+
+      const btnOD = document.getElementById('btnPrismEye-OD');
+      const btnOS = document.getElementById('btnPrismEye-OS');
+      if (btnOD) btnOD.className = "px-2.5 py-1 bg-secondary text-white font-bold rounded cursor-pointer text-[9px]";
+      if (btnOS) btnOS.className = "px-2.5 py-1 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold rounded cursor-pointer text-[9px]";
+
+      setPrismLabels(0, 0);
+      applyPaddle('none');
+      updatePathology();
+    }
+
+    function changeMode(target) {
+      soundFeedback('switch');
+      simState.mode = target;
+
+      const pracBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      const pracConsole = document.getElementById('practiceControlsCard');
+      const testConsole = document.getElementById('testModeConsole');
+      const clinicalSyllabusCard = document.getElementById('clinicalSyllabusCard');
+      const bodyFrame = document.getElementById('bodyFrame');
+      const tutorialPanel = document.getElementById('beginnerInstructionCard');
+
+      document.getElementById('testDiagnosisSelect').value = "";
+      document.getElementById('diagnosisFeedback').classList.add('hidden');
+
+      const finalScoreCard = document.getElementById('finalScoreCard');
+      if (finalScoreCard) finalScoreCard.classList.add('hidden');
+
+      if (target === 'practice') {
+        bodyFrame.className = "bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer";
+        
+        pracConsole.classList.remove('hidden');
+        testConsole.classList.add('hidden');
+        clinicalSyllabusCard.classList.remove('hidden');
+        if (tutorialPanel) tutorialPanel.classList.remove('hidden');
+
+        simState.activePathology = simState.pathology;
+      } else {
+        bodyFrame.className = "bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-800 text-slate-400 hover:bg-slate-900 shadow-xs cursor-pointer";
+        
+        pracConsole.classList.add('hidden');
+        testConsole.classList.remove('hidden');
+        clinicalSyllabusCard.classList.add('hidden');
+        if (tutorialPanel) tutorialPanel.classList.add('hidden');
+
+        // Choose random binocular profile for assessment
+        const keys = ['normal', 'eso_tropia', 'exo_tropia', 'hyper_tropia', 'hypo_tropia', 'eso_phoria', 'exo_phoria'];
+        const randomKey = keys[Math.floor(Math.random() * keys.length)];
+        simState.activePathology = randomKey;
+
+        simState.scores.diagnosisScore = 0;
+        simState.scores.mcqScore = 0;
+        setupTestMcqSuite();
+        buildTestPlatesRow();
+      }
+
+      applyPaddle('none');
+      updatePathology();
+    }
+
+    // Build assessment selectors dynamically
+    function buildTestPlatesRow() {
+      // Stub mapping required by index.html directory hooks
+    }
+
+    function setupTestMcqSuite() {
+      const shuffled = [...clinicalMcqPool].sort(() => 0.5 - Math.random());
+      simState.selectedQuestions = shuffled.slice(0, 3); // pick 3 high-yield EOM pathway MCQs
+
+      const container = document.getElementById('testMcqSuite');
+      container.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const div = document.createElement('div');
+        div.className = "bg-white p-4 rounded-2xl border border-slate-200 space-y-2 text-xs text-slate-900 shadow-xs";
+        div.innerHTML = `
+          <p class="font-extrabold text-slate-950">${idx + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1.5 pt-1">
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 font-bold">
+              <input type="radio" name="mcq_${idx}" value="a" class="accent-secondary text-slate-950">
+              <span>${q.options.a}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 font-bold">
+              <input type="radio" name="mcq_${idx}" value="b" class="accent-secondary text-slate-950">
+              <span>${q.options.b}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 font-bold">
+              <input type="radio" name="mcq_${idx}" value="c" class="accent-secondary text-slate-950">
+              <span>${q.options.c}</span>
+            </label>
+          </div>
+          <p id="mcq_${idx}_feedback" class="text-[10px] font-bold hidden"></p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function displayClinicalPearl() {
+      soundFeedback('blip');
+      const val = document.getElementById('pearlSelector').value;
+      const pearl = pearlsDatabase[val];
+      if (pearl) {
+        document.getElementById('pearlTitle').innerText = pearl.title;
+        document.getElementById('pearlDesc').innerText = pearl.desc;
+      }
+    }
+
+    function submitTestAssessment() {
+      if (simState.mode !== 'test') return;
+
+      const selectedDiag = document.getElementById('testDiagnosisSelect').value;
+      let unanswered = false;
+      const answers = [];
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const checked = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+        if (!checked) {
+          unanswered = true;
+        } else {
+          answers.push({
+            idx: idx,
+            selected: checked.value,
+            correct: q.correct,
+            explanation: q.explanation
+          });
+        }
+      });
+
+      if (!selectedDiag || unanswered) {
+        soundFeedback('warning');
+        const feedback = document.getElementById('diagnosisFeedback');
+        feedback.innerText = "Please choose your Clinical diagnosis and complete all Pathway MCQs.";
+        feedback.className = "text-[11px] font-extrabold text-red-700 block mt-2 animate-pulse";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      // Check Clinical Diagnosis
+      const feedback = document.getElementById('diagnosisFeedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedDiag === simState.activePathology) {
+        feedback.innerText = "Correct Clinical Diagnosis! (+50 pts)";
+        feedback.className = "text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        const accurateName = document.querySelector(`#testDiagnosisSelect option[value="${simState.activePathology}"]`).innerText;
+        feedback.innerText = `Incorrect. Active pathology profile was: ${accurateName}. (+0 pts)`;
+        feedback.className = "text-[11px] font-bold text-red-700 dark:text-red-400 block mt-1";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      // Check MCQs
+      let correctCount = 0;
+      answers.forEach((ans) => {
+        const box = document.getElementById(`mcq_${ans.idx}_feedback`);
+        box.classList.remove('shadow-sm'); // prevent layout shift
+        box.classList.remove('hidden');
+        if (ans.selected === ans.correct) {
+          box.innerText = `Correct! (+16.6 pts) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+          correctCount++;
+        } else {
+          box.innerText = `Incorrect. (Correct Answer: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-red-600 dark:text-red-400 block mt-1";
+        }
+      });
+      simState.scores.mcqScore = Math.round(correctCount * 16.66);
+
+      const totalScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('assessmentScoreReadout').innerText = `Score: ${totalScore}/100`;
+
+      // Results badge display
+      let card = document.getElementById('finalScoreCard');
+      if (!card) {
+        const parent = document.getElementById('simulationViewport');
+        card = document.createElement('div');
+        card.id = "finalScoreCard";
+        parent.appendChild(card);
+      }
+
+      card.className = "p-5 rounded-3xl text-center space-y-3 transition-all duration-500 ";
+      card.innerHTML = `
+        <div class="space-y-1">
+          <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText"></p>
+          <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed" id="finalStatusDescription"></p>
+        </div>
+        <div id="practiceRedirectBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <p class="text-[10px] text-red-700 dark:text-red-400 font-extrabold">Return to practice mode to review Cover tests and trial prisms.</p>
+          <button onclick="changeMode('practice')" class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+            <i class="fa-solid fa-graduation-cap mr-1"></i> Return to Practice
+          </button>
+        </div>
+      `;
+
+      card.classList.remove('hidden');
+      const statTxt = card.querySelector('#finalStatusText');
+      const statDsc = card.querySelector('#finalStatusDescription');
+      const rdrBlk = card.querySelector('#practiceRedirectBlock');
+
+      if (totalScore >= 80) {
+        soundFeedback('success');
+        card.className += "bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 animate-pulse";
+        statTxt.innerText = `PASSED (${totalScore}%)`;
+        statDsc.innerText = "Binocular cover test diagnostics evaluation logged. Symmetrical sensory criteria completed.";
+        rdrBlk.classList.add('hidden');
+
+        // Log completion badge to index hub database
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completed.includes('Cover-Test')) {
+          completed.push('Cover-Test');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        }
+        syncCompletionBadge();
+      } else {
+        soundFeedback('warning');
+        card.className += "bg-red-50 dark:bg-red-950/25 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-300";
+        statTxt.innerText = `FAILED (${totalScore}%)`;
+        statDsc.innerText = "Assessment score is below the 80% passing standard. Practice and review Cover tests.";
+        rdrBlk.classList.remove('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        completed = completed.filter(el => el !== 'Cover-Test');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        syncCompletionBadge();
+      }
+    }
+
+    function syncCompletionBadge() {
+      const completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completed.includes('Cover-Test')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/45 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+
+    // Modal display triggers
+    function openMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.remove('hidden');
+    }
+
+    function closeMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.add('hidden');
+    }
+
+    // Toggle dropdown trigger for mobile
+    function toggleMobileDropdown() {
+      document.getElementById('mobileDropdown').classList.toggle('hidden');
+    }
+
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const icon = document.getElementById('muteIcon');
+      const text = document.getElementById('muteText');
+      const mobileIcon = document.getElementById('mobileMuteIcon');
+      const mobileText = document.getElementById('mobileMuteText');
+
+      if (simState.soundMuted) {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400";
+        text.innerText = "Unmute";
+        if (mobileIcon) mobileIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+        if (mobileText) mobileText.innerText = "Unmute Sound";
+      } else {
+        icon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse";
+        text.innerText = "Mute";
+        if (mobileIcon) mobileIcon.className = "fa-solid fa-volume-high text-teal-700 animate-pulse";
+        if (mobileText) mobileText.innerText = "Mute Sound";
+        soundFeedback('blip');
+      }
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+      soundFeedback('switch');
+    }
+  </script>
+
+  <!-- ABOUT MODAL -->
+  <div id="aboutModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer text-slate-600 dark:text-slate-300">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-graduation-cap text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">About Binocular Cover Test Lab</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Vinayaka Mission's Research Foundation</p>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        This high-fidelity educational module explores monocular cover-uncover, phoric drifts, and clinical prism neutralization under AAO and EyeWiki standards.
+      </p>
+      <div class="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200/60 dark:border-slate-900 space-y-1.5 text-xs">
+        <p class="font-extrabold text-secondary tracking-widest text-[9px] uppercase">Faculty Architect &amp; Program Lead</p>
+        <p class="font-black text-slate-900 dark:text-white">Shivashangari M</p>
+        <p class="text-slate-500 dark:text-slate-400">Assistant Professor, Optometry Unit</p>
+        <p class="text-slate-500 dark:text-slate-400 text-[10px]">School of Allied Health Sciences (SAHS), Salem, Tamil Nadu, India.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- REFERENCE MODAL -->
+  <div id="referenceModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer text-slate-600 dark:text-slate-300">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">Clinical References</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Trusted Academic Guidelines &amp; Literature</p>
+        </div>
+      </div>
+      <div class="space-y-3 max-h-[350px] overflow-y-auto pr-1 text-xs">
+        <div class="space-y-1">
+          <span class="text-[9px] font-black uppercase text-secondary tracking-widest">AAO (Sensory & Motor Loops)</span>
+          <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+            A monocular cover test isolates the fixating eye to reveal manifest deviations (strabismus). The alternate cover test completely breaks binocular fusion by preventing shared light projection, isolating latent phoric deviations.
+          </p>
+        </div>
+        <div class="space-y-1 border-t border-slate-200 dark:border-slate-800 pt-2">
+          <span class="text-[9px] font-black uppercase text-emerald-600 tracking-widest">AOA Clinical Standards</span>
+          <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+            prismatic neutralization must occur symmetrically to reduce EOM target drift completely. Align BI prisms for exodeviations, BO prisms for esodeviations, BD prisms for hyperdeviations, and BU prisms for hypodeviations.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

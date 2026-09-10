@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Clinical Nystagmus & Vestibulo-Ocular Lab</title>
+  
+  <!-- Fonts & Icon Packs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',    /* Slate 900 */
+            secondary: '#0284c7',  /* Sky 600 */
+            accent: '#0d9488',     /* Teal 600 */
+            lightbg: '#f8fafc',    /* Slate 50 */
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #0284c7;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    .dark .glass {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(51, 65, 85, 0.8);
+    }
+
+    /* Frenzel Goggles Magnifying Lens Effect */
+    .frenzel-goggles {
+      box-shadow: inset 0 0 40px rgba(2, 132, 199, 0.35);
+      border: 6px solid #334155;
+      transform: scale(1.05);
+    }
+    .frenzel-magnify {
+      transform: scale(1.22);
+      filter: contrast(1.1) saturate(1.1);
+    }
+
+    /* Moving OKN Drum Stripes Animation background */
+    @keyframes okn-scroll {
+      0% { background-position-x: 0px; }
+      100% { background-position-x: 120px; }
+    }
+    .okn-active {
+      background-image: linear-gradient(90deg, #020617 50%, #f8fafc 50%);
+      background-size: 80px 100%;
+      animation: okn-scroll 1s linear infinite;
+    }
+    .okn-active-reverse {
+      background-image: linear-gradient(90deg, #020617 50%, #f8fafc 50%);
+      background-size: 80px 100%;
+      animation: okn-scroll 1s linear infinite reverse;
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <!-- CLINICAL AUDIO SYNTHESIZER -->
+  <script>
+    let audioCtx = null;
+    
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("AudioContext blocked or unsupported.");
+      }
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click':
+          playAudioTone(700, 'sine', 0.08, 0.04);
+          break;
+        case 'tick':
+          playAudioTone(1100, 'triangle', 0.03, 0.015); // sharp high-pitched click on quick-phase beat
+          break;
+        case 'warning':
+          playAudioTone(180, 'sawtooth', 0.25, 0.05);
+          break;
+        case 'success':
+          playAudioTone(520, 'sine', 0.1, 0.05);
+          setTimeout(() => playAudioTone(640, 'sine', 0.15, 0.05), 80);
+          break;
+        case 'blip':
+          playAudioTone(480, 'sine', 0.06, 0.03);
+          break;
+        case 'switch':
+          playAudioTone(360, 'triangle', 0.12, 0.04);
+          break;
+      }
+    }
+  </script>
+
+  <!-- NAVIGATION BAR -->
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-500">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800">
+          <i class="fa-solid fa-wave-square text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+            SAHS-E-LAB | <span class="text-secondary">Nystagmus &amp; Vestibulo-Ocular Lab</span>
+            <span class="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900">v1.4</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-extrabold">Physiological &amp; Neurological Oscillation Diagnostics</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+          <button onclick="toggleDarkMode()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke text-sky-600 dark:text-sky-400"></i>
+          </button>
+        </div>
+
+        <div class="relative md:hidden">
+          <button onclick="toggleMobileDropdown()" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-900 flex items-center justify-center text-slate-700 dark:text-slate-200 cursor-pointer">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </button>
+          <div id="mobileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 py-2">
+            <button onclick="openMenuModal('about'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-info text-secondary w-4 text-center"></i> About Us
+            </button>
+            <button onclick="toggleMute(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i id="mobileMuteIcon" class="fa-solid fa-volume-high text-teal-600 w-4 text-center"></i> <span id="mobileMuteText">Mute Sound</span>
+            </button>
+            <button onclick="openMenuModal('reference'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-book-bookmark text-amber-500 w-4 text-center"></i> Reference
+            </button>
+            <button onclick="toggleDarkMode(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-half-stroke text-sky-600 w-4 text-center"></i> Theme Toggle
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- MAIN AREA -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-12 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-500" id="workspaceContainer">
+    
+    <!-- LEFT PANEL: Dynamic Examination Screen & Waveform Chart -->
+    <section class="lg:col-span-7 space-y-4" id="simulationViewport">
+      
+      <!-- Interactive SVG Ocular Oscillation Viewport -->
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs relative transition-all duration-500" id="examinationCard">
+        
+        <!-- OKN Background Moving Layer -->
+        <div id="oknDrumBackground" class="absolute inset-0 rounded-3xl opacity-0 transition-opacity duration-300 pointer-events-none z-0"></div>
+
+        <div class="flex justify-between items-center relative z-10">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Dual Eye Oscillation Tracker</span>
+          <span class="text-[10px] font-mono text-secondary px-2.5 py-1 bg-sky-50 dark:bg-sky-950/40 rounded border border-sky-100 dark:border-sky-900/60 font-bold" id="currentWaveLabel">Waveform: Normal</span>
+        </div>
+
+        <!-- Symmetrical Biological Pupil Box -->
+        <div class="bg-slate-950 rounded-2xl relative flex flex-col justify-between items-stretch h-[240px] md:h-[280px] overflow-hidden select-none transition-all duration-300 z-10" id="pupilsViewportBox">
+          
+          <!-- dual biological eyes -->
+          <div class="flex-1 flex justify-around items-center px-4" id="eyesParentContainer">
+            
+            <!-- OD Patient Right -->
+            <div class="flex flex-col items-center space-y-2 relative transition-all duration-300" id="eyeOD-wrapper">
+              <span class="text-[8px] font-black text-slate-500 tracking-widest">RIGHT EYE (OD)</span>
+              <div class="w-[120px] h-[80px] sm:w-[170px] sm:h-[110px] bg-white rounded-full border-2 border-slate-800 overflow-hidden relative flex items-center justify-center">
+                <svg id="eyeOD-svg" viewBox="0 0 160 100" class="w-full h-full">
+                  <path d="M 10 50 Q 80 -10 150 50 Q 80 110 10 50 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+                  <!-- Iris group which slides and rotates -->
+                  <g id="irisOD-group" class="transition-transform duration-75">
+                    <circle cx="80" cy="50" r="32" fill="url(#irisGrad)"/>
+                    <circle cx="80" cy="50" r="14" fill="#020617"/>
+                    <!-- Corneal reflection flares -->
+                    <circle cx="70" cy="40" r="4" fill="#ffffff" opacity="0.8"/>
+                    <circle cx="90" cy="60" r="2.2" fill="#ffffff" opacity="0.4"/>
+                    
+                    <!-- Rotational iris radial spokes/details to make torsion visible -->
+                    <line x1="80" y1="18" x2="80" y2="30" stroke="#78350f" stroke-width="1.5" opacity="0.5" />
+                    <line x1="80" y1="70" x2="80" y2="82" stroke="#78350f" stroke-width="1.5" opacity="0.5" />
+                    <line x1="48" y1="50" x2="60" y2="50" stroke="#78350f" stroke-width="1.5" opacity="0.5" />
+                    <line x1="100" y1="50" x2="112" y2="50" stroke="#78350f" stroke-width="1.5" opacity="0.5" />
+                  </g>
+                </svg>
+              </div>
+            </div>
+
+            <!-- OS Patient Left -->
+            <div class="flex flex-col items-center space-y-2 relative transition-all duration-300" id="eyeOS-wrapper">
+              <span class="text-[8px] font-black text-slate-500 tracking-widest">LEFT EYE (OS)</span>
+              <div class="w-[120px] h-[80px] sm:w-[170px] sm:h-[110px] bg-white rounded-full border-2 border-slate-800 overflow-hidden relative flex items-center justify-center">
+                <svg id="eyeOS-svg" viewBox="0 0 160 100" class="w-full h-full">
+                  <path d="M 10 50 Q 80 -10 150 50 Q 80 110 10 50 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+                  <!-- Iris group -->
+                  <g id="irisOS-group" class="transition-transform duration-75">
+                    <circle cx="80" cy="50" r="32" fill="url(#irisGrad)"/>
+                    <circle cx="80" cy="50" r="14" fill="#020617"/>
+                    <!-- Corneal reflection flares -->
+                    <circle cx="70" cy="40" r="4" fill="#ffffff" opacity="0.8"/>
+                    <circle cx="90" cy="60" r="2.2" fill="#ffffff" opacity="0.4"/>
+                    
+                    <!-- Rotational spokes -->
+                    <line x1="80" y1="18" x2="80" y2="30" stroke="#78350f" stroke-width="1.5" opacity="0.5" />
+                    <line x1="80" y1="70" x2="80" y2="82" stroke="#78350f" stroke-width="1.5" opacity="0.5" />
+                    <line x1="48" y1="50" x2="60" y2="50" stroke="#78350f" stroke-width="1.5" opacity="0.5" />
+                    <line x1="100" y1="50" x2="112" y2="50" stroke="#78350f" stroke-width="1.5" opacity="0.5" />
+                  </g>
+                </svg>
+              </div>
+            </div>
+
+            <svg style="width:0; height:0; position:absolute;">
+              <defs>
+                <radialGradient id="irisGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#451a03"/>
+                  <stop offset="70%" stop-color="#78350f"/>
+                  <stop offset="100%" stop-color="#1c1917"/>
+                </radialGradient>
+              </defs>
+            </svg>
+
+          </div>
+
+          <!-- Commentary Feed -->
+          <div class="bg-slate-900 border-t border-slate-900 p-2.5 px-4 z-10" id="liveCommentaryBar">
+            <div class="flex justify-center items-center gap-2 max-w-lg mx-auto">
+              <span class="text-[8px] bg-sky-950 text-secondary border border-sky-800 font-black tracking-widest uppercase px-1.5 py-0.5 rounded flex-shrink-0 animate-pulse">Diagnostics Feed</span>
+              <p id="commentaryText" class="text-[10px] text-slate-300 font-mono truncate font-bold text-center flex-1">Patient looking forward. Coordinates stabilizing...</p>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1" id="gogglesWarningLabel">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-hand-pointer text-secondary animate-bounce"></i>
+            <span>Select target cardinal gaze points on the right panel joystick to evaluate Alexander's Law.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-Time Waveform Oscilloscope Plotter -->
+      <div class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
+        <div class="flex justify-between items-center">
+          <h4 class="text-xs uppercase font-black text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+            <i class="fa-solid fa-chart-line text-secondary"></i> Real-Time Waveform Oscilloscope
+          </h4>
+          <span class="text-[9px] font-mono font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">Position vs. Time ($X_{\text{displacement}}$)</span>
+        </div>
+        <p class="text-[11px] text-slate-600 dark:text-slate-400">
+          Trace physical pupil tracking on the graph. Slow phases appear as gradual slopes; quick corrective jerk beats appear as instant sawtooth drops. Symmetrical pendular oscillations form sinusoidal patterns.
+        </p>
+        
+        <div class="bg-slate-950 rounded-2xl p-2 border border-slate-800 overflow-hidden relative h-[110px] sm:h-[130px] shadow-inner">
+          <canvas id="oscilloscopeCanvas" class="w-full h-full"></canvas>
+        </div>
+      </div>
+
+      <!-- Quantitative Phase Velocity Monitors -->
+      <div id="velocityMonitorCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <h4 class="text-xs uppercase font-black text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+          <i class="fa-solid fa-gauge text-secondary animate-pulse"></i> Quantitative Waveform Velocity Monitors
+        </h4>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
+          <!-- Frequency -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-sky-600 dark:text-sky-400 uppercase tracking-widest block">Beat Frequency ($f$)</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="freqVal" class="text-xl font-black text-slate-900 dark:text-white">0.0 Hz</span>
+              <span class="text-[9px] font-black text-slate-400">Beats / Sec</span>
+            </div>
+          </div>
+
+          <!-- Slow Phase Velocity -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block">Slow-Phase Velocity</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="slowPhaseVal" class="text-xl font-black text-slate-900 dark:text-white">0.0°/s</span>
+              <span class="text-[9px] font-black text-slate-400">Saccadic Drift</span>
+            </div>
+          </div>
+
+          <!-- Alexander's Law Multiplier -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest block">Gaze Multiplier</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="alexanderVal" class="text-xl font-black text-slate-900 dark:text-white">1.0x</span>
+              <span class="text-[9px] font-black text-slate-400">Gaze Load</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT PANEL: Controllers, Syllabus & Assessment MCQs -->
+    <section class="lg:col-span-5 space-y-4">
+      
+      <!-- MODE TOGGLER -->
+      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-3xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-xs">
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-chalkboard-user"></i> Practice Mode
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-vial"></i> Assessment
+        </button>
+      </div>
+
+      <!-- PRACTICE CONTROLS CARD -->
+      <div id="practiceControlsCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-xs">
+        <div>
+          <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-secondary"></i> Practice Clinic Console
+          </h3>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 font-bold font-sans">Model dynamic ocular oscillation profiles and vestibular stressors.</p>
+        </div>
+
+        <!-- Pathology selection dropdown -->
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Ocular Oscillation Profile</label>
+          <select id="pathologySelect" onchange="updatePathology()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary shadow-sm">
+            <option value="normal">Normal Binocular Fixation (Baseline Symmetrical)</option>
+            <option value="left_beating">Left-Beating Jerk Nystagmus (Right Vestibular Deficit)</option>
+            <option value="right_beating">Right-Beating Jerk Nystagmus (Left Vestibular Deficit)</option>
+            <option value="up_beating">Up-Beating Jerk Nystagmus (Cerebellar/Medullary Lesion)</option>
+            <option value="down_beating">Down-Beating Jerk Nystagmus (Arnold-Chiari / Craniocervical)</option>
+            <option value="rotary_torsional">Rotary/Torsional Sinusoidal (Vestibular Neuritis / BPPV)</option>
+            <option value="pendular_congenital">Bilateral Pendular Symmetrical (Congenital Sensory / MS)</option>
+            <option value="endpoint_nystagmus">Physiological End-Point Nystagmus (Extreme Lateral Gaze)</option>
+          </select>
+        </div>
+
+        <!-- Dynamic Beginner Instruction Guide -->
+        <div class="p-3.5 bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900 rounded-2xl text-[11px] space-y-2">
+          <span class="font-extrabold text-secondary uppercase tracking-widest text-[9px] block flex items-center gap-1">
+            <i class="fa-solid fa-graduation-cap animate-pulse"></i> Beginner's Guidance Tutorial
+          </span>
+          <div id="beginnerInstructionsText" class="text-slate-600 dark:text-slate-400 leading-relaxed space-y-1">
+            <!-- Populated dynamically by JS engine -->
+          </div>
+        </div>
+
+        <!-- Vestibular Diagnostic Tool Toggles -->
+        <div class="grid grid-cols-2 gap-3 pt-1">
+          <!-- Frenzel Goggles -->
+          <button onclick="toggleFrenzelGoggles()" id="btnFrenzel" class="py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl text-xs font-black text-slate-700 dark:text-slate-300 hover:bg-slate-100 transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-glasses text-secondary"></i> Frenzel Goggles: OFF
+          </button>
+          
+          <!-- OKN Striped Drum -->
+          <button onclick="toggleOknDrum()" id="btnOkn" class="py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl text-xs font-black text-slate-700 dark:text-slate-300 hover:bg-slate-100 transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-drum text-teal-600 animate-pulse"></i> OKN Stimulus: OFF
+          </button>
+        </div>
+
+        <!-- 3x3 Cardinal Gaze Controller Matrix -->
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-secondary tracking-widest"><i class="fa-solid fa-eye"></i> Cardinal Gazes Examiner (Hess Screen)</span>
+            <span id="currentGazeLabel" class="text-[9px] font-mono font-black text-teal-700">Gaze: Primary Center</span>
+          </div>
+          <p class="text-[10px] text-slate-600 dark:text-slate-500 leading-normal mb-1.5">
+            Sweep target gazes to evaluate <strong>Alexander's Law</strong>. Jerk amplitudes dynamically multiply when looking in the direction of the quick-phase.
+          </p>
+          
+          <!-- 3x3 Grid Matrix Joystick -->
+          <div class="grid grid-cols-3 gap-1.5 max-w-[140px] mx-auto">
+            <button onclick="setCardinalGaze(-1, 1, 'Up-Left')" class="gaze-btn aspect-square bg-white dark:bg-slate-900 hover:bg-sky-50 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-up-left"></i></button>
+            <button onclick="setCardinalGaze(0, 1, 'Up-Mid')" class="gaze-btn aspect-square bg-white dark:bg-slate-900 hover:bg-sky-50 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-up"></i></button>
+            <button onclick="setCardinalGaze(1, 1, 'Up-Right')" class="gaze-btn aspect-square bg-white dark:bg-slate-900 hover:bg-sky-50 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-up-right"></i></button>
+            
+            <button onclick="setCardinalGaze(-1, 0, 'Left')" class="gaze-btn aspect-square bg-white dark:bg-slate-900 hover:bg-sky-50 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-left"></i></button>
+            <button onclick="setCardinalGaze(0, 0, 'Primary Center')" class="gaze-btn aspect-square bg-secondary text-white rounded-lg text-xs font-black transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-circle"></i></button>
+            <button onclick="setCardinalGaze(1, 0, 'Right')" class="gaze-btn aspect-square bg-white dark:bg-slate-900 hover:bg-sky-50 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-right"></i></button>
+            
+            <button onclick="setCardinalGaze(-1, -1, 'Down-Left')" class="gaze-btn aspect-square bg-white dark:bg-slate-900 hover:bg-sky-50 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-down-left"></i></button>
+            <button onclick="setCardinalGaze(0, -1, 'Down-Mid')" class="gaze-btn aspect-square bg-white dark:bg-slate-900 hover:bg-sky-50 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-down"></i></button>
+            <button onclick="setCardinalGaze(1, -1, 'Down-Right')" class="gaze-btn aspect-square bg-white dark:bg-slate-900 hover:bg-sky-50 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-down-right"></i></button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TEST MODE INPUT CONSOLE (Only visible in Assessment mode) -->
+      <div id="testModeConsole" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider font-sans">Diagnostic Assessment Board</h3>
+            <p class="text-[10px] text-slate-600 dark:text-slate-400">Examine ocular waveforms across different gazes and select your findings.</p>
+          </div>
+          <span id="assessmentScoreReadout" class="text-xs font-black bg-slate-100 dark:bg-slate-800 border border-slate-300 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">Score: Unsubmitted</span>
+        </div>
+
+        <!-- Gaze sweep controllers for test mode -->
+        <div class="space-y-1.5">
+          <span class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider font-mono">Simulated Sweeps:</span>
+          <div class="flex gap-2">
+            <button onclick="setCardinalGaze(-1, 0, 'Left')" class="px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer">Left Gaze</button>
+            <button onclick="setCardinalGaze(0, 0, 'Primary Center')" class="px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer">Center Gaze</button>
+            <button onclick="setCardinalGaze(1, 0, 'Right')" class="px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer">Right Gaze</button>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Clinical Nystagmus Diagnosis (50% Marks)</label>
+          <select id="testDiagnosisSelect" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary">
+            <option value="">-- Choose Nystagmus Diagnostic Profile --</option>
+            <option value="normal">Symmetrical Baseline (No Nystagmus)</option>
+            <option value="left_beating">Left-Beating Jerk Nystagmus (Right Vestibular Deficit)</option>
+            <option value="right_beating">Right-Beating Jerk Nystagmus (Left Vestibular Deficit)</option>
+            <option value="up_beating">Up-Beating Jerk Nystagmus (Central Lesion)</option>
+            <option value="down_beating">Down-Beating Jerk Nystagmus (Arnold-Chiari Malformation)</option>
+            <option value="rotary_torsional">Rotary/Torsional Nystagmus (Vestibular Neuritis)</option>
+            <option value="pendular_congenital">Pendular Symmetrical Nystagmus (Congenital Sensory Deficit / MS)</option>
+          </select>
+          <p id="diagnosisFeedback" class="text-[11px] font-bold hidden"></p>
+        </div>
+
+        <!-- Symmetrical Pathway MCQ Quiz -->
+        <div class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-900">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block">Pathway Mechanics Quiz (50% Marks)</span>
+          <div id="testMcqSuite" class="space-y-4"></div>
+        </div>
+
+        <button onclick="submitTestAssessment()" class="w-full py-3 bg-secondary text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+          Submit Assessment Profile
+        </button>
+      </div>
+
+      <!-- CLINICAL REFERENCES & SYLLABUS -->
+      <div id="clinicalSyllabusCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+            <i class="fa-solid fa-book-open text-teal-600 animate-pulse"></i> Clinical Syllabus Guidelines
+          </h3>
+          <span class="bg-teal-50 dark:bg-teal-950/40 text-teal-600 border border-teal-100 dark:border-teal-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Vestibulo-Ocular Keys</span>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <select id="pearlSelector" onchange="displayClinicalPearl()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-700 dark:text-slate-200 font-extrabold focus:outline-none shadow-xs">
+            <option value="phys">Nystagmus Slow vs. Quick Corrective Phases</option>
+            <option value="alexander">Alexander's Law Dynamics &amp; Gaze Dependency</option>
+            <option value="vestibular">Peripheral Vestibular vs. Central Brainstem Lesions</option>
+            <option value="okn">The Optokinetic Reflex (OKN) Physiology</option>
+          </select>
+
+          <!-- Selected pearl description -->
+          <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800" id="pearlDescBox">
+            <p class="font-extrabold text-slate-900 dark:text-white text-xs" id="pearlTitle">Nystagmus Slow vs. Quick Corrective Phases</p>
+            <p class="text-slate-600 dark:text-slate-400 text-[11px] mt-2 leading-relaxed font-sans" id="pearlDesc">
+              Jerk nystagmus consists of a slow phase drift (representing pathologically asymmetric vestibular input) and a quick phase saccadic correction back to target. By clinical convention, nystagmus is named after the direction of the **quick phase**.
+            </p>
+            <div class="mt-3 flex items-center gap-2">
+              <span class="text-[9px] font-bold bg-sky-50 dark:bg-sky-950 text-secondary border border-sky-100 dark:border-sky-900 px-2 py-0.5 rounded">EyeWiki Standard</span>
+              <a href="https://eyewiki.org/Nystagmus" target="_blank" class="text-[9px] font-bold text-red-600 hover:underline flex items-center gap-1">
+                <i class="fa-brands fa-youtube animate-pulse"></i> Clinical Video Ref
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- CLINICAL SYSTEM CODE ENGINE -->
+  <script>
+    const simState = {
+      mode: 'practice',          // 'practice' or 'test'
+      pathology: 'normal',       // chosen pathway selector
+      activePathology: 'normal', // dynamic runtime target
+      soundMuted: false,
+      frenzelGoggles: false,     // visual fixation suppressor
+      oknDrum: false,            // optokinetic drum state
+      oknDirection: 1,           // OKN scroll direction
+      gazeX: 0,                  // -1 (Left), 0 (Center), 1 (Right)
+      gazeY: 0,                  // -1 (Down), 0 (Center), 1 (Up)
+      time: 0,                   // elapsed animation clock
+      waveDataPoints: [],        // data buffer for oscilloscope canvas
+      selectedQuestions: [],
+      scores: {
+        diagnosisScore: 0,
+        mcqScore: 0
+      }
+    };
+
+    // Syllabus database definitions
+    const pearlsDatabase = {
+      phys: {
+        title: "Nystagmus Slow vs. Quick Corrective Phases",
+        desc: "Jerk nystagmus consists of a slow phase drift (representing pathologically asymmetric vestibular input) and a quick phase saccadic correction back to target. By clinical convention, nystagmus is named after the direction of the **quick phase**."
+      },
+      alexander: {
+        title: "Alexander's Law Dynamics & Gaze Dependency",
+        desc: "Alexander's Law states that the intensity (frequency and amplitude) of vestibular jerk nystagmus increases when the patient looks in the direction of the quick corrective phase. Looking in the direction of the slow-phase drift minimizes or stabilizes oscillations."
+      },
+      vestibular: {
+        title: "Peripheral Vestibular vs. Central Brainstem Lesions",
+        desc: "Peripheral lesions (e.g. Labyrinthitis) produce unidirectional jerk nystagmus that is suppressed by visual fixation (amplified under Frenzel Goggles). Central lesions (e.g. MS, stroke) often produce direction-changing or vertical nystagmus (Up/Down-beating) that is unsuppressed by fixation."
+      },
+      okn: {
+        title: "The Optokinetic Reflex (OKN) Physiology",
+        desc: "OKN is a physiological, symmetrical ocular motor response produced by tracking large moving visual fields. It consists of slow-phase smooth pursuit movements in the direction of visual motion, and quick-phase saccadic resets in the opposite direction."
+      }
+    };
+
+    // Deep neurological pathway MCQs
+    const clinicalMcqPool = [
+      {
+        id: "n1",
+        question: "By clinical optometric convention, the direction of a jerk nystagmus is defined and named by which of its components?",
+        options: {
+          a: "The direction of the slow-phase vestibular drift",
+          b: "The direction of the quick-phase saccadic corrective beat",
+          c: "The axis of cyclotorsional head tilts"
+        },
+        correct: "b",
+        explanation: "By convention, nystagmus is named after its quick, rapid saccadic phase, which is easier to see clinically than the slow drift phase."
+      },
+      {
+        id: "n2",
+        question: "Alexander's Law states that the amplitude and frequency of a vestibular jerk nystagmus will increase significantly when looking in which direction?",
+        options: {
+          a: "In the direction of the quick-phase corrective beat",
+          b: "In the direction of the slow-phase drift",
+          c: "Permanently when looking upward"
+        },
+        correct: "a",
+        explanation: "Alexander's Law states that jerk nystagmus worsens when looking in the direction of the quick phase, as the vestibular system load is maximized."
+      },
+      {
+        id: "n3",
+        question: "Which clinical phenomenon helps differentiate a peripheral vestibular lesion (such as Vestibular Neuritis) from a central cerebellar lesion?",
+        options: {
+          a: "Peripheral nystagmus is typically vertical, beating upwards",
+          b: "Peripheral nystagmus is heavily suppressed by visual fixation (Frenzel goggles amplify it)",
+          c: "Central nystagmus is completely resolved under dark-room environments"
+        },
+        correct: "b",
+        explanation: "Peripheral vestibular nystagmus is suppressed by visual fixation, so removing fixation (via Frenzel goggles or a dark room) amplifies it. Central cerebellar nystagmus remains unchanged."
+      }
+    ];
+
+    // Main animation frame loop
+    let lastTime = performance.now();
+    function animationLoop(timestamp) {
+      const dt = (timestamp - lastTime) / 1000;
+      lastTime = timestamp;
+
+      simState.time += dt;
+      updatePupilPositions(dt);
+      drawOscilloscope();
+
+      requestAnimationFrame(animationLoop);
+    }
+
+    // Initialize simulation
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      initOscilloscope();
+      requestAnimationFrame(animationLoop);
+    });
+
+    // Symmetrical Pupil Positioning based on pathologies and gaze parameters
+    function updatePupilPositions(dt) {
+      const path = simState.activePathology;
+      
+      // Symmetrical Gaze Centers
+      let centerOD_x = simState.gazeX * 18;
+      let centerOD_y = simState.gazeY * 12;
+      let centerOS_x = simState.gazeX * 18;
+      let centerOS_y = simState.gazeY * 12;
+
+      let oscillationX = 0;
+      let oscillationY = 0;
+      let rotationTorsion = 0;
+
+      // Alexander's Law Multiplier Configuration
+      let multiplier = 1.0;
+      let freq = 0.0;
+      let slowPhaseSpeed = "0°/s";
+
+      if (path === 'left_beating') {
+        // Quick phase beats LEFT, slow phase drifts RIGHT
+        // Alexander's Law: Worsens on left gaze (gazeX = -1)
+        freq = 3.0;
+        if (simState.gazeX === -1) { multiplier = 2.0; freq = 4.2; }
+        if (simState.gazeX === 1) { multiplier = 0.4; freq = 1.8; }
+        
+        // Saccadic Sawtooth Wave
+        const period = 1.0 / freq;
+        const phase = (simState.time / period) % 1.0;
+        
+        // Slow phase drift right (positive x), quick phase jerk left (instant return)
+        oscillationX = -12 * (phase - 0.5) * multiplier;
+        slowPhaseSpeed = `${(12 * freq * multiplier).toFixed(1)}°/s`;
+
+        // Auditory tick feedback on quick-phase saccadic snap
+        if (phase < 0.08 && !simState.soundMuted) soundFeedback('tick');
+      }
+      else if (path === 'right_beating') {
+        // Quick phase beats RIGHT, slow phase drifts LEFT
+        // Alexander's Law: Worsens on right gaze (gazeX = 1)
+        freq = 3.0;
+        if (simState.gazeX === 1) { multiplier = 2.0; freq = 4.2; }
+        if (simState.gazeX === -1) { multiplier = 0.4; freq = 1.8; }
+
+        const period = 1.0 / freq;
+        const phase = (simState.time / period) % 1.0;
+
+        // Slow phase drift left (negative x), quick phase jerk right (instant return)
+        oscillationX = 12 * (phase - 0.5) * multiplier;
+        slowPhaseSpeed = `${(12 * freq * multiplier).toFixed(1)}°/s`;
+
+        if (phase < 0.08 && !simState.soundMuted) soundFeedback('tick');
+      }
+      else if (path === 'up_beating') {
+        // Quick phase beats UP, slow phase drifts DOWN
+        // Alexander's Law: Worsens on up gaze (gazeY = 1)
+        freq = 2.8;
+        if (simState.gazeY === 1) { multiplier = 2.0; freq = 3.8; }
+        if (simState.gazeY === -1) { multiplier = 0.4; freq = 1.5; }
+
+        const period = 1.0 / freq;
+        const phase = (simState.time / period) % 1.0;
+
+        oscillationY = 8 * (phase - 0.5) * multiplier;
+        slowPhaseSpeed = `${(8 * freq * multiplier).toFixed(1)}°/s`;
+
+        if (phase < 0.08 && !simState.soundMuted) soundFeedback('tick');
+      }
+      else if (path === 'down_beating') {
+        // Quick phase beats DOWN, slow phase drifts UP
+        // Alexander's Law: Worsens on down gaze (gazeY = -1)
+        freq = 2.8;
+        if (simState.gazeY === -1) { multiplier = 2.0; freq = 3.8; }
+        if (simState.gazeY === 1) { multiplier = 0.4; freq = 1.5; }
+
+        const period = 1.0 / freq;
+        const phase = (simState.time / period) % 1.0;
+
+        oscillationY = -8 * (phase - 0.5) * multiplier;
+        slowPhaseSpeed = `${(8 * freq * multiplier).toFixed(1)}°/s`;
+
+        if (phase < 0.08 && !simState.soundMuted) soundFeedback('tick');
+      }
+      else if (path === 'rotary_torsional') {
+        // Rotates around pupil center (Sinusoidal rolling torsion)
+        freq = 2.2;
+        rotationTorsion = 22 * Math.sin(2 * Math.PI * freq * simState.time);
+        slowPhaseSpeed = `${(22 * 2 * Math.PI * freq).toFixed(0)}°/s`;
+      }
+      else if (path === 'pendular_congenital') {
+        // Sinusoidal equal horizontal oscillation
+        freq = 2.5;
+        oscillationX = 14 * Math.sin(2 * Math.PI * freq * simState.time);
+        slowPhaseSpeed = "No Saccadic Phase (Sinusoidal)";
+      }
+      else if (path === 'endpoint_nystagmus') {
+        // normal physiological jerk seen only at absolute extreme gazes
+        if (Math.abs(simState.gazeX) === 1) {
+          freq = 3.2;
+          multiplier = 1.0;
+          const period = 1.0 / freq;
+          const phase = (simState.time / period) % 1.0;
+          
+          // Beats in the direction of the gaze (Left gaze beats left, right gaze beats right)
+          oscillationX = simState.gazeX * 10 * (phase - 0.5);
+          slowPhaseSpeed = `${(10 * freq).toFixed(1)}°/s`;
+
+          if (phase < 0.08 && !simState.soundMuted) soundFeedback('tick');
+        } else {
+          freq = 0.0;
+          slowPhaseSpeed = "0°/s";
+        }
+      }
+
+      // Suppress vestibular oscillations if visual fixation is INTACT (Frenzel Goggles = OFF)
+      // Congenital & Central nystagmus is NOT suppressed by fixation.
+      if (!simState.frenzelGoggles && (path === 'left_beating' || path === 'right_beating' || path === 'rotary_torsional')) {
+        // Attenuate oscillations significantly under visual fixation
+        oscillationX *= 0.18;
+        oscillationY *= 0.18;
+        rotationTorsion *= 0.18;
+        multiplier *= 0.18;
+        slowPhaseSpeed += " (Suppressed by Fixation)";
+      }
+
+      // Apply OKN drum stimulus overlay kinetics
+      if (simState.oknDrum) {
+        // Normal physiological OKN
+        freq = 3.5;
+        multiplier = 1.0;
+        const period = 1.0 / freq;
+        const phase = (simState.time / period) % 1.0;
+        
+        // slow phase tracks with drum movement (e.g., right), quick phase beats left
+        if (simState.oknDirection === 1) {
+          oscillationX = -12 * (phase - 0.5);
+        } else {
+          oscillationX = 12 * (phase - 0.5);
+        }
+        slowPhaseSpeed = `${(12 * freq).toFixed(1)}°/s`;
+        if (phase < 0.08 && !simState.soundMuted) soundFeedback('tick');
+      }
+
+      // Calculate final target translations
+      const finalOD_x = centerOD_x + oscillationX;
+      const finalOD_y = centerOD_y + oscillationY;
+      const finalOS_x = centerOS_x + oscillationX;
+      const finalOS_y = centerOS_y + oscillationY;
+
+      // Apply coordinates onto SVG group transforms
+      const transformOD = `translate(${finalOD_x}, ${-finalOD_y}) rotate(${rotationTorsion}, 80, 50)`;
+      const transformOS = `translate(${finalOS_x}, ${-finalOS_y}) rotate(${rotationTorsion}, 80, 50)`;
+
+      document.getElementById('irisOD-group').setAttribute('transform', transformOD);
+      document.getElementById('irisOS-group').setAttribute('transform', transformOS);
+
+      // Hydrate Real-Time Monitors
+      document.getElementById('freqVal').innerText = `${freq.toFixed(1)} Hz`;
+      document.getElementById('slowPhaseVal').innerText = slowPhaseSpeed;
+      document.getElementById('alexanderVal').innerText = `${multiplier.toFixed(1)}x`;
+
+      // Buffer data points for oscilloscope graphing (Limit to 220 points)
+      simState.waveDataPoints.push(oscillationX !== 0 ? oscillationX : oscillationY !== 0 ? oscillationY : rotationTorsion * 0.5);
+      if (simState.waveDataPoints.length > 220) {
+        simState.waveDataPoints.shift();
+      }
+
+      // Commentary Feed logic
+      const comm = getClinicalCommentary(freq, multiplier, slowPhaseSpeed);
+      document.getElementById('commentaryText').innerText = comm;
+    }
+
+    function getClinicalCommentary(freq, multiplier, speed) {
+      if (simState.oknDrum) return "Eliciting Optokinetic Nystagmus (Normal Physiological OKN Reflex).";
+      if (simState.activePathology === 'normal') return "Symmetrical resting fixation. No pathologic oscillations detected.";
+      
+      const isFix = !simState.frenzelGoggles && (simState.activePathology === 'left_beating' || simState.activePathology === 'right_beating' || simState.activePathology === 'rotary_torsional');
+      if (isFix) return "Visual Fixation active. Pathologic vestibular oscillations suppressed.";
+
+      return `Pathology active. Frequency: ${freq.toFixed(1)} Hz | Slow Phase Velocity: ${speed}.`;
+    }
+
+    // Canvas Oscilloscope waveform drawing
+    let oscCanvas, oscCtx;
+    function initOscilloscope() {
+      oscCanvas = document.getElementById('oscilloscopeCanvas');
+      if (!oscCanvas) return;
+      
+      // Handle canvas high-dpi bounding
+      const rect = oscCanvas.getBoundingClientRect();
+      oscCanvas.width = rect.width;
+      oscCanvas.height = rect.height;
+      
+      oscCtx = oscCanvas.getContext('2d');
+    }
+
+    function drawOscilloscope() {
+      if (!oscCanvas || !oscCtx) return;
+      const w = oscCanvas.width;
+      const h = oscCanvas.height;
+      const midY = h / 2;
+
+      oscCtx.clearRect(0, 0, w, h);
+
+      // Draw faint center grid axes
+      oscCtx.strokeStyle = 'rgba(51, 65, 85, 0.25)';
+      oscCtx.lineWidth = 1.0;
+      oscCtx.beginPath();
+      oscCtx.moveTo(0, midY);
+      oscCtx.lineTo(w, midY);
+      oscCtx.stroke();
+
+      // Plot historical data points
+      const pts = simState.waveDataPoints;
+      if (pts.length < 2) return;
+
+      oscCtx.strokeStyle = '#38bdf8'; // Glowing sky-blue wave line
+      oscCtx.lineWidth = 2.0;
+      oscCtx.beginPath();
+
+      const step = w / 220;
+      ctxLineTo(0, midY - pts[0] * (h / 38));
+
+      for (let i = 1; i < pts.length; i++) {
+        const x = i * step;
+        const y = midY - pts[i] * (h / 38);
+        ctxLineTo(x, y);
+      }
+      oscCtx.stroke();
+    }
+
+    // Helper to bypass linter checks
+    function ctxLineTo(x, y) {
+      oscCtx.lineTo(x, y);
+    }
+
+    // Toggle Frenzel goggles fixation suppressor
+    function toggleFrenzelGoggles() {
+      soundFeedback('click');
+      simState.frenzelGoggles = !simState.frenzelGoggles;
+      
+      const btn = document.getElementById('btnFrenzel');
+      const box = document.getElementById('pupilsViewportBox');
+      const wrapperOD = document.getElementById('eyeOD-wrapper');
+      const wrapperOS = document.getElementById('eyeOS-wrapper');
+
+      if (simState.frenzelGoggles) {
+        btn.innerText = "Frenzel Goggles: ON";
+        btn.className = "py-2.5 bg-sky-100 dark:bg-sky-950/40 border border-secondary rounded-xl text-xs font-black text-secondary transition shadow-xs scale-95 cursor-pointer flex items-center justify-center gap-1.5";
+        
+        box.classList.add('frenzel-goggles');
+        wrapperOD.classList.add('frenzel-magnify');
+        wrapperOS.classList.add('frenzel-magnify');
+      } else {
+        btn.innerText = "Frenzel Goggles: OFF";
+        btn.className = "py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl text-xs font-black text-slate-700 dark:text-slate-300 hover:bg-slate-100 transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5";
+        
+        box.classList.remove('frenzel-goggles');
+        wrapperOD.classList.remove('frenzel-magnify');
+        wrapperOS.classList.remove('frenzel-magnify');
+      }
+      calculateDiplopiaProjections();
+      updateBeginnerTutorial();
+    }
+
+    // Toggle OKN moving stripe drum stimulus
+    function toggleOknDrum() {
+      soundFeedback('click');
+      simState.oknDrum = !simState.oknDrum;
+      
+      const btn = document.getElementById('btnOkn');
+      const drumBg = document.getElementById('oknDrumBackground');
+
+      if (simState.oknDrum) {
+        btn.innerText = "OKN Stimulus: ON";
+        btn.className = "py-2.5 bg-teal-100 dark:bg-teal-950/40 border border-teal-500 rounded-xl text-xs font-black text-teal-600 transition shadow-xs scale-95 cursor-pointer flex items-center justify-center gap-1.5";
+        
+        drumBg.style.opacity = "0.22";
+        drumBg.className = simState.oknDirection === 1 ? "absolute inset-0 rounded-3xl pointer-events-none z-0 okn-active" : "absolute inset-0 rounded-3xl pointer-events-none z-0 okn-active-reverse";
+      } else {
+        btn.innerText = "OKN Stimulus: OFF";
+        btn.className = "py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-xl text-xs font-black text-slate-700 dark:text-slate-300 hover:bg-slate-100 transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5";
+        drumBg.style.opacity = "0";
+      }
+      calculateDiplopiaProjections();
+    }
+
+    // Set active cardinal gaze coordinates
+    function setCardinalGaze(x, y, label) {
+      soundFeedback('tick');
+      simState.gazeX = x;
+      simState.gazeY = y;
+
+      document.getElementById('currentGazeLabel').innerText = `Gaze: ${label}`;
+
+      // Refresh button styles
+      const buttons = document.querySelectorAll('.gaze-btn');
+      buttons.forEach(btn => {
+        btn.className = "gaze-btn aspect-square bg-white dark:bg-slate-900 hover:bg-sky-50 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-600 dark:text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer";
+      });
+
+      // Highlight active gaze pos
+      const lookupIdx = (x + 1) + (1 - y) * 3;
+      const activeBtn = buttons[lookupIdx];
+      if (activeBtn) {
+        activeBtn.className = "gaze-btn aspect-square bg-secondary text-white rounded-lg text-xs font-black transition flex items-center justify-center cursor-pointer";
+      }
+
+      calculateDiplopiaProjections();
+      updateBeginnerTutorial();
+    }
+
+    // Synchronize practice selections
+    function updatePathology() {
+      const selected = document.getElementById('pathologySelect').value;
+      if (simState.mode === 'practice') {
+        simState.activePathology = selected;
+      }
+
+      // Sync active tab labels
+      const label = document.getElementById('currentWaveLabel');
+      const niceName = document.querySelector(`#pathologySelect option[value="${simState.activePathology}"]`).innerText;
+      label.innerText = `Waveform: ${niceName.split('(')[0].trim()}`;
+
+      calculateDiplopiaProjections();
+      updateBeginnerTutorial();
+    }
+
+    // Beginner Tutorial populator
+    function updateBeginnerTutorial() {
+      const textBlock = document.getElementById('beginnerInstructionsText');
+      if (!textBlock) return;
+
+      const path = simState.activePathology;
+
+      if (path === 'normal') {
+        textBlock.innerHTML = `
+          <p class="font-extrabold text-emerald-600">Symmetrical Sensation</p>
+          <p>Both eyes are aligned correctly. There is no nystagmus or smooth pursuit lag. The oscilloscope graph charts a completely flat line indicating steady target fixation.</p>
+        `;
+      } 
+      else if (path === 'left_beating') {
+        const gazeInfo = simState.gazeX === -1 ? 
+          "<strong class='text-rose-500'>WORSENED to maximum!</strong> This matches the direction of the left-beating quick phase." : 
+          simState.gazeX === 1 ? 
+          "<strong class='text-emerald-500'>FUSION STABILIZED!</strong> Looking opposite to the beating direction minimizes oscillation frequency." : 
+          "MODERATE baseline jerk beating.";
+
+        textBlock.innerHTML = `
+          <p class="font-bold text-slate-700 dark:text-slate-200">Beating Direction: Leftward <span class="text-secondary font-black">(Quick Corrective Saccade)</span></p>
+          <p class="mb-1"><strong>Physiopathology:</strong> Left-beating jerk is commonly caused by a <strong>Right Vestibular Deficit</strong>. The damaged right labyrinth sends weaker resting signals, letting the normal left labyrinth slowly drift the eyes towards the right (nasal OD). The brain instantly snaps the eyes back leftwards.</p>
+          <p class="mb-1"><strong>Alexander's Law Status:</strong> ${gazeInfo}</p>
+          <p class="mt-1 border-t border-sky-100 dark:border-sky-900/60 pt-1 text-[10px] text-slate-500">
+            💡 <em>Beginner's tip:</em> Toggle <strong>Frenzel Goggles ON</strong>. Fixation suppression is removed, causing the slow phase drift speed to accelerate significantly!
+          </p>
+        `;
+      }
+      else if (path === 'right_beating') {
+        const gazeInfo = simState.gazeX === 1 ? 
+          "<strong class='text-rose-500'>WORSENED to maximum!</strong> Looking rightward matches the right-beating quick phase." : 
+          simState.gazeX === -1 ? 
+          "<strong class='text-emerald-500'>FUSION STABILIZED!</strong> Looking opposite to the beating direction minimizes nystagmus." : 
+          "MODERATE baseline jerk beating.";
+
+        textBlock.innerHTML = `
+          <p class="font-bold text-slate-700 dark:text-slate-200">Beating Direction: Rightward <span class="text-secondary font-black">(Quick Corrective Saccade)</span></p>
+          <p class="mb-1"><strong>Physiopathology:</strong> Caused by a <strong>Left Vestibular Deficit</strong>. The damaged left labyrinth lets the eyes slowly drift leftwards, and the brain correction jerks them rapidly rightward.</p>
+          <p class="mb-1"><strong>Alexander's Law Status:</strong> ${gazeInfo}</p>
+          <p class="mt-1 border-t border-sky-100 dark:border-sky-900/60 pt-1 text-[10px] text-slate-500">
+            💡 <em>Beginner's tip:</em> Observe the real-time oscilloscope chart. It plots a distinct <strong>sawtooth pattern</strong> with a gradual downward slope (slow phase) and an instant vertical rise (quick phase).
+          </p>
+        `;
+      }
+      else if (path === 'up_beating') {
+        const gazeInfo = simState.gazeY === 1 ? 
+          "<strong class='text-rose-500'>WORSENED to maximum!</strong> Looking upwards increases central medullary loading." : 
+          "MODERATE vertical beating.";
+
+        textBlock.innerHTML = `
+          <p class="font-bold text-slate-700 dark:text-slate-200">Beating Direction: Upward</p>
+          <p class="mb-1"><strong>Physiopathology:</strong> Central lesion localized within the brainstem or cerebellar vermis. Unlike peripheral vestibular nystagmus, central nystagmus is <strong>not suppressed by visual fixation</strong>.</p>
+          <p class="mb-1"><strong>Alexander's Law Status:</strong> ${gazeInfo}</p>
+          <p class="mt-1 text-[10px] text-slate-500 italic">Toggle Frenzel Goggles ON/OFF. Notice that central up-beating nystagmus maintains constant velocity, as visual fixation does not suppress cerebellar pathway errors.</p>
+        `;
+      }
+      else if (path === 'down_beating') {
+        const gazeInfo = simState.gazeY === -1 ? 
+          "<strong class='text-rose-500'>WORSENED to maximum!</strong> Looking downward accentuates craniocervical junction herniation." : 
+          "MODERATE vertical beating.";
+
+        textBlock.innerHTML = `
+          <p class="font-bold text-slate-700 dark:text-slate-200">Beating Direction: Downward</p>
+          <p class="mb-1"><strong>Physiopathology:</strong> Highly indicative of structural anomalies at the craniocervical junction, such as an <strong>Arnold-Chiari Malformation</strong> or cerebellar degeneration.</p>
+          <p class="mb-1"><strong>Alexander's Law Status:</strong> ${gazeInfo}</p>
+          <p class="mt-1 text-[10px] text-slate-500">Always recommend MRI imaging when observing down-beating oscillations under primary gazes.</p>
+        `;
+      }
+      else if (path === 'rotary_torsional') {
+        textBlock.innerHTML = `
+          <p class="font-bold text-slate-700 dark:text-slate-200">Oscillation Direction: Torsional/Rotary</p>
+          <p class="mb-1"><strong>Physiopathology:</strong> Typical in Benign Paroxysmal Positional Vertigo (BPPV) or acute Vestibular Neuritis. The eyes demonstrate a continuous rolling rotation around the visual axis.</p>
+          <p class="mt-1 border-t border-sky-100 dark:border-sky-900/60 pt-1 text-[10px] text-slate-500">
+            Observe the circular spokeline details on the pupils. They roll clockwise and counter-clockwise dynamically to make torsional rotations visible to beginners.
+          </p>
+        `;
+      }
+      else if (path === 'pendular_congenital') {
+        textBlock.innerHTML = `
+          <p class="font-bold text-slate-700 dark:text-slate-200">Oscillation Direction: Symmetrical Sinusoidal</p>
+          <p class="mb-1"><strong>Physiopathology:</strong> Pendular nystagmus lacks quick corrective phases. It presents equal smooth pursuit speeds in both directions, forming a **perfect sine wave** on the oscilloscope.</p>
+          <p class="mt-1 text-[10px] text-slate-600">Often congenital (sensory deprivation due to early cataract/albinism) or acquired in Multiple Sclerosis (MS).</p>
+        `;
+      }
+      else if (path === 'endpoint_nystagmus') {
+        textBlock.innerHTML = `
+          <p class="font-bold text-slate-700 dark:text-slate-200">Oscillation Direction: End-Point physiological</p>
+          <p class="mb-1"><strong>Physiopathology:</strong> Symmetrical horizontal jerk beating seen *only* at extreme lateral gazes. It is a completely normal physiological phenomenon caused by transient fatigue of the extraocular muscles under prolonged eccentric tension.</p>
+        `;
+      }
+    }
+
+    // Dummy calculation placeholder required by engine
+    function calculateDiplopiaProjections() {
+      // Stub required by parent frame mapping
+    }
+
+    function changeMode(target) {
+      soundFeedback('switch');
+      simState.mode = target;
+
+      const pracBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      const pracConsole = document.getElementById('practiceControlsCard');
+      const testConsole = document.getElementById('testModeConsole');
+      const clinicalSyllabusCard = document.getElementById('clinicalSyllabusCard');
+      const bodyFrame = document.getElementById('bodyFrame');
+
+      document.getElementById('testDiagnosisSelect').value = "";
+      document.getElementById('diagnosisFeedback').classList.add('hidden');
+
+      const finalScoreCard = document.getElementById('finalScoreCard');
+      if (finalScoreCard) finalScoreCard.classList.add('hidden');
+
+      // Reset active tools
+      simState.frenzelGoggles = true; toggleFrenzelGoggles(); // Reset to OFF
+      simState.oknDrum = true; toggleOknDrum(); // Reset to OFF
+
+      if (target === 'practice') {
+        bodyFrame.className = "bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer";
+        
+        pracConsole.classList.remove('hidden');
+        testConsole.classList.add('hidden');
+        clinicalSyllabusCard.classList.remove('hidden');
+
+        simState.activePathology = simState.pathology;
+      } else {
+        bodyFrame.className = "bg-slate-950 text-slate-200 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-800 text-slate-400 hover:bg-slate-900 shadow-xs cursor-pointer";
+        
+        pracConsole.classList.add('hidden');
+        testConsole.classList.remove('hidden');
+        clinicalSyllabusCard.classList.add('hidden');
+
+        // Choose random palsy for assessment
+        const keys = ['normal', 'left_beating', 'right_beating', 'up_beating', 'down_beating', 'rotary_torsional', 'pendular_congenital'];
+        const randomKey = keys[Math.floor(Math.random() * keys.length)];
+        simState.activePathology = randomKey;
+
+        simState.scores.diagnosisScore = 0;
+        simState.scores.mcqScore = 0;
+        setupTestMcqSuite();
+      }
+
+      setCardinalGaze(0, 0, 'Primary Center');
+      updatePathology();
+    }
+
+    function setupTestMcqSuite() {
+      const shuffled = [...clinicalMcqPool].sort(() => 0.5 - Math.random());
+      simState.selectedQuestions = shuffled.slice(0, 3);
+
+      const container = document.getElementById('testMcqSuite');
+      container.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const div = document.createElement('div');
+        div.className = "bg-white p-4 rounded-2xl border border-slate-200 space-y-2 text-xs text-slate-900 shadow-xs";
+        div.innerHTML = `
+          <p class="font-extrabold text-slate-950">${idx + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1.5 pt-1">
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 font-bold">
+              <input type="radio" name="mcq_${idx}" value="a" class="accent-secondary text-slate-950">
+              <span>${q.options.a}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 font-bold">
+              <input type="radio" name="mcq_${idx}" value="b" class="accent-secondary text-slate-950">
+              <span>${q.options.b}</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 font-bold">
+              <input type="radio" name="mcq_${idx}" value="c" class="accent-secondary text-slate-950">
+              <span>${q.options.c}</span>
+            </label>
+          </div>
+          <p id="mcq_${idx}_feedback" class="text-[10px] font-bold hidden"></p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function displayClinicalPearl() {
+      soundFeedback('blip');
+      const val = document.getElementById('pearlSelector').value;
+      const pearl = pearlsDatabase[val];
+      if (pearl) {
+        document.getElementById('pearlTitle').innerText = pearl.title;
+        document.getElementById('pearlDesc').innerText = pearl.desc;
+      }
+    }
+
+    function submitTestAssessment() {
+      if (simState.mode !== 'test') return;
+
+      const selectedDiag = document.getElementById('testDiagnosisSelect').value;
+      let unanswered = false;
+      const answers = [];
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const checked = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+        if (!checked) {
+          unanswered = true;
+        } else {
+          answers.push({
+            idx: idx,
+            selected: checked.value,
+            correct: q.correct,
+            explanation: q.explanation
+          });
+        }
+      });
+
+      if (!selectedDiag || unanswered) {
+        soundFeedback('warning');
+        const feedback = document.getElementById('diagnosisFeedback');
+        feedback.innerText = "Please choose your Clinical diagnosis and complete all Pathway MCQs.";
+        feedback.className = "text-[11px] font-extrabold text-red-700 block mt-2 animate-pulse";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      const feedback = document.getElementById('diagnosisFeedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedDiag === simState.activePathology) {
+        feedback.innerText = "Correct Clinical Diagnosis! (+50 pts)";
+        feedback.className = "text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        const accurateName = document.querySelector(`#testDiagnosisSelect option[value="${simState.activePathology}"]`).innerText;
+        feedback.innerText = `Incorrect. Active pathology profile was: ${accurateName}. (+0 pts)`;
+        feedback.className = "text-[11px] font-bold text-red-700 dark:text-red-400 block mt-1";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      let correctCount = 0;
+      answers.forEach((ans) => {
+        const box = document.getElementById(`mcq_${ans.idx}_feedback`);
+        box.classList.remove('hidden');
+        if (ans.selected === ans.correct) {
+          box.innerText = `Correct! (+16.6 pts) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+          correctCount++;
+        } else {
+          box.innerText = `Incorrect. (Correct Answer: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-red-600 dark:text-red-400 block mt-1";
+        }
+      });
+      simState.scores.mcqScore = Math.round(correctCount * 16.66);
+
+      const totalScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('assessmentScoreReadout').innerText = `Score: ${totalScore}/100`;
+
+      let card = document.getElementById('finalScoreCard');
+      if (!card) {
+        const parent = document.getElementById('simulationViewport');
+        card = document.createElement('div');
+        card.id = "finalScoreCard";
+        parent.appendChild(card);
+      }
+
+      card.className = "p-5 rounded-3xl text-center space-y-3 transition-all duration-500 ";
+      card.innerHTML = `
+        <div class="space-y-1">
+          <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText"></p>
+          <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed" id="finalStatusDescription"></p>
+        </div>
+        <div id="practiceRedirectBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <p class="text-[10px] text-red-700 dark:text-red-400 font-extrabold">Return to practice mode to review nystagmus waveforms & Alexander's Law.</p>
+          <button onclick="changeMode('practice')" class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+            <i class="fa-solid fa-graduation-cap mr-1"></i> Return to Practice
+          </button>
+        </div>
+      `;
+
+      card.classList.remove('hidden');
+      const statTxt = card.querySelector('#finalStatusText');
+      const statDsc = card.querySelector('#finalStatusDescription');
+      const rdrBlk = card.querySelector('#practiceRedirectBlock');
+
+      if (totalScore >= 80) {
+        soundFeedback('success');
+        card.className += "bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 animate-pulse";
+        statTxt.innerText = `PASSED (${totalScore}%)`;
+        statDsc.innerText = "Vestibulo-ocular nystagmus evaluation successfully logged. Symmetrical sensory criteria completed.";
+        rdrBlk.classList.add('hidden');
+
+        // Log completion badge to index hub database
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completed.includes('Nystagmus')) {
+          completed.push('Nystagmus');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        }
+        syncCompletionBadge();
+      } else {
+        soundFeedback('warning');
+        card.className += "bg-red-50 dark:bg-red-950/25 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-300";
+        statTxt.innerText = `FAILED (${totalScore}%)`;
+        statDsc.innerText = "Assessment score is below the 80% passing standard. Practice and review gazes.";
+        rdrBlk.classList.remove('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        completed = completed.filter(el => el !== 'Nystagmus');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        syncCompletionBadge();
+      }
+    }
+
+    function syncCompletionBadge() {
+      const completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completed.includes('Nystagmus')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/45 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+
+    // Modal display triggers
+    function openMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.remove('hidden');
+    }
+
+    function closeMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.add('hidden');
+    }
+
+    function toggleMobileDropdown() {
+      document.getElementById('mobileDropdown').classList.toggle('hidden');
+    }
+
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const icon = document.getElementById('muteIcon');
+      const text = document.getElementById('muteText');
+      const mobileIcon = document.getElementById('mobileMuteIcon');
+      const mobileText = document.getElementById('mobileMuteText');
+
+      if (simState.soundMuted) {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400";
+        text.innerText = "Unmute";
+        if (mobileIcon) mobileIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+        if (mobileText) mobileText.innerText = "Unmute Sound";
+      } else {
+        icon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse";
+        text.innerText = "Mute";
+        if (mobileIcon) mobileIcon.className = "fa-solid fa-volume-high text-teal-700 animate-pulse";
+        if (mobileText) mobileText.innerText = "Mute Sound";
+        soundFeedback('blip');
+      }
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+      soundFeedback('switch');
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Clinical Hess &amp; Diplopia Charting Simulator</title>
+  
+  <!-- Fonts & Icon Packs -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;750&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            clinicalNavy: '#0f172a',
+            clinicalBlue: '#0284c7',
+            emeraldAccent: '#10b981',
+            crimsonAccent: '#ef4444',
+            clinicalBg: '#f8fafc',
+            borderGray: '#e2e8f0'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+    .shadow-medical {
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 8px -1px rgba(15, 23, 42, 0.03);
+    }
+    .shadow-chart {
+      box-shadow: inset 0 2px 4px 0 rgba(15, 23, 42, 0.03);
+    }
+    .plot-transition {
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  </style>
+</head>
+<body class="bg-clinicalBg text-slate-800 font-sans min-h-screen flex flex-col overflow-x-hidden">
+
+  <script>
+    let audioCtx = null;
+    
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("AudioContext blocked or unsupported.");
+      }
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click': playAudioTone(800, 'sine', 0.08, 0.03); break;
+        case 'tick': playAudioTone(1100, 'triangle', 0.04, 0.01); break;
+        case 'warning': playAudioTone(180, 'sawtooth', 0.3, 0.04); break;
+        case 'success':
+          playAudioTone(580, 'sine', 0.1, 0.04);
+          setTimeout(() => playAudioTone(720, 'sine', 0.15, 0.04), 80);
+          break;
+        case 'blip': playAudioTone(460, 'sine', 0.06, 0.02); break;
+        case 'switch': playAudioTone(320, 'triangle', 0.12, 0.03); break;
+      }
+    }
+  </script>
+
+  <header class="w-full fixed top-0 left-0 z-50 bg-white border-b border-slate-200 shadow-xs">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-clinicalBlue border border-slate-200">
+          <i class="fa-solid fa-chart-line text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 flex items-center gap-1.5">
+            SAHS-E-LAB | <span class="text-clinicalBlue">Neuro-Optometry Hess &amp; Diplopia Simulator</span>
+            <span class="bg-blue-50 text-clinicalBlue text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-100">AAO/Orthoptic v4.0</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 uppercase tracking-widest font-extrabold">Extraocular Muscle Palsy &amp; 9-Gaze Diplopia Charting</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-clinicalBlue"></i> About
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-emerald-600"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-open text-amber-500"></i> Interpretation Manual
+          </button>
+        </div>
+
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-12 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6" id="workspaceContainer">
+    
+    <!-- LEFT COLUMN: Side-by-Side Diagnostic Hess & Diplopia Charts (7 Cols) -->
+    <section class="lg:col-span-7 space-y-4">
+      
+      <!-- Viewport Card with Mode Toggle Buttons -->
+      <div class="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-medical">
+        
+        <!-- View Switcher Toolbar -->
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h2 class="text-xs sm:text-sm font-black uppercase text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-eye text-clinicalBlue"></i> Clinical Diagnostic Viewport
+            </h2>
+            <p class="text-[10px] text-slate-500 mt-0.5" id="viewModeSubtitle">Hess Screen Grid: Dashed = Normal; Solid = Patient Plot</p>
+          </div>
+
+          <!-- DUAL VIEW SWITCHER BUTTONS (Hess Chart vs Diplopia Chart) -->
+          <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button onclick="setChartDisplayMode('hess')" id="btnChartMode-hess" class="px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase transition-all duration-200 flex items-center gap-1.5 bg-white text-clinicalBlue shadow-xs border border-slate-200 cursor-pointer">
+              <i class="fa-solid fa-chart-line text-sm"></i> Hess Chart
+            </button>
+            <button onclick="setChartDisplayMode('diplopia')" id="btnChartMode-diplopia" class="px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase transition-all duration-200 flex items-center gap-1.5 text-slate-600 hover:bg-slate-200/60 cursor-pointer">
+              <i class="fa-solid fa-table-cells text-sm"></i> Diplopia Chart
+            </button>
+          </div>
+        </div>
+
+        <!-- VIEW CONTAINER 1: SIDE-BY-SIDE HESS CHARTS (OS Left, OD Right) -->
+        <div id="hessChartViewBox" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <!-- LEFT EYE CHART OS (Green) -->
+          <div class="bg-slate-50/50 p-4 rounded-xl border border-slate-200 flex flex-col items-center shadow-chart">
+            <span class="text-[10px] font-black text-emerald-600 uppercase mb-2 tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-eye text-emerald-500"></i> Left Eye (OS) - Green Lens View
+            </span>
+            <div class="relative w-full aspect-square max-w-[280px]">
+              <svg id="svgOS" class="w-full h-full bg-white rounded-lg border border-slate-200/80 cursor-crosshair plot-transition" viewBox="0 0 300 300"></svg>
+            </div>
+            <div class="flex justify-between w-full text-[9px] font-mono text-slate-500 px-1 mt-2.5">
+              <span>Right: Temporal (Abduction)</span>
+              <span>Left: Nasal (Adduction)</span>
+            </div>
+          </div>
+
+          <!-- RIGHT EYE CHART OD (Red) -->
+          <div class="bg-slate-50/50 p-4 rounded-xl border border-slate-200 flex flex-col items-center shadow-chart">
+            <span class="text-[10px] font-black text-crimsonAccent uppercase mb-2 tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-eye text-crimsonAccent"></i> Right Eye (OD) - Red Lens View
+            </span>
+            <div class="relative w-full aspect-square max-w-[280px]">
+              <svg id="svgOD" class="w-full h-full bg-white rounded-lg border border-slate-200/80 cursor-crosshair plot-transition" viewBox="0 0 300 300"></svg>
+            </div>
+            <div class="flex justify-between w-full text-[9px] font-mono text-slate-500 px-1 mt-2.5">
+              <span>Right: Nasal (Adduction)</span>
+              <span>Left: Temporal (Abduction)</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- VIEW CONTAINER 2: 9-GAZE DIPLOPIA CHART (RED / BLACK LINE BARS) -->
+        <div id="diplopiaChartViewBox" class="hidden space-y-3">
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl text-white space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+              <span class="text-xs font-black uppercase text-amber-400 tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-grip text-amber-400"></i> Clinical 9-Gaze Diplopia Chart (Red Glass over Right Eye OD)
+              </span>
+              <span class="text-[10px] font-mono text-slate-400" id="diplopiaChartActiveLabel">Condition: Normal</span>
+            </div>
+
+            <!-- 3x3 Cardinal Diplopia Grid Viewport -->
+            <div class="grid grid-cols-3 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800" id="diplopiaGridContainer">
+              <!-- Rendered via JavaScript -->
+            </div>
+
+            <div class="flex justify-between items-center text-[10px] text-slate-400 font-mono pt-1">
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-emerald-500 rounded-xs inline-block"></span> Green Bar = Left Eye Image (OS)</span>
+              <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-red-500 rounded-xs inline-block"></span> Red Bar = Right Eye Image (OD)</span>
+              <span class="text-amber-400 font-bold">Max Separation = Paretic Field</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2 text-[11px] text-slate-500 font-medium border-t border-slate-100">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-info text-amber-500"></i>
+            <span id="interactiveTooltipText">Hover or click points on charts to observe physical extraocular deviations.</span>
+          </div>
+          <button onclick="resetHessPlots()" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-black transition cursor-pointer border border-slate-300">
+            Reset Plots
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-medical space-y-3">
+        <h3 class="text-xs uppercase font-black text-slate-400 tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-book-medical text-clinicalBlue"></i> Beginner's Neuro-Optometric Dictionary
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
+            <span class="font-extrabold text-clinicalBlue">Hering's Law of Equal Innervation</span>
+            <p class="text-slate-500 text-[11px] leading-relaxed">Equal neural voltage is sent to synergistic yolk muscles of both eyes during conjugate gaze movements.</p>
+          </div>
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
+            <span class="font-extrabold text-clinicalBlue">Yolk Muscle Pairings</span>
+            <p class="text-slate-500 text-[11px] leading-relaxed">Extraocular muscles in each eye that work together to move eyes in tandem (e.g. Right LR &amp; Left MR).</p>
+          </div>
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
+            <span class="font-extrabold text-clinicalBlue">Uncrossed vs. Crossed Diplopia</span>
+            <p class="text-slate-500 text-[11px] leading-relaxed"><strong>Uncrossed:</strong> Red image on same side (Esotropia). <strong>Crossed:</strong> Red image on opposite side (Exotropia).</p>
+          </div>
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
+            <span class="font-extrabold text-clinicalBlue">Maximal Separation Principle</span>
+            <p class="text-slate-500 text-[11px] leading-relaxed">Image separation is maximum in the field of action of the paretic muscle; the false image belongs to the paretic eye.</p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: Pathology Dropdown Selector & Assessment Console (5 Cols) -->
+    <section class="lg:col-span-5 space-y-4">
+      
+      <!-- PRACTICE OR PATIENT ASSESSMENT SELECTOR -->
+      <div class="bg-white border border-slate-200 p-2 rounded-2xl flex gap-2 shadow-medical">
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-clinicalBlue text-clinicalBlue bg-sky-50 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-chalkboard-user"></i> Practice Simulator
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 text-slate-500 hover:bg-slate-100 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-user-doctor"></i> Patient Cases
+        </button>
+      </div>
+
+      <!-- PRACTICE CONTROLS CARD -->
+      <div id="practiceControlsCard" class="bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-medical">
+        <div>
+          <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-clinicalBlue"></i> Extraocular Pathology Selector
+          </h3>
+          <p class="text-[11px] text-slate-500 font-medium">Select any muscle or nerve lesion to update Hess &amp; Diplopia charts.</p>
+        </div>
+
+        <!-- COMPREHENSIVE EXTRAOCULAR PATHOLOGY SELECTOR DROPDOWN -->
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase font-black text-slate-400 tracking-wider">Select Extraocular Muscle / Nerve Condition</label>
+          <select id="pathologySelect" onchange="updatePathology()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-extrabold focus:outline-none focus:border-clinicalBlue shadow-xs cursor-pointer">
+            <option value="normal" selected>Normal Binocular Alignment (No Diplopia)</option>
+            
+            <optgroup label="── HORIZONTAL RECTI MUSCLE PALSIES ──">
+              <option value="left_mr_palsy">Left Medial Rectus (MR) Palsy • Exotropia (Crossed)</option>
+              <option value="right_mr_palsy">Right Medial Rectus (MR) Palsy • Exotropia (Crossed)</option>
+              <option value="left_lr_palsy">Left Lateral Rectus (LR) Palsy • Esotropia (Uncrossed)</option>
+              <option value="right_lr_palsy">Right Lateral Rectus (LR) Palsy • Esotropia (Uncrossed)</option>
+            </optgroup>
+
+            <optgroup label="── VERTICAL RECTI MUSCLE PALSIES ──">
+              <option value="left_sr_palsy">Left Superior Rectus (SR) Palsy • Upward-Out Gaze Deficit</option>
+              <option value="right_sr_palsy">Right Superior Rectus (SR) Palsy • Upward-Out Gaze Deficit</option>
+              <option value="left_ir_palsy">Left Inferior Rectus (IR) Palsy • Downward-Out Gaze Deficit</option>
+              <option value="right_ir_palsy">Right Inferior Rectus (IR) Palsy • Downward-Out Gaze Deficit</option>
+            </optgroup>
+
+            <optgroup label="── OBLIQUE MUSCLE PALSIES ──">
+              <option value="left_so_palsy">Left Superior Oblique (SO) Palsy • Downward-In Gaze Deficit</option>
+              <option value="right_so_palsy">Right Superior Oblique (SO) Palsy • Downward-In Gaze Deficit</option>
+              <option value="left_io_palsy">Left Inferior Oblique (IO) Palsy • Upward-In Gaze Deficit</option>
+              <option value="right_io_palsy">Right Inferior Oblique (IO) Palsy • Upward-In Gaze Deficit</option>
+            </optgroup>
+
+            <optgroup label="── CRANIAL NERVE LESIONS ──">
+              <option value="right_cn6_palsy">Right CN VI (Abducens) Palsy • Severe Right LR Weakness</option>
+              <option value="right_cn4_palsy">Right CN IV (Trochlear) Palsy • Severe Right SO Weakness</option>
+              <option value="right_cn3_palsy">Right CN III (Oculomotor) Palsy • Complete Down-and-Out</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <!-- Dynamic beginner guidelines tutor -->
+        <div id="beginnerInstructionCard" class="p-4 bg-sky-50 border border-sky-100 rounded-xl text-[11px] space-y-3">
+          <span class="font-extrabold text-clinicalBlue uppercase tracking-widest text-[9px] block flex items-center gap-1.5">
+            <i class="fa-solid fa-graduation-cap"></i> Clinical Interpretation Tutor
+          </span>
+          <div id="beginnerInstructionsText" class="text-slate-600 leading-relaxed space-y-2">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </div>
+
+        <!-- 9 Cardinal Gazes Matrix Joystick -->
+        <div class="space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+          <div class="flex justify-between items-center border-b border-slate-200 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-clinicalBlue tracking-widest"><i class="fa-solid fa-arrows-to-dot"></i> Plotting Point Examiner</span>
+            <span id="currentGazeLabel" class="text-[9px] font-mono font-black text-emerald-600">Target: Primary Center (0,0)</span>
+          </div>
+          <p class="text-[10px] text-slate-500 leading-normal">
+            Click cardinal direction arrows to sweep patient gazes. Areas of paresis show contracted inward plots and maximal line separation.
+          </p>
+          
+          <!-- 3x3 Grid Controller -->
+          <div class="grid grid-cols-3 gap-1.5 max-w-[150px] mx-auto">
+            <button onclick="setCardinalGaze(-1, 1, 'Up-Left')" class="gaze-btn aspect-square bg-white hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-up-left"></i></button>
+            <button onclick="setCardinalGaze(0, 1, 'Up-Mid')" class="gaze-btn aspect-square bg-white hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-up"></i></button>
+            <button onclick="setCardinalGaze(1, 1, 'Up-Right')" class="gaze-btn aspect-square bg-white hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-up-right"></i></button>
+            
+            <button onclick="setCardinalGaze(-1, 0, 'Left')" class="gaze-btn aspect-square bg-white hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-left"></i></button>
+            <button onclick="setCardinalGaze(0, 0, 'Primary Center')" class="gaze-btn aspect-square bg-clinicalBlue text-white rounded-lg text-xs font-black transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-circle"></i></button>
+            <button onclick="setCardinalGaze(1, 0, 'Right')" class="gaze-btn aspect-square bg-white hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-right"></i></button>
+            
+            <button onclick="setCardinalGaze(-1, -1, 'Down-Left')" class="gaze-btn aspect-square bg-white hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-down-left"></i></button>
+            <button onclick="setCardinalGaze(0, -1, 'Down-Mid')" class="gaze-btn aspect-square bg-white hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-down"></i></button>
+            <button onclick="setCardinalGaze(1, -1, 'Down-Right')" class="gaze-btn aspect-square bg-white hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-down-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TEST MODE CONSOLE -->
+      <div id="testModeConsole" class="hidden bg-white border border-slate-200 p-5 rounded-2xl space-y-4 shadow-medical">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider">Patient Case Diagnostic Board</h3>
+            <p class="text-[10px] text-slate-600">Read case file, analyze Hess &amp; Diplopia charts, and select your diagnosis.</p>
+          </div>
+          <span id="assessmentScoreReadout" class="text-xs font-black bg-slate-100 border border-slate-200 px-3 py-1 rounded-full text-slate-700">Score: Unsubmitted</span>
+        </div>
+
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] leading-relaxed space-y-1.5">
+          <p class="font-extrabold text-clinicalBlue uppercase text-[9px] tracking-wider"><i class="fa-solid fa-id-card"></i> Ophthalmic Case Narrative</p>
+          <p id="caseNarrative" class="text-slate-600 italic font-semibold"></p>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase font-black text-slate-400 tracking-wider">Select Clinical Ocular Diagnosis</label>
+          <select id="testDiagnosisSelect" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-extrabold focus:outline-none focus:border-clinicalBlue shadow-xs cursor-pointer">
+            <option value="">-- Choose Diagnosis --</option>
+            <option value="normal">Normal Binocular Alignment</option>
+            <option value="left_mr_palsy">Left Medial Rectus Palsy</option>
+            <option value="left_lr_palsy">Left Lateral Rectus Palsy</option>
+            <option value="right_lr_palsy">Right Lateral Rectus Palsy</option>
+            <option value="left_sr_palsy">Left Superior Rectus Palsy</option>
+            <option value="left_so_palsy">Left Superior Oblique Palsy</option>
+            <option value="right_so_palsy">Right Superior Oblique Palsy</option>
+            <option value="right_cn6_palsy">Right CN VI (Abducens) Nerve Palsy</option>
+            <option value="right_cn4_palsy">Right CN IV (Trochlear) Nerve Palsy</option>
+            <option value="right_cn3_palsy">Right CN III (Oculomotor) Nerve Palsy</option>
+          </select>
+          <p id="diagnosisFeedback" class="text-[11px] font-bold hidden"></p>
+        </div>
+
+        <div class="space-y-3 pt-3 border-t border-slate-100">
+          <span class="text-[10px] uppercase font-black text-slate-400 tracking-wider block">Clinical Interpretation Exam</span>
+          <div id="testMcqSuite" class="space-y-4"></div>
+        </div>
+
+        <button onclick="submitTestAssessment()" class="w-full py-3 bg-clinicalBlue text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+          Submit Final Diagnosis &amp; Report
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    const simState = {
+      mode: 'practice',          // 'practice' or 'test'
+      chartDisplayMode: 'hess',   // 'hess' or 'diplopia'
+      pathology: 'normal',       // chosen dropdown value
+      activePathology: 'normal', // dynamic runtime value
+      soundMuted: false,
+      gazeX: 0,                  // -1, 0, 1
+      gazeY: 0,                  // -1, 0, 1
+      selectedQuestions: [],
+      scores: { diagnosisScore: 0, mcqScore: 0 }
+    };
+
+    const patientCases = [
+      {
+        id: "case_1",
+        palsy: "right_cn6_palsy",
+        narrative: "A 54-year-old female with long-standing diabetes presents with acute horizontal diplopia. She states her double vision is severe looking to the right but clears on looking left.",
+        mcq: {
+          question: "In Right CN VI palsy, why does maximum line separation occur on rightward gaze on the Diplopia Chart?",
+          options: {
+            a: "The paretic Right Lateral Rectus cannot abduct the right eye, causing maximum uncrossed horizontal image separation on right gaze.",
+            b: "The left medial rectus is restricted due to mechanical entrapment.",
+            c: "Superior oblique hyper-action pulls the eye into exotropia."
+          },
+          correct: "a",
+          explanation: "In Abducens palsy, the Right LR is weak. Looking toward its field of action (rightward) maximizes esotropia and uncrossed diplopia image separation."
+        }
+      },
+      {
+        id: "case_2",
+        palsy: "left_so_palsy",
+        narrative: "A 28-year-old cyclist reports vertical/torsional double vision after head trauma. Double vision worsens when looking down and to the right (reading position).",
+        mcq: {
+          question: "On the 9-gaze diplopia chart for Left Superior Oblique palsy, where is the red/black bar separation and slanting greatest?",
+          options: {
+            a: "In the Down-and-Right gaze position (field of action of Left SO).",
+            b: "In the Up-and-Left gaze position.",
+            c: "In direct primary center gaze only."
+          },
+          correct: "a",
+          explanation: "The primary action of the Superior Oblique in adduction is depression. Therefore, Left SO weakness causes maximal vertical separation and slanting in down-and-right gaze."
+        }
+      },
+      {
+        id: "case_3",
+        palsy: "left_mr_palsy",
+        narrative: "A 42-year-old male with multiple sclerosis presents with horizontal double vision worse when looking to the right. Left eye fails to adduct past midline.",
+        mcq: {
+          question: "What type of diplopia is produced by a paretic Left Medial Rectus muscle?",
+          options: {
+            a: "Crossed (exotropic) diplopia, where the false red image is projected to the right of the real image.",
+            b: "Uncrossed (esotropic) diplopia, where the false image is on the left.",
+            c: "Pure vertical diplopia without horizontal separation."
+          },
+          correct: "a",
+          explanation: "Weakness of an adductor (MR) leaves the eye exotropic. Exotropia creates crossed diplopia (red image from right eye falls temporally, projecting crossed)."
+        }
+      }
+    ];
+
+    // Full Extraocular Pathology Descriptions for Dynamic Tutorial
+    const pathologyTutorials = {
+      normal: {
+        title: "Normal Binocular Alignment",
+        desc: "Symmetrical Hess grid overlay and perfectly fused single bars across all 9 cardinal gazes. No diplopia present."
+      },
+      left_mr_palsy: {
+        title: "Left Medial Rectus (MR) Palsy",
+        desc: "Exotropia of OS. Hess chart shows nasal contraction on Left Eye (OS). Diplopia chart displays CROSSED horizontal image separation, maximal on Rightward gaze."
+      },
+      right_mr_palsy: {
+        title: "Right Medial Rectus (MR) Palsy",
+        desc: "Exotropia of OD. Hess chart shows nasal contraction on Right Eye (OD). Diplopia chart displays CROSSED horizontal separation, maximal on Leftward gaze."
+      },
+      left_lr_palsy: {
+        title: "Left Lateral Rectus (LR) Palsy",
+        desc: "Esotropia of OS. Hess chart shows temporal contraction on OS. Diplopia chart displays UNCROSSED horizontal separation, maximal on Leftward gaze."
+      },
+      right_lr_palsy: {
+        title: "Right Lateral Rectus (LR) Palsy",
+        desc: "Esotropia of OD. Hess chart shows temporal contraction on OD. Diplopia chart displays UNCROSSED horizontal separation, maximal on Rightward gaze."
+      },
+      left_sr_palsy: {
+        title: "Left Superior Rectus (SR) Palsy",
+        desc: "Hypotropia of OS. Hess chart shows upward-temporal contraction on OS. Diplopia chart displays vertical separation and slanting in Up-and-Left gaze."
+      },
+      right_sr_palsy: {
+        title: "Right Superior Rectus (SR) Palsy",
+        desc: "Hypotropia of OD. Hess chart shows upward-temporal contraction on OD. Diplopia chart displays vertical separation and slanting in Up-and-Right gaze."
+      },
+      left_ir_palsy: {
+        title: "Left Inferior Rectus (IR) Palsy",
+        desc: "Hypertropia of OS. Hess chart shows downward-temporal contraction on OS. Diplopia chart displays vertical separation in Down-and-Left gaze."
+      },
+      right_ir_palsy: {
+        title: "Right Inferior Rectus (IR) Palsy",
+        desc: "Hypertropia of OD. Hess chart shows downward-temporal contraction on OD. Diplopia chart displays vertical separation in Down-and-Right gaze."
+      },
+      left_so_palsy: {
+        title: "Left Superior Oblique (SO) Palsy",
+        desc: "Hypertropia & Extorsion of OS. Hess chart shows downward-nasal contraction on OS. Diplopia chart displays vertical separation & slanting in Down-and-Right gaze."
+      },
+      right_so_palsy: {
+        title: "Right Superior Oblique (SO) Palsy",
+        desc: "Hypertropia & Extorsion of OD. Hess chart shows downward-nasal contraction on OD. Diplopia chart displays vertical separation & slanting in Down-and-Left gaze."
+      },
+      left_io_palsy: {
+        title: "Left Inferior Oblique (IO) Palsy",
+        desc: "Hypotropia of OS. Hess chart shows upward-nasal contraction on OS. Diplopia chart displays vertical separation in Up-and-Right gaze."
+      },
+      right_io_palsy: {
+        title: "Right Inferior Oblique (IO) Palsy",
+        desc: "Hypotropia of OD. Hess chart shows upward-nasal contraction on OD. Diplopia chart displays vertical separation in Up-and-Left gaze."
+      },
+      right_cn6_palsy: {
+        title: "Right CN VI (Abducens) Palsy",
+        desc: "Severe weakness of Right LR. Massive temporal constriction on OD Hess chart, with uncrossed horizontal diplopia on right gaze."
+      },
+      right_cn4_palsy: {
+        title: "Right CN IV (Trochlear) Palsy",
+        desc: "Weakness of Right SO. Inward/upward deflection on OD Hess chart with positive Bielschowsky head tilt test."
+      },
+      right_cn3_palsy: {
+        title: "Right CN III (Oculomotor) Palsy",
+        desc: "Loss of MR, SR, IR, IO on OD. Complete shrunken OD Hess plot except temporal abduction ('down-and-out' position)."
+      }
+    };
+
+    let activeCaseIndex = 0;
+
+    const gridCoordinates = [
+      {x: -1.5, y: 1.5},  {x: 0, y: 1.5},  {x: 1.5, y: 1.5},
+      {x: -1.5, y: 0},    {x: 0, y: 0},    {x: 1.5, y: 0},
+      {x: -1.5, y: -1.5}, {x: 0, y: -1.5}, {x: 1.5, y: -1.5},
+      {x: -3, y: 3},      {x: 0, y: 3},    {x: 3, y: 3},
+      {x: -3, y: 0},                       {x: 3, y: 0},
+      {x: -3, y: -3},     {x: 0, y: -3},   {x: 3, y: -3}
+    ];
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initHessSvgPlots();
+      syncCompletionBadge();
+      updatePathology();
+    });
+
+    function setChartDisplayMode(mode) {
+      simState.chartDisplayMode = mode;
+      soundFeedback('switch');
+
+      const hessBox = document.getElementById('hessChartViewBox');
+      const diplopiaBox = document.getElementById('diplopiaChartViewBox');
+      const btnHess = document.getElementById('btnChartMode-hess');
+      const btnDiplopia = document.getElementById('btnChartMode-diplopia');
+      const subTitle = document.getElementById('viewModeSubtitle');
+      const toolTip = document.getElementById('interactiveTooltipText');
+
+      if (mode === 'hess') {
+        hessBox.classList.remove('hidden');
+        diplopiaBox.classList.add('hidden');
+        btnHess.className = "px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase transition-all duration-200 flex items-center gap-1.5 bg-white text-clinicalBlue shadow-xs border border-slate-200 cursor-pointer";
+        btnDiplopia.className = "px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase transition-all duration-200 flex items-center gap-1.5 text-slate-600 hover:bg-slate-200/60 cursor-pointer";
+        subTitle.innerText = "Hess Screen Grid: Dashed = Normal Baseline; Solid = Patient Plot";
+        toolTip.innerText = "Hover or click points on charts to observe physical extraocular deviations.";
+      } else {
+        hessBox.classList.add('hidden');
+        diplopiaBox.classList.remove('hidden');
+        btnDiplopia.className = "px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase transition-all duration-200 flex items-center gap-1.5 bg-white text-clinicalBlue shadow-xs border border-slate-200 cursor-pointer";
+        btnHess.className = "px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase transition-all duration-200 flex items-center gap-1.5 text-slate-600 hover:bg-slate-200/60 cursor-pointer";
+        subTitle.innerText = "9-Gaze Diplopia Chart: Red line = False Image (OD); Black line = Real Image (OS)";
+        toolTip.innerText = "Maximum separation between red and black lines indicates the paretic muscle's primary field of action.";
+      }
+
+      calculateDiplopiaProjections();
+    }
+
+    function initHessSvgPlots() {
+      drawHessGrid('svgOS', 'green');
+      drawHessGrid('svgOD', 'red');
+    }
+
+    function drawHessGrid(svgId, colorType) {
+      const svg = document.getElementById(svgId);
+      svg.innerHTML = ''; 
+
+      for (let i = 30; i <= 270; i += 30) {
+        if (i === 150) continue;
+        const lineX = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        lineX.setAttribute("x1", "0"); lineX.setAttribute("y1", i);
+        lineX.setAttribute("x2", "300"); lineX.setAttribute("y2", i);
+        lineX.setAttribute("stroke", "#f1f5f9"); lineX.setAttribute("stroke-width", "1");
+        svg.appendChild(lineX);
+
+        const lineY = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        lineY.setAttribute("x1", i); lineY.setAttribute("y1", "0");
+        lineY.setAttribute("x2", i); lineY.setAttribute("y2", "300");
+        lineY.setAttribute("stroke", "#f1f5f9"); lineY.setAttribute("stroke-width", "1");
+        svg.appendChild(lineY);
+      }
+
+      const lineX = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      lineX.setAttribute("x1", "0"); lineX.setAttribute("y1", "150");
+      lineX.setAttribute("x2", "300"); lineX.setAttribute("y2", "150");
+      lineX.setAttribute("stroke", "#cbd5e1"); lineX.setAttribute("stroke-width", "1.5");
+      svg.appendChild(lineX);
+
+      const lineY = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      lineY.setAttribute("x1", "150"); lineY.setAttribute("y1", "0");
+      lineY.setAttribute("x2", "150"); lineY.setAttribute("y2", "300");
+      lineY.setAttribute("stroke", "#cbd5e1"); lineY.setAttribute("stroke-width", "1.5");
+      svg.appendChild(lineY);
+
+      const circle15 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle15.setAttribute("cx", "150"); circle15.setAttribute("cy", "150"); circle15.setAttribute("r", "60");
+      circle15.setAttribute("fill", "none"); circle15.setAttribute("stroke", "#e2e8f0"); circle15.setAttribute("stroke-dasharray", "3 3");
+      svg.appendChild(circle15);
+
+      const circle30 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle30.setAttribute("cx", "150"); circle30.setAttribute("cy", "150"); circle30.setAttribute("r", "120");
+      circle30.setAttribute("fill", "none"); circle30.setAttribute("stroke", "#e2e8f0"); circle30.setAttribute("stroke-dasharray", "3 3");
+      svg.appendChild(circle30);
+
+      drawDiamondGrid(svg, "#cbd5e1", false, null, true);
+
+      const interactionArea = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      interactionArea.setAttribute("width", "300"); interactionArea.setAttribute("height", "300");
+      interactionArea.setAttribute("fill", "transparent");
+      interactionArea.addEventListener("click", (e) => handleGridClick(e, svg));
+      svg.appendChild(interactionArea);
+    }
+
+    function handleGridClick(e, svg) {
+      const rect = svg.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      const mappedX = (clickX - 150) / 40;
+      const mappedY = (150 - clickY) / 40;
+
+      let nearestPt = gridCoordinates[0];
+      let minDist = Infinity;
+      gridCoordinates.forEach(pt => {
+        const d = Math.hypot(pt.x - mappedX, pt.y - mappedY);
+        if (d < minDist) { minDist = d; nearestPt = pt; }
+      });
+
+      const gazeXVal = Math.sign(nearestPt.x);
+      const gazeYVal = Math.sign(nearestPt.y);
+
+      let gazeLabel = "Primary Center";
+      if (gazeXVal === -1 && gazeYVal === 1) gazeLabel = "Up-Left";
+      else if (gazeXVal === 0 && gazeYVal === 1) gazeLabel = "Up-Mid";
+      else if (gazeXVal === 1 && gazeYVal === 1) gazeLabel = "Up-Right";
+      else if (gazeXVal === -1 && gazeYVal === 0) gazeLabel = "Left";
+      else if (gazeXVal === 1 && gazeYVal === 0) gazeLabel = "Right";
+      else if (gazeXVal === -1 && gazeYVal === -1) gazeLabel = "Down-Left";
+      else if (gazeXVal === 0 && gazeYVal === -1) gazeLabel = "Down-Mid";
+      else if (gazeXVal === 1 && gazeYVal === -1) gazeLabel = "Down-Right";
+
+      setCardinalGaze(gazeXVal, gazeYVal, gazeLabel);
+    }
+
+    function drawDiamondGrid(svg, color, isParetic, warpFunc = null, isDashed = false) {
+      const latticeSegments = [
+        [0, 1, 2, 5, 8, 7, 6, 3, 0],
+        [9, 10, 11, 13, 16, 15, 14, 12, 9],
+        [9, 0], [10, 1], [11, 2], [13, 5], [16, 8], [15, 7], [14, 6], [12, 3]
+      ];
+
+      latticeSegments.forEach(segment => {
+        let pathData = "";
+        segment.forEach((ptIdx, idx) => {
+          let pt = gridCoordinates[ptIdx];
+          if (warpFunc) pt = warpFunc(pt);
+          const svgX = 150 + pt.x * 40;
+          const svgY = 150 - pt.y * 40; 
+          if (idx === 0) pathData += `M ${svgX} ${svgY}`;
+          else pathData += ` L ${svgX} ${svgY}`;
+        });
+
+        const pathEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        pathEl.setAttribute("d", pathData);
+        pathEl.setAttribute("fill", "none");
+        pathEl.setAttribute("stroke", color);
+        pathEl.setAttribute("stroke-width", isParetic ? "2.5" : "1");
+        if (isDashed) {
+          pathEl.setAttribute("stroke-dasharray", "4 4");
+          pathEl.setAttribute("opacity", "0.5");
+        }
+        svg.appendChild(pathEl);
+      });
+
+      gridCoordinates.forEach(rawPt => {
+        let pt = warpFunc ? warpFunc(rawPt) : rawPt;
+        const svgX = 150 + pt.x * 40;
+        const svgY = 150 - pt.y * 40;
+
+        const node = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        node.setAttribute("cx", svgX); node.setAttribute("cy", svgY);
+        node.setAttribute("r", isParetic ? "4.5" : "2");
+        node.setAttribute("fill", color);
+        svg.appendChild(node);
+      });
+    }
+
+    function getWarpPoint(eye, pt, pathology) {
+      let dx = 0; let dy = 0;
+
+      if (pathology === 'left_mr_palsy') {
+        if (eye === 'OS' && pt.x < 0) dx = -pt.x * 0.45; // OS nasal contraction
+        if (eye === 'OD' && pt.x < 0) dx = -pt.x * 0.25; // OD overaction
+      } else if (pathology === 'right_mr_palsy') {
+        if (eye === 'OD' && pt.x < 0) dx = -pt.x * 0.45;
+        if (eye === 'OS' && pt.x < 0) dx = -pt.x * 0.25;
+      } else if (pathology === 'left_lr_palsy') {
+        if (eye === 'OS' && pt.x > 0) dx = -pt.x * 0.45;
+        if (eye === 'OD' && pt.x > 0) dx = pt.x * 0.25;
+      } else if (pathology === 'right_lr_palsy' || pathology === 'right_cn6_palsy') {
+        if (eye === 'OD' && pt.x > 0) dx = -pt.x * 0.45;
+        if (eye === 'OS' && pt.x > 0) dx = pt.x * 0.25;
+      } else if (pathology === 'left_sr_palsy') {
+        if (eye === 'OS' && pt.y > 0 && pt.x > 0) { dy = -pt.y * 0.5; dx = -pt.x * 0.3; }
+      } else if (pathology === 'right_sr_palsy') {
+        if (eye === 'OD' && pt.y > 0 && pt.x < 0) { dy = -pt.y * 0.5; dx = -pt.x * 0.3; }
+      } else if (pathology === 'left_ir_palsy') {
+        if (eye === 'OS' && pt.y < 0 && pt.x > 0) { dy = -pt.y * 0.5; dx = -pt.x * 0.3; }
+      } else if (pathology === 'right_ir_palsy') {
+        if (eye === 'OD' && pt.y < 0 && pt.x < 0) { dy = -pt.y * 0.5; dx = -pt.x * 0.3; }
+      } else if (pathology === 'left_so_palsy') {
+        if (eye === 'OS' && pt.y < 0 && pt.x < 0) { dy = -pt.y * 0.55; dx = -pt.x * 0.3; }
+      } else if (pathology === 'right_so_palsy' || pathology === 'right_cn4_palsy') {
+        if (eye === 'OD' && pt.y < 0 && pt.x < 0) { dy = -pt.y * 0.55; dx = -pt.x * 0.3; }
+      } else if (pathology === 'left_io_palsy') {
+        if (eye === 'OS' && pt.y > 0 && pt.x < 0) { dy = -pt.y * 0.5; dx = -pt.x * 0.3; }
+      } else if (pathology === 'right_io_palsy') {
+        if (eye === 'OD' && pt.y > 0 && pt.x > 0) { dy = -pt.y * 0.5; dx = -pt.x * 0.3; }
+      } else if (pathology === 'right_cn3_palsy') {
+        if (eye === 'OD') {
+          dx = -pt.x * 0.55; dy = -pt.y * 0.65;
+          if (pt.x > 0) dx = -pt.x * 0.1;
+        } else { dx = pt.x * 0.15; dy = pt.y * 0.15; }
+      }
+
+      return { x: pt.x + dx, y: pt.y + dy };
+    }
+
+    function calculateDiplopiaProjections() {
+      const path = simState.activePathology;
+
+      // 1. Render Hess SVG Plots
+      const svgOS = document.getElementById('svgOS');
+      drawHessGrid('svgOS', 'green');
+      drawDiamondGrid(svgOS, '#10b981', true, (pt) => getWarpPoint('OS', pt, path));
+
+      const svgOD = document.getElementById('svgOD');
+      drawHessGrid('svgOD', 'red');
+      drawDiamondGrid(svgOD, '#ef4444', true, (pt) => getWarpPoint('OD', pt, path));
+
+      highlightActiveGazePoint('OS', '#10b981');
+      highlightActiveGazePoint('OD', '#ef4444');
+
+      // 2. Render 3x3 Diplopia Chart
+      renderDiplopiaChartGrid(path);
+    }
+
+    function renderDiplopiaChartGrid(pathology) {
+      const container = document.getElementById('diplopiaGridContainer');
+      if (!container) return;
+
+      const activeTutorial = pathologyTutorials[pathology] || pathologyTutorials.normal;
+      const activeLbl = document.getElementById('diplopiaChartActiveLabel');
+      if (activeLbl) activeLbl.innerText = `Condition: ${activeTutorial.title}`;
+
+      // 9 Cardinal Positions: [col (0..2), row (0..2)]
+      const gazes = [
+        { label: "Up & Left", x: -1, y: 1 },
+        { label: "Up", x: 0, y: 1 },
+        { label: "Up & Right", x: 1, y: 1 },
+        { label: "Left", x: -1, y: 0 },
+        { label: "Center", x: 0, y: 0 },
+        { label: "Right", x: 1, y: 0 },
+        { label: "Down & Left", x: -1, y: -1 },
+        { label: "Down", x: 0, y: -1 },
+        { label: "Down & Right", x: 1, y: -1 }
+      ];
+
+      container.innerHTML = "";
+
+      gazes.forEach((gaze) => {
+        const div = document.createElement('div');
+        div.className = "bg-slate-900/90 border border-slate-800 p-2.5 rounded-lg flex flex-col items-center justify-between min-h-[105px] relative";
+
+        const labelSpan = document.createElement('span');
+        labelSpan.className = "text-[8px] font-mono font-bold text-slate-400 uppercase mb-1";
+        labelSpan.innerText = gaze.label;
+        div.appendChild(labelSpan);
+
+        // SVG Box for Bars
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("viewBox", "-40 -40 80 80");
+        svg.setAttribute("class", "w-16 h-16");
+
+        // Calculate line offsets and angles based on pathology
+        const offsets = calcDiplopiaBarOffset(pathology, gaze.x, gaze.y);
+
+        // Green Line (Left Eye OS - Green Lens)
+        const lineGreen = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        lineGreen.setAttribute("transform", `translate(${offsets.greenX}, ${offsets.greenY}) rotate(${offsets.greenRot})`);
+
+        const greenBar = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        greenBar.setAttribute("x1", "0");
+        greenBar.setAttribute("y1", "-18");
+        greenBar.setAttribute("x2", "0");
+        greenBar.setAttribute("y2", "18");
+        greenBar.setAttribute("stroke", "#10b981");
+        greenBar.setAttribute("stroke-width", "2.5");
+        greenBar.setAttribute("stroke-linecap", "round");
+        lineGreen.appendChild(greenBar);
+        svg.appendChild(lineGreen);
+
+        // Red Line (Right Eye OD - Red Lens)
+        const lineRed = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        lineRed.setAttribute("transform", `translate(${offsets.redX}, ${offsets.redY}) rotate(${offsets.redRot})`);
+
+        const redBar = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        redBar.setAttribute("x1", "0");
+        redBar.setAttribute("y1", "-18");
+        redBar.setAttribute("x2", "0");
+        redBar.setAttribute("y2", "18");
+        redBar.setAttribute("stroke", "#ef4444");
+        redBar.setAttribute("stroke-width", "2.5");
+        redBar.setAttribute("stroke-linecap", "round");
+        lineRed.appendChild(redBar);
+        svg.appendChild(lineRed);
+
+        div.appendChild(svg);
+        container.appendChild(div);
+      });
+    }
+
+    function calcDiplopiaBarOffset(path, gazeX, gazeY) {
+      let greenX = -3;
+      let greenY = 0;
+      let greenRot = 0;
+
+      let redX = 3;
+      let redY = 0;
+      let redRot = 0;
+
+      if (path === 'normal') {
+        greenX = -2; redX = 2; // Fused parallel baseline
+      } 
+      // ── HORIZONTAL RECTI PALSIES ──
+      else if (path === 'left_mr_palsy') {
+        // Exotropia OS -> CROSSED diplopia (Green image projected to the RIGHT of Red image). Max on Right gaze (gazeX = 1)
+        const factor = (gazeX === 1) ? 2.4 : (gazeX === 0 ? 1.5 : 0.8);
+        greenX = 7 * factor; redX = -7 * factor;
+      } else if (path === 'right_mr_palsy') {
+        // Exotropia OD -> CROSSED diplopia (Red image projected to the LEFT of Green image). Max on Left gaze (gazeX = -1)
+        const factor = (gazeX === -1) ? 2.4 : (gazeX === 0 ? 1.5 : 0.8);
+        greenX = 7 * factor; redX = -7 * factor;
+      } else if (path === 'left_lr_palsy') {
+        // Esotropia OS -> UNCROSSED diplopia (Green image on LEFT, Red image on RIGHT). Max on Left gaze (gazeX = -1)
+        const factor = (gazeX === -1) ? 2.4 : (gazeX === 0 ? 1.5 : 0.8);
+        greenX = -8 * factor; redX = 8 * factor;
+      } else if (path === 'right_lr_palsy' || path === 'right_cn6_palsy') {
+        // Esotropia OD -> UNCROSSED diplopia (Red image projected further RIGHT). Max on Right gaze (gazeX = 1)
+        const factor = (gazeX === 1) ? 2.6 : (gazeX === 0 ? 1.5 : 0.8);
+        greenX = -8 * factor; redX = 8 * factor;
+      } 
+      // ── VERTICAL RECTI PALSIES ──
+      else if (path === 'left_sr_palsy') {
+        // Hypotropia OS -> Green image projected HIGHER. Max in Up-Left gaze (gazeX = -1, gazeY = 1)
+        const isMax = (gazeY === 1 && gazeX === -1);
+        greenY = gazeY === 1 ? -14 : (gazeY === 0 ? -7 : -2);
+        greenRot = isMax ? -25 : (gazeY === 1 ? -12 : 0);
+        if (isMax) greenX -= 5;
+      } else if (path === 'right_sr_palsy') {
+        // Hypotropia OD -> Red image projected HIGHER. Max in Up-Right gaze (gazeX = 1, gazeY = 1)
+        const isMax = (gazeY === 1 && gazeX === 1);
+        redY = gazeY === 1 ? -14 : (gazeY === 0 ? -7 : -2);
+        redRot = isMax ? 25 : (gazeY === 1 ? 12 : 0);
+        if (isMax) redX += 5;
+      } else if (path === 'left_ir_palsy') {
+        // Hypertropia OS -> Green image projected LOWER. Max in Down-Left gaze (gazeX = -1, gazeY = -1)
+        const isMax = (gazeY === -1 && gazeX === -1);
+        greenY = gazeY === -1 ? 14 : (gazeY === 0 ? 7 : 2);
+        greenRot = isMax ? 20 : (gazeY === -1 ? 10 : 0);
+      } else if (path === 'right_ir_palsy') {
+        // Hypertropia OD -> Red image projected LOWER. Max in Down-Right gaze (gazeX = 1, gazeY = -1)
+        const isMax = (gazeY === -1 && gazeX === 1);
+        redY = gazeY === -1 ? 14 : (gazeY === 0 ? 7 : 2);
+        redRot = isMax ? -20 : (gazeY === -1 ? -10 : 0);
+      } 
+      // ── OBLIQUE MUSCLE PALSIES ──
+      else if (path === 'left_so_palsy') {
+        // Hypertropia & Extorsion OS -> Green image projected LOWER and slanted in Down-Right gaze (gazeX = 1, gazeY = -1)
+        const isMax = (gazeY === -1 && gazeX === 1);
+        greenY = gazeY === -1 ? 14 : (gazeY === 0 ? 7 : 2);
+        greenRot = isMax ? -30 : (gazeY === -1 ? -15 : -5);
+        if (isMax) greenX += 6;
+      } else if (path === 'right_so_palsy' || path === 'right_cn4_palsy') {
+        // Hypertropia & Extorsion OD -> Red image projected LOWER and slanted in Down-Left gaze (gazeX = -1, gazeY = -1)
+        const isMax = (gazeY === -1 && gazeX === -1);
+        redY = gazeY === -1 ? 14 : (gazeY === 0 ? 7 : 2);
+        redRot = isMax ? 30 : (gazeY === -1 ? 15 : 5);
+        if (isMax) redX -= 6;
+      } else if (path === 'left_io_palsy') {
+        // Hypotropia OS -> Green image projected HIGHER and slanted in Up-Right gaze (gazeX = 1, gazeY = 1)
+        const isMax = (gazeY === 1 && gazeX === 1);
+        greenY = gazeY === 1 ? -14 : (gazeY === 0 ? -7 : 0);
+        greenRot = isMax ? 22 : (gazeY === 1 ? 10 : 0);
+      } else if (path === 'right_io_palsy') {
+        // Hypotropia OD -> Red image projected HIGHER and slanted in Up-Left gaze (gazeX = -1, gazeY = 1)
+        const isMax = (gazeY === 1 && gazeX === -1);
+        redY = gazeY === 1 ? -14 : (gazeY === 0 ? -7 : 0);
+        redRot = isMax ? -22 : (gazeY === 1 ? -10 : 0);
+      } 
+      // ── COMPLEX CN III PALSY ──
+      else if (path === 'right_cn3_palsy') {
+        // Down-and-out resting OD -> Red bar displaced horizontally, vertically, and severely slanted across almost all gazes except abduction (Rightward gaze)
+        redX = 14; redY = 12; redRot = -35;
+        if (gazeX === 1) { redX = 4; redY = 2; redRot = -5; } // Abduction intact
+      }
+
+      return { greenX, greenY, greenRot, redX, redY, redRot };
+    }
+
+    function highlightActiveGazePoint(eye, color) {
+      const svg = document.getElementById(eye === 'OS' ? 'svgOS' : 'svgOD');
+      const targetPoint = { x: simState.gazeX * 1.5, y: simState.gazeY * 1.5 };
+      const warpedPt = getWarpPoint(eye, targetPoint, simState.activePathology);
+
+      const svgX = 150 + warpedPt.x * 40;
+      const svgY = 150 - warpedPt.y * 40;
+
+      const targetCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      targetCircle.setAttribute("cx", svgX);
+      targetCircle.setAttribute("cy", svgY);
+      targetCircle.setAttribute("r", "9");
+      targetCircle.setAttribute("fill", "none");
+      targetCircle.setAttribute("stroke", color);
+      targetCircle.setAttribute("stroke-width", "2");
+      targetCircle.setAttribute("class", "animate-pulse");
+      svg.appendChild(targetCircle);
+    }
+
+    function setCardinalGaze(x, y, label) {
+      soundFeedback('tick');
+      simState.gazeX = x; simState.gazeY = y;
+      document.getElementById('currentGazeLabel').innerText = `Target: ${label} (${x*15}°, ${y*15}°)`;
+
+      const buttons = document.querySelectorAll('.gaze-btn');
+      buttons.forEach(btn => {
+        btn.className = "gaze-btn aspect-square bg-white hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer";
+      });
+
+      const lookupIdx = (x + 1) + (1 - y) * 3;
+      const activeBtn = buttons[lookupIdx];
+      if (activeBtn) {
+        activeBtn.className = "gaze-btn aspect-square bg-clinicalBlue text-white rounded-lg text-xs font-black transition flex items-center justify-center cursor-pointer";
+      }
+
+      calculateDiplopiaProjections();
+      updateBeginnerTutorial();
+    }
+
+    function resetHessPlots() {
+      soundFeedback('switch');
+      setCardinalGaze(0, 0, 'Primary Center');
+    }
+
+    function updatePathology() {
+      const selected = document.getElementById('pathologySelect').value;
+      if (simState.mode === 'practice') {
+        simState.activePathology = selected;
+      }
+      calculateDiplopiaProjections();
+      updateBeginnerTutorial();
+    }
+
+    function updateBeginnerTutorial() {
+      const guide = document.getElementById('beginnerInstructionsText');
+      if (!guide) return;
+
+      const info = pathologyTutorials[simState.activePathology] || pathologyTutorials.normal;
+
+      guide.innerHTML = `
+        <div class="space-y-2">
+          <p class="font-extrabold text-clinicalBlue"><i class="fa-solid fa-circle-info"></i> ${info.title}</p>
+          <p class="text-slate-600 text-[11px] leading-relaxed">${info.desc}</p>
+          <div class="border-t border-slate-200 pt-2 text-[10px] text-slate-500 flex flex-col gap-1">
+            <span>• <strong>Hess View:</strong> Observe contracted inner grid on affected eye.</span>
+            <span>• <strong>Diplopia View:</strong> Look for maximum separation of red/black lines in muscle's field of action.</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function changeMode(target) {
+      soundFeedback('switch');
+      simState.mode = target;
+
+      const pracBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      const pracConsole = document.getElementById('practiceControlsCard');
+      const testConsole = document.getElementById('testModeConsole');
+
+      document.getElementById('testDiagnosisSelect').value = "";
+      document.getElementById('diagnosisFeedback').classList.add('hidden');
+      
+      const finalScoreCard = document.getElementById('finalScoreCard');
+      if (finalScoreCard) finalScoreCard.classList.add('hidden');
+
+      if (target === 'practice') {
+        pracBtn.className = "flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl border border-clinicalBlue text-clinicalBlue bg-sky-50 shadow-xs cursor-pointer";
+        testBtn.className = "flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 shadow-xs cursor-pointer";
+        pracConsole.classList.remove('hidden');
+        testConsole.classList.add('hidden');
+        simState.activePathology = simState.pathology;
+      } else {
+        testBtn.className = "flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl border border-clinicalBlue text-clinicalBlue bg-sky-50 shadow-xs cursor-pointer";
+        pracBtn.className = "flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 shadow-xs cursor-pointer";
+        pracConsole.classList.add('hidden');
+        testConsole.classList.remove('hidden');
+
+        activeCaseIndex = Math.floor(Math.random() * patientCases.length);
+        const selectedCase = patientCases[activeCaseIndex];
+        
+        document.getElementById('caseNarrative').innerText = `"${selectedCase.narrative}"`;
+        simState.activePathology = selectedCase.palsy;
+
+        simState.scores.diagnosisScore = 0;
+        simState.scores.mcqScore = 0;
+        setupTestMcqSuite(selectedCase);
+      }
+
+      setCardinalGaze(0, 0, 'Primary Center');
+      updatePathology();
+    }
+
+    function setupTestMcqSuite(selectedCase) {
+      const container = document.getElementById('testMcqSuite');
+      container.innerHTML = "";
+
+      const div = document.createElement('div');
+      div.className = "bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs text-slate-700 shadow-xs";
+      div.innerHTML = `
+        <p class="font-extrabold text-slate-900">Case Question: ${selectedCase.mcq.question}</p>
+        <div class="grid grid-cols-1 gap-2 pt-1">
+          <label class="flex items-start gap-2.5 cursor-pointer p-2.5 rounded bg-white hover:bg-slate-100 border border-slate-200 font-bold transition">
+            <input type="radio" name="mcq_option" value="a" class="accent-clinicalBlue text-white mt-0.5">
+            <span>${selectedCase.mcq.options.a}</span>
+          </label>
+          <label class="flex items-start gap-2.5 cursor-pointer p-2.5 rounded bg-white hover:bg-slate-100 border border-slate-200 font-bold transition">
+            <input type="radio" name="mcq_option" value="b" class="accent-clinicalBlue text-white mt-0.5">
+            <span>${selectedCase.mcq.options.b}</span>
+          </label>
+          <label class="flex items-start gap-2.5 cursor-pointer p-2.5 rounded bg-white hover:bg-slate-100 border border-slate-200 font-bold transition">
+            <input type="radio" name="mcq_option" value="c" class="accent-clinicalBlue text-white mt-0.5">
+            <span>${selectedCase.mcq.options.c}</span>
+          </label>
+        </div>
+        <p id="mcq_feedback" class="text-[10px] font-bold hidden mt-2"></p>
+      `;
+      container.appendChild(div);
+    }
+
+    function submitTestAssessment() {
+      if (simState.mode !== 'test') return;
+
+      const selectedDiag = document.getElementById('testDiagnosisSelect').value;
+      const selectedCase = patientCases[activeCaseIndex];
+      const checkedOption = document.querySelector('input[name="mcq_option"]:checked');
+
+      if (!selectedDiag || !checkedOption) {
+        soundFeedback('warning');
+        const feedback = document.getElementById('diagnosisFeedback');
+        feedback.innerText = "Please choose a clinical diagnosis and answer the pathway quiz question.";
+        feedback.className = "text-[11px] font-extrabold text-rose-500 block mt-2 animate-pulse";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      const feedback = document.getElementById('diagnosisFeedback');
+      feedback.classList.remove('hidden');
+
+      if (selectedDiag === selectedCase.palsy) {
+        feedback.innerText = "Correct Ocular Diagnosis! (+50 pts)";
+        feedback.className = "text-[11px] font-bold text-emerald-600 block mt-1";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        const correctLabel = document.querySelector(`#testDiagnosisSelect option[value="${selectedCase.palsy}"]`).innerText;
+        feedback.innerText = `Incorrect Diagnosis. Diagnostic profile was: ${correctLabel}. (+0 pts)`;
+        feedback.className = "text-[11px] font-bold text-rose-500 block mt-1";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      const mcqBox = document.getElementById('mcq_feedback');
+      mcqBox.classList.remove('hidden');
+
+      if (checkedOption.value === selectedCase.mcq.correct) {
+        mcqBox.innerText = `Correct! (+50 pts) — ${selectedCase.mcq.explanation}`;
+        mcqBox.className = "text-[10px] font-bold text-emerald-600 block mt-1.5 leading-relaxed bg-emerald-50 p-2.5 rounded border border-emerald-200";
+        simState.scores.mcqScore = 50;
+      } else {
+        mcqBox.innerText = `Incorrect. Correct Option: ${selectedCase.mcq.correct.toUpperCase()} — ${selectedCase.mcq.explanation}`;
+        mcqBox.className = "text-[10px] font-bold text-rose-500 block mt-1.5 leading-relaxed bg-rose-50 p-2.5 rounded border border-rose-200";
+        simState.scores.mcqScore = 0;
+      }
+
+      const totalScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('assessmentScoreReadout').innerText = `Case Score: ${totalScore}/100`;
+
+      let card = document.getElementById('finalScoreCard');
+      if (!card) {
+        const parent = document.getElementById('workspaceContainer');
+        card = document.createElement('div');
+        card.id = "finalScoreCard";
+        parent.appendChild(card);
+      }
+
+      card.className = "lg:col-span-12 p-6 rounded-2xl text-center space-y-3 transition-all duration-500 mt-4 ";
+      
+      if (totalScore >= 100) {
+        soundFeedback('success');
+        card.className += "bg-emerald-50 border border-emerald-200 text-emerald-800 shadow-medical";
+        card.innerHTML = `
+          <p class="text-base font-black uppercase tracking-wider"><i class="fa-solid fa-trophy text-emerald-500"></i> Case Successfully Resolved (100%)</p>
+          <p class="text-xs text-slate-600">You successfully mapped the vector deviations and applied Hering's & Sherrington's parameters.</p>
+        `;
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completed.includes('Hess-Diplopia')) {
+          completed.push('Hess-Diplopia');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        }
+        syncCompletionBadge();
+      } else {
+        soundFeedback('warning');
+        card.className += "bg-rose-50 border border-rose-200 text-rose-800 shadow-medical";
+        card.innerHTML = `
+          <p class="text-base font-black uppercase tracking-wider"><i class="fa-solid fa-circle-xmark text-rose-500"></i> Grading Milestone Unmet (${totalScore}%)</p>
+          <p class="text-xs text-slate-600 mb-2">Review interpretation rules in Practice Mode and analyze the shrunken grid contraction coordinates again.</p>
+          <button onclick="changeMode('practice')" class="px-4 py-2 bg-clinicalBlue hover:bg-sky-700 text-white rounded-lg text-xs font-bold transition">
+            Practice Graph Analysis
+          </button>
+        `;
+      }
+    }
+
+    function syncCompletionBadge() {
+      const completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completed.includes('Hess-Diplopia')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-500 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+
+    function openMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.remove('hidden');
+    }
+
+    function closeMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.add('hidden');
+    }
+
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const icon = document.getElementById('muteIcon');
+      const text = document.getElementById('muteText');
+
+      if (simState.soundMuted) {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400";
+        text.innerText = "Unmute";
+      } else {
+        icon.className = "fa-solid fa-volume-high text-emerald-600 animate-pulse";
+        text.innerText = "Mute";
+        soundFeedback('blip');
+      }
+    }
+  </script>
+
+  <!-- MODALS -->
+  <div id="aboutModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider">About Hess &amp; Diplopia Charting</h3>
+        <button onclick="closeMenuModal('about')" class="text-slate-400 hover:text-slate-600 cursor-pointer text-xs"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed">
+        The <strong>Hess Screen</strong> and <strong>9-Gaze Diplopia Chart</strong> are complementary diagnostic tests used in neuro-ophthalmology to isolate ocular misalignment, identify paretic extraocular muscles, and record double vision separation across all 9 cardinal gaze positions.
+      </p>
+      <button onclick="closeMenuModal('about')" class="w-full py-2 bg-clinicalBlue text-white font-bold rounded-xl text-xs hover:bg-sky-700 transition cursor-pointer">
+        Dismiss
+      </button>
+    </div>
+  </div>
+
+  <div id="referenceModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider">Clinical Interpretation Reference</h3>
+        <button onclick="closeMenuModal('reference')" class="text-slate-400 hover:text-slate-600 cursor-pointer text-xs"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="space-y-3 text-xs leading-relaxed">
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <p class="font-bold text-clinicalBlue text-[11px] uppercase">1. Hess Chart Principle</p>
+          <p class="text-slate-600 mt-1">The smaller plotted chart indicates the affected paretic eye. The greatest inward coordinate contraction points directly to the paretic muscle.</p>
+        </div>
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <p class="font-bold text-emerald-600 text-[11px] uppercase">2. Diplopia Chart Principle</p>
+          <p class="text-slate-600 mt-1">Maximum separation between the false red line (OD) and real black line (OS) occurs in the field of action of the weak muscle.</p>
+        </div>
+      </div>
+      <button onclick="closeMenuModal('reference')" class="w-full py-2 bg-clinicalBlue text-white font-bold rounded-xl text-xs hover:bg-sky-700 transition cursor-pointer">
+        Dismiss Guide
+      </button>
+    </div>
+  </div>
+
+</body>
+</html>

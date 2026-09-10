@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Clinical Manual Lensometer Lab</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',    /* Slate 900 */
+            secondary: '#0284c7',  /* Sky 600 */
+            accent: '#0d9488',     /* Teal 600 */
+            lightbg: '#f8fafc',    /* Slate 50 */
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    .dark ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    ::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+    /* Custom Sliders */
+    input[type=range] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      height: 20px; width: 20px;
+      border-radius: 50%;
+      background: #0284c7;
+      cursor: pointer;
+      margin-top: -8px;
+      box-shadow: 0 0 10px rgba(2, 132, 199, 0.5);
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      appearance: none;
+      width: 100%; height: 4px;
+      cursor: pointer;
+      background: #cbd5e1;
+      border-radius: 2px;
+    }
+    .dark input[type=range]::-webkit-slider-runnable-track {
+      background: #334155;
+    }
+
+    /* Lensometer Viewport Glow */
+    .lensometer-bg {
+      background: radial-gradient(circle at center, #022c22 0%, #000000 70%);
+      box-shadow: inset 0 0 40px rgba(0,0,0,0.9);
+    }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <script>
+    let audioCtx = null;
+    
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("AudioContext blocked or unsupported.");
+      }
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click': playAudioTone(720, 'sine', 0.08, 0.04); break;
+        case 'dial': playAudioTone(300, 'triangle', 0.04, 0.02); break;
+        case 'wheel': playAudioTone(200, 'sawtooth', 0.05, 0.015); break;
+        case 'warning': playAudioTone(190, 'sawtooth', 0.25, 0.05); break;
+        case 'success':
+          playAudioTone(520, 'sine', 0.1, 0.05);
+          setTimeout(() => playAudioTone(640, 'sine', 0.15, 0.05), 80);
+          break;
+        case 'switch': playAudioTone(380, 'triangle', 0.12, 0.04); break;
+      }
+    }
+  </script>
+
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-500">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="Refraction.html" class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hover:bg-slate-800 transition cursor-pointer">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </a>
+        <div class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hidden sm:flex">
+          <i class="fa-solid fa-microscope text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+            SAHS-E-LAB | <span class="text-secondary">Manual Lensometer Lab</span>
+            <span class="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900">v2.1</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-extrabold">Neutralization &amp; Verification Protocol</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+          <button onclick="toggleDarkMode()" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke text-sky-600 dark:text-sky-400"></i>
+          </button>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-4 sm:px-6 pt-24 pb-12 gap-6">
+    
+    <section class="lg:w-[60%] space-y-4 font-mono" id="simulationViewport">
+      
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs relative transition-all duration-500">
+        
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Eyepiece Reticle View</span>
+          <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span class="text-[9px] font-black uppercase text-slate-600 dark:text-slate-300">Target Illuminated</span>
+          </div>
+        </div>
+
+        <div class="lensometer-bg rounded-full mx-auto relative flex items-center justify-center overflow-hidden shadow-inner border-[8px] border-slate-800 dark:border-slate-950" style="width: 320px; height: 320px;" id="eyesViewportBox">
+          
+          <svg viewBox="-100 -100 200 200" class="w-full h-full">
+            <defs>
+              <filter id="blurSphere" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur id="blurSphereStd" stdDeviation="0" />
+              </filter>
+              <filter id="blurCyl" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur id="blurCylStd" stdDeviation="0" />
+              </filter>
+            </defs>
+
+            <!-- Illuminated Reticle Overlay & Axis Protractor -->
+            <g stroke="#059669" stroke-width="1" fill="none" opacity="0.6">
+              <circle cx="0" cy="0" r="95" />
+              <circle cx="0" cy="0" r="70" />
+              <circle cx="0" cy="0" r="45" />
+              <circle cx="0" cy="0" r="20" />
+              <line x1="-100" y1="0" x2="100" y2="0" />
+              <line x1="0" y1="-100" x2="0" y2="100" />
+            </g>
+
+            <g stroke="#059669" stroke-width="1" opacity="0.6">
+              <g transform="rotate(30)"><line x1="-100" y1="0" x2="-95" y2="0" /><line x1="95" y1="0" x2="100" y2="0" /></g>
+              <g transform="rotate(60)"><line x1="-100" y1="0" x2="-95" y2="0" /><line x1="95" y1="0" x2="100" y2="0" /></g>
+              <g transform="rotate(120)"><line x1="-100" y1="0" x2="-95" y2="0" /><line x1="95" y1="0" x2="100" y2="0" /></g>
+              <g transform="rotate(150)"><line x1="-100" y1="0" x2="-95" y2="0" /><line x1="95" y1="0" x2="100" y2="0" /></g>
+            </g>
+
+            <g fill="#059669" opacity="0.85" font-size="8" font-weight="bold" font-family="monospace" text-anchor="middle" dominant-baseline="central">
+              <text x="85" y="0">0</text>
+              <text x="73.6" y="-42.5">30</text>
+              <text x="42.5" y="-73.6">60</text>
+              <text x="0" y="-85">90</text>
+              <text x="-42.5" y="-73.6">120</text>
+              <text x="-73.6" y="-42.5">150</text>
+              <text x="-85" y="0">180</text>
+              
+              <!-- Bottom half mirrored labels -->
+              <text x="-73.6" y="42.5">150</text>
+              <text x="-42.5" y="73.6">120</text>
+              <text x="0" y="85">90</text>
+              <text x="42.5" y="73.6">60</text>
+              <text x="73.6" y="42.5">30</text>
+            </g>
+
+            <g id="targetGroup" transform="rotate(0)">
+              <g id="sphereLinesGroup" filter="url(#blurSphere)">
+                <line x1="-8" y1="-60" x2="-8" y2="60" stroke="#10b981" stroke-width="1.5" style="filter: drop-shadow(0 0 3px #10b981)"/>
+                <line x1="0" y1="-60" x2="0" y2="60" stroke="#10b981" stroke-width="1.5" style="filter: drop-shadow(0 0 3px #10b981)"/>
+                <line x1="8" y1="-60" x2="8" y2="60" stroke="#10b981" stroke-width="1.5" style="filter: drop-shadow(0 0 3px #10b981)"/>
+              </g>
+
+              <g id="cylLinesGroup" filter="url(#blurCyl)">
+                <line x1="-60" y1="-12" x2="60" y2="-12" stroke="#10b981" stroke-width="3.5" style="filter: drop-shadow(0 0 4px #10b981)"/>
+                <line x1="-60" y1="0" x2="60" y2="0" stroke="#10b981" stroke-width="3.5" style="filter: drop-shadow(0 0 4px #10b981)"/>
+                <line x1="-60" y1="12" x2="60" y2="12" stroke="#10b981" stroke-width="3.5" style="filter: drop-shadow(0 0 4px #10b981)"/>
+              </g>
+            </g>
+          </svg>
+
+        </div>
+
+        <div class="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2.5 px-4 z-10 rounded-xl mt-4">
+          <div class="flex justify-center items-center gap-2 max-w-lg mx-auto">
+            <span class="text-[8px] bg-sky-100 dark:bg-sky-950 text-secondary border border-sky-200 dark:border-sky-800 font-black tracking-widest uppercase px-1.5 py-0.5 rounded flex-shrink-0 animate-pulse">Diagnostics Feed</span>
+            <p id="commentaryText" class="text-[10px] text-slate-600 dark:text-slate-300 font-mono truncate font-bold text-center flex-1">Adjust power wheel to focus the target.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <h4 class="text-xs uppercase font-black text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+          <i class="fa-solid fa-gauge-high text-secondary"></i> Instrument Readings
+        </h4>
+
+        <div class="grid grid-cols-2 gap-4 font-mono text-xs">
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-sky-600 dark:text-sky-400 uppercase tracking-widest block">Power Drum (Diopters)</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="readoutPower" class="text-2xl font-black text-slate-900 dark:text-white">0.00</span>
+              <span class="text-[9px] font-black text-slate-400">SPH / CYL</span>
+            </div>
+          </div>
+
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-1">
+            <span class="text-[9px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest block">Axis Wheel (Degrees)</span>
+            <div class="flex justify-between items-baseline pt-1">
+              <span id="readoutAxis" class="text-2xl font-black text-slate-900 dark:text-white">090°</span>
+              <span class="text-[9px] font-black text-slate-400">MERIDIAN</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="lg:w-[40%] space-y-4">
+      
+      <div class="bg-white dark:bg-slate-900 p-2.5 rounded-3xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-xs">
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-chalkboard-user"></i> Practice Mode
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-vial"></i> Assessment
+        </button>
+      </div>
+
+      <div id="practiceControlsCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-2">
+          <div>
+            <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-secondary"></i> Prescription Setup Console
+            </h3>
+            <p class="text-[10px] text-slate-400 font-bold">Configure custom lenses up to &plusmn;20.00 D</p>
+          </div>
+          <button onclick="resetSimulator()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-300 dark:bg-rose-950/20 dark:border-rose-900 rounded-xl text-[10px] font-black text-rose-600 dark:text-rose-400 transition flex items-center gap-1">
+            <i class="fa-solid fa-arrow-rotate-left"></i> Reset
+          </button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 pt-1">
+          <div>
+            <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Set Target Sph</label>
+            <input type="text" id="pracSphInput" value="0.00" onchange="handlePresetChange(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary text-center">
+          </div>
+          <div>
+            <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Set Target Cyl</label>
+            <input type="text" id="pracCylInput" value="0.00" onchange="handlePresetChange(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary text-center">
+          </div>
+          <div>
+            <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Set Target Axis</label>
+            <input type="number" id="pracAxisInput" min="0" max="180" step="1" value="90" onchange="updateCustomPracLens()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-secondary text-center">
+          </div>
+        </div>
+
+        <div id="practiceWarning" class="hidden p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-[10px] font-bold text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation animate-pulse text-sm"></i>
+          <span>Warning: Plus-cylinder form entered. Standard clinical lensometry utilizes minus-cylinder form.</span>
+        </div>
+
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl mt-4">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-secondary tracking-widest"><i class="fa-solid fa-circle-notch"></i> Power Wheel (&plusmn;20.00 D range)</span>
+          </div>
+          <div class="flex items-center gap-3 pt-2">
+            <button onclick="stepPower(-0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">-</button>
+            <input type="range" id="powerSlider" min="-22" max="22" step="0.25" value="0" oninput="slidePower()" class="w-full">
+            <button onclick="stepPower(0.25)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer">+</button>
+          </div>
+        </div>
+
+        <div class="space-y-2 p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+          <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+            <span class="text-[9px] font-black uppercase text-secondary tracking-widest"><i class="fa-solid fa-compass"></i> Axis Wheel (0° to 180°)</span>
+          </div>
+          <div class="flex items-center gap-3 pt-2">
+            <button onclick="stepAxis(-1)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer"><i class="fa-solid fa-rotate-left"></i></button>
+            <input type="range" id="axisSlider" min="0" max="180" step="1" value="90" oninput="slideAxis()" class="w-full">
+            <button onclick="stepAxis(1)" class="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold transition flex-shrink-0 cursor-pointer"><i class="fa-solid fa-rotate-right"></i></button>
+          </div>
+        </div>
+
+        <div id="beginnerInstructionCard" class="p-3.5 bg-sky-50 dark:bg-sky-950/20 border border-sky-100 dark:border-sky-900 rounded-2xl text-[11px] space-y-2">
+          <span class="font-extrabold text-secondary uppercase tracking-widest text-[9px] block flex items-center gap-1">
+            <i class="fa-solid fa-lightbulb text-amber-500 animate-pulse"></i> Neutralization Guide
+          </span>
+          <p class="text-slate-600 dark:text-slate-400 leading-relaxed">
+            1. Start with high plus power. Decrease power slowly until the <strong>Thin Sphere Lines</strong> are sharp and continuous.<br>
+            2. If lines appear broken or scissored, rotate the Axis Wheel to straighten them.<br>
+            3. Continue rotating the power wheel towards minus to find the <strong>Thick Cylinder Lines</strong> endpoint focus.<br>
+            4. Cyl Power = (Cyl Reading Value) - (Sphere Reading Value).
+          </p>
+        </div>
+      </div>
+
+      <div id="testModeConsole" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Verification Board</h3>
+            <p class="text-[10px] text-slate-600 dark:text-slate-400">Neutralize the hidden high-power lens and submit your readings.</p>
+          </div>
+          <span id="assessmentScoreReadout" class="text-xs font-black bg-slate-100 dark:bg-slate-800 border border-slate-300 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">Score: Unsubmitted</span>
+        </div>
+
+        <div class="space-y-3">
+          <div class="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+            <span class="text-[9px] font-black uppercase text-secondary tracking-widest block mb-1">Instrument Control Inputs</span>
+            <div class="space-y-2">
+              <input type="range" id="testPowerSlider" min="-22" max="22" step="0.25" value="0" oninput="slideTestPower()" class="w-full">
+              <input type="range" id="testAxisSlider" min="0" max="180" step="1" value="90" oninput="slideTestAxis()" class="w-full">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Sphere (DS)</label>
+              <input type="text" id="testSph" placeholder="+0.00" onchange="formatDiopter(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-secondary text-center">
+            </div>
+            <div>
+              <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Cylinder (DC)</label>
+              <input type="text" id="testCyl" placeholder="+0.00" onchange="formatDiopter(this)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-secondary text-center">
+            </div>
+            <div>
+              <label class="text-[9px] uppercase font-black text-slate-400 block mb-1">Axis (°)</label>
+              <input type="number" id="testAxis" step="1" min="0" max="180" placeholder="000" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 text-xs font-bold focus:outline-none focus:border-secondary text-center">
+            </div>
+          </div>
+        </div>
+        <div id="diagnosisFeedback" class="text-[11px] font-bold hidden px-3 py-2 rounded-lg"></div>
+
+        <div class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-900">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block">Lensometry Quiz (50% Marks)</span>
+          <div id="testMcqSuite" class="space-y-4"></div>
+        </div>
+
+        <button onclick="submitTestAssessment()" class="w-full py-3 bg-secondary text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+          Submit Rx &amp; Assessment Profile
+        </button>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    const clinicalMcqPool = [
+      {
+        question: "When neutralizing a high-power lens in minus-cylinder form, which target lines should be focused FIRST?",
+        options: { a: "The thick cylinder lines", b: "The thin sphere lines", c: "Both simultaneously" },
+        correct: "b",
+        explanation: "To neutralize in minus cylinder form, the most plus (or least minus) principal meridian must be focused first using the single/thin sphere target lines."
+      },
+      {
+        question: "If the thin sphere lines focus sharply at +12.00 DS, and the thick cylinder lines focus sharply at +8.00 DS, what is the computed cylinder power?",
+        options: { a: "-4.00 DC", b: "+4.00 DC", c: "-20.00 DC" },
+        correct: "a",
+        explanation: "Cylinder Power = (Cylinder Drum Reading) - (Sphere Drum Reading). Therefore: (+8.00) - (+12.00) = -4.00 DC."
+      },
+      {
+        question: "What optical error causes target lines to appear broken or scissored rather than continuous lines inside the reticle?",
+        options: { a: "Presence of excessive high lens sphere distortion", b: "Misalignment between the instrument axis wheel and lens principal meridians", c: "Improper calibration of the eyepiece reticle circle focus" },
+        correct: "b",
+        explanation: "Scissoring occurs when the lensometer targets are rotated away from the principal astigmatic meridians of the spectacle lens under test."
+      }
+    ];
+
+    const simState = {
+      mode: 'practice',
+      soundMuted: false,
+      practiceLens: { s: 0.00, c: 0.00, a: 90 },
+      customTestLens: { s: 0.00, c: 0.00, a: 90 },
+      power: 0,
+      axis: 90,
+      lastWarningCyl: null,
+      selectedQuestions: [],
+      scores: { diagnosisScore: 0, mcqScore: 0 }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      syncCompletionBadge();
+      resetSimulator();
+    });
+
+    // --- FORMATTING UTILS ---
+    function formatDiopter(el) {
+      if (!el.value && el.value !== "0") return;
+      let val = parseFloat(el.value);
+      if (isNaN(val)) {
+        el.value = "";
+        return;
+      }
+      el.value = (val > 0 ? '+' : '') + val.toFixed(2);
+    }
+
+    function handlePresetChange(el) {
+      formatDiopter(el);
+      updateCustomPracLens();
+    }
+
+    // --- CONTROLS LINKAGE ---
+    function stepPower(amt) {
+      soundFeedback('dial');
+      const slider = simState.mode === 'practice' ? document.getElementById('powerSlider') : document.getElementById('testPowerSlider');
+      let p = parseFloat(slider.value) + amt;
+      if(p > 22) p = 22; if(p < -22) p = -22;
+      slider.value = p;
+      simState.power = p;
+      updateLensometerPhysics();
+    }
+
+    function slidePower() {
+      simState.power = parseFloat(document.getElementById('powerSlider').value);
+      updateLensometerPhysics();
+    }
+    function slideTestPower() {
+      simState.power = parseFloat(document.getElementById('testPowerSlider').value);
+      updateLensometerPhysics();
+    }
+
+    function stepAxis(amt) {
+      soundFeedback('wheel');
+      const slider = simState.mode === 'practice' ? document.getElementById('axisSlider') : document.getElementById('testAxisSlider');
+      let a = parseInt(slider.value) + amt;
+      if(a > 180) a = 0; if(a < 0) a = 180;
+      slider.value = a;
+      simState.axis = a;
+      updateLensometerPhysics();
+    }
+
+    function slideAxis() {
+      simState.axis = parseInt(document.getElementById('axisSlider').value);
+      updateLensometerPhysics();
+    }
+    function slideTestAxis() {
+      simState.axis = parseInt(document.getElementById('testAxisSlider').value);
+      updateLensometerPhysics();
+    }
+
+    function updateCustomPracLens() {
+      let s = parseFloat(document.getElementById('pracSphInput').value) || 0;
+      let c = parseFloat(document.getElementById('pracCylInput').value) || 0;
+      let a = parseInt(document.getElementById('pracAxisInput').value) || 0;
+      
+      simState.practiceLens.s = s;
+      simState.practiceLens.c = c;
+      simState.practiceLens.a = a;
+
+      const warningDiv = document.getElementById('practiceWarning');
+      if (c > 0) {
+        warningDiv.classList.remove('hidden');
+        if (simState.lastWarningCyl !== c) {
+          soundFeedback('warning');
+          simState.lastWarningCyl = c;
+        }
+      } else {
+        warningDiv.classList.add('hidden');
+        simState.lastWarningCyl = null;
+      }
+
+      updateLensometerPhysics();
+    }
+
+    function resetSimulator() {
+      soundFeedback('success');
+      simState.power = 0;
+      simState.axis = 90;
+      simState.lastWarningCyl = null;
+      
+      document.getElementById('powerSlider').value = 0;
+      document.getElementById('axisSlider').value = 90;
+      document.getElementById('testPowerSlider').value = 0;
+      document.getElementById('testAxisSlider').value = 90;
+
+      if (simState.mode === 'practice') {
+        document.getElementById('pracSphInput').value = "+0.00";
+        document.getElementById('pracCylInput').value = "+0.00";
+        document.getElementById('pracAxisInput').value = "90";
+        document.getElementById('practiceWarning').classList.add('hidden');
+        simState.practiceLens = { s: 0, c: 0, a: 90 };
+      }
+      updateLensometerPhysics();
+    }
+
+    // --- MATHEMATICAL OPTICS CORE ENGINE ---
+    function updateLensometerPhysics() {
+      // Format UI numbers explicitly to enforce + and - signs
+      document.getElementById('readoutPower').innerText = (simState.power > 0 ? '+' : '') + simState.power.toFixed(2);
+      document.getElementById('readoutAxis').innerText = `${simState.axis.toString().padStart(3, '0')}°`;
+
+      const lens = simState.mode === 'practice' ? simState.practiceLens : simState.customTestLens;
+
+      let p = simState.power;
+      let a = simState.axis;
+      
+      let sTarget = lens.s;
+      let cTarget = lens.s + lens.c; // Principal Meridian 2
+      let targetAxis = lens.a;
+
+      // Map diopter difference across extended range to appropriate blur scaling
+      let blurSphere = Math.abs(p - sTarget) * 2.5; 
+      let blurCyl = Math.abs(p - cTarget) * 2.5;
+
+      let isAstigmatic = lens.c !== 0;
+      let commentary = "";
+
+      if (isAstigmatic) {
+        let diff = Math.abs(a - targetAxis) % 180;
+        let dist1 = diff;
+        let dist2 = Math.abs(180 - diff);
+        let dist3 = Math.abs(90 - diff); // Orthogonal alignment checkpoint
+        
+        let minAngularError = Math.min(dist1, dist2, dist3);
+
+        // Apply progressive scissoring blur artifacts if user is near focal points but off-axis
+        if (blurSphere < 4 || blurCyl < 4) {
+          let scissorBlur = minAngularError * 0.25; 
+          blurSphere += scissorBlur;
+          blurCyl += scissorBlur;
+        }
+
+        if (minAngularError > 3 && (blurSphere < 5 || blurCyl < 5)) {
+          commentary = "Target lines broken and scissoring. Rotate Axis Wheel to align meridians.";
+        } else if (blurSphere < 0.25) {
+          commentary = "Thin Sphere lines fully focused. Record this Sphere power power drum value.";
+        } else if (blurCyl < 0.25) {
+          commentary = "Thick Cylinder lines fully focused. Compute Cyl = (Current - Sphere value).";
+        } else {
+          commentary = "Target out of focus. Sweep Power drum slider to locate principal meridians.";
+        }
+      } else {
+        // Spherical profile configuration
+        blurCyl = blurSphere;
+        if (blurSphere < 0.25) {
+          commentary = "Spherical lens neutralized completely. Both meridians in perfect focus.";
+        } else {
+          commentary = "Target blurred. Move power wheel slider towards focal zone.";
+        }
+      }
+
+      // Clamp limits for SVG filter compatibility bounds
+      if (blurSphere > 18) blurSphere = 18;
+      if (blurCyl > 18) blurCyl = 18;
+
+      document.getElementById('blurSphereStd').setAttribute('stdDeviation', blurSphere.toFixed(2));
+      document.getElementById('blurCylStd').setAttribute('stdDeviation', blurCyl.toFixed(2));
+      
+      // Rotate targeted SVG matrix
+      document.getElementById('targetGroup').setAttribute('transform', `rotate(${-a})`);
+      if (simState.mode === 'practice') {
+        document.getElementById('commentaryText').innerText = commentary;
+      }
+    }
+
+    // --- ASSESSMENT PROTOCOL ---
+    function changeMode(target) {
+      soundFeedback('switch');
+      simState.mode = target;
+
+      const pracBtn = document.getElementById('btnMode-practice');
+      const testBtn = document.getElementById('btnMode-test');
+      const pracConsole = document.getElementById('practiceControlsCard');
+      const testConsole = document.getElementById('testModeConsole');
+      const scoreCard = document.getElementById('finalScoreCard');
+      
+      if(scoreCard) scoreCard.classList.add('hidden');
+
+      if (target === 'practice') {
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer";
+        pracConsole.classList.remove('hidden');
+        testConsole.classList.add('hidden');
+      } else {
+        testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+        pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl border border-slate-200 dark:border-slate-800 text-slate-400 hover:bg-slate-900 shadow-xs cursor-pointer";
+        pracConsole.classList.add('hidden');
+        testConsole.classList.remove('hidden');
+
+        // Generate high-power random hidden prescriptions matching full bounds criteria in MINUS CYL form
+        let generatedSph = (Math.floor(Math.random() * 121) - 60) * 0.25; // range: -15.00 to +15.00
+        let generatedCyl = (Math.floor(Math.random() * 41) - 40) * 0.25;  // range: -10.00 to 0.00 in minus cyl form
+        let generatedAxis = Math.floor(Math.random() * 37) * 5;          // 0 to 180 degrees in 5 deg steps
+
+        simState.customTestLens = { s: generatedSph, c: generatedCyl, a: generatedAxis };
+        
+        document.getElementById('testSph').value = "";
+        document.getElementById('testCyl').value = "";
+        document.getElementById('testAxis').value = "";
+        document.getElementById('diagnosisFeedback').classList.add('hidden');
+        document.getElementById('commentaryText').innerText = "Assessment Active. Neutralize the hidden target using instrument controls.";
+        
+        setupTestMcqSuite();
+      }
+      resetSimulator();
+    }
+
+    function setupTestMcqSuite() {
+      simState.selectedQuestions = [...clinicalMcqPool].sort(() => 0.5 - Math.random());
+      const container = document.getElementById('testMcqSuite');
+      container.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const div = document.createElement('div');
+        div.className = "bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs shadow-xs text-slate-900 dark:text-slate-200";
+        div.innerHTML = `
+          <p class="font-extrabold">${idx + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1.5 pt-1">
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="a" class="accent-secondary"> ${q.options.a}</label>
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="b" class="accent-secondary"> ${q.options.b}</label>
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="c" class="accent-secondary"> ${q.options.c}</label>
+          </div>
+          <p id="mcq_${idx}_feedback" class="text-[10px] font-bold hidden mt-1"></p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function submitTestAssessment() {
+      if (simState.mode !== 'test') return;
+
+      const sphIn = document.getElementById('testSph').value;
+      const cylIn = document.getElementById('testCyl').value;
+      const axisIn = document.getElementById('testAxis').value;
+      const feedback = document.getElementById('diagnosisFeedback');
+
+      let unanswered = false;
+      const answers = [];
+      simState.selectedQuestions.forEach((q, idx) => {
+        const checked = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+        if (!checked) unanswered = true;
+        else answers.push({ idx, selected: checked.value, correct: q.correct, explanation: q.explanation });
+      });
+
+      if (sphIn === "" || cylIn === "" || axisIn === "" || unanswered) {
+        soundFeedback('warning');
+        feedback.innerHTML = "<i class='fa-solid fa-triangle-exclamation mr-1'></i> Please input your final computed Sph, Cyl, Axis values and complete all quiz items.";
+        feedback.className = "text-[11px] font-extrabold text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 block mt-3 px-3 py-2 rounded-lg animate-pulse";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      feedback.classList.remove('hidden');
+      
+      const target = simState.customTestLens;
+      
+      // Calculate Transposed Target (Plus Cylinder Form match check)
+      const tSph = target.s + target.c;
+      const tCyl = -target.c;
+      let tAxis = (target.a + 90) % 180;
+      if (tAxis === 0 && target.c !== 0) tAxis = 180;
+
+      const uSph = parseFloat(sphIn);
+      const uCyl = parseFloat(cylIn);
+      const uAxis = parseInt(axisIn);
+
+      // Check Exact Match (Minus Cyl Form)
+      const passSph = Math.abs(uSph - target.s) <= 0.25;
+      const passCyl = Math.abs(uCyl - target.c) <= 0.25;
+      let axisDiff = Math.abs(uAxis - target.a) % 180;
+      if (axisDiff > 90) axisDiff = 180 - axisDiff;
+      const passAxis = target.c === 0 || axisDiff <= 5;
+
+      // Check Transposed Match (Plus Cyl Form)
+      const passTransposedSph = Math.abs(uSph - tSph) <= 0.25;
+      const passTransposedCyl = Math.abs(uCyl - tCyl) <= 0.25;
+      let axisDiffTransposed = Math.abs(uAxis - tAxis) % 180;
+      if (axisDiffTransposed > 90) axisDiffTransposed = 180 - axisDiffTransposed;
+      const passTransposedAxis = target.c === 0 || axisDiffTransposed <= 5;
+
+      // Handle Transposition Penalty (Correct power, wrong form)
+      if (passTransposedSph && passTransposedCyl && passTransposedAxis && target.c !== 0) {
+        soundFeedback('warning');
+        feedback.innerHTML = "<i class='fa-solid fa-rotate mr-1'></i> <strong>Correct neutralization, but in Plus-Cylinder form!</strong><br>Standard optics protocols require Minus-Cylinder form. Please transpose your prescription (Sph + Cyl, Change Cyl Sign, Rotate Axis 90°) and re-submit.";
+        feedback.className = "text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 block mt-3 px-3 py-2 rounded-lg animate-pulse";
+        return; // Halt submission
+      }
+
+      if (passSph && passCyl && passAxis) {
+        feedback.innerHTML = `<i class="fa-solid fa-check-circle mr-1"></i> Correct Neutralization! Target Rx: ${(target.s > 0 ? '+' : '') + target.s.toFixed(2)} DS / ${(target.c > 0 ? '+' : '') + target.c.toFixed(2)} DC x ${target.a.toString().padStart(3,'0')}° (+50 pts)`;
+        feedback.className = "text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 block mt-3 px-3 py-2 rounded-lg";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        feedback.innerHTML = `<i class="fa-solid fa-xmark-circle mr-1"></i> Incorrect. Target Rx was: ${(target.s > 0 ? '+' : '') + target.s.toFixed(2)} DS / ${(target.c > 0 ? '+' : '') + target.c.toFixed(2)} DC x ${target.a.toString().padStart(3,'0')}° (+0 pts)`;
+        feedback.className = "text-[11px] font-bold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 block mt-3 px-3 py-2 rounded-lg";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      let correctCount = 0;
+      answers.forEach((ans) => {
+        const box = document.getElementById(`mcq_${ans.idx}_feedback`);
+        box.classList.remove('hidden');
+        if (ans.selected === ans.correct) {
+          box.innerText = `Correct! (+16.6 pts) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+          correctCount++;
+        } else {
+          box.innerText = `Incorrect. (Answer: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+          box.className = "text-[10px] font-bold text-red-600 dark:text-red-400 block mt-1";
+        }
+      });
+      simState.scores.mcqScore = Math.round(correctCount * 16.66);
+
+      const totalScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('assessmentScoreReadout').innerText = `Score: ${totalScore}/100`;
+
+      let card = document.getElementById('finalScoreCard');
+      if (!card) {
+        const parent = document.getElementById('simulationViewport');
+        card = document.createElement('div');
+        card.id = "finalScoreCard";
+        parent.appendChild(card);
+      }
+
+      card.className = "p-5 rounded-3xl text-center space-y-3 transition-all duration-500 mt-4 ";
+      card.innerHTML = `
+        <div class="space-y-1">
+          <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText"></p>
+          <p class="text-xs text-slate-600 dark:text-slate-400" id="finalStatusDescription"></p>
+        </div>
+        <div id="practiceRedirectBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <button onclick="changeMode('practice')" class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+            <i class="fa-solid fa-graduation-cap mr-1"></i> Return to Practice Console
+          </button>
+        </div>
+      `;
+
+      card.classList.remove('hidden');
+      const statTxt = card.querySelector('#finalStatusText');
+      const statDsc = card.querySelector('#finalStatusDescription');
+      const rdrBlk = card.querySelector('#practiceRedirectBlock');
+
+      if (totalScore >= 80) {
+        soundFeedback('success');
+        card.className += "bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 animate-pulse";
+        statTxt.innerText = `PASSED (${totalScore}%)`;
+        statDsc.innerText = "High-power spectacle lens verification assessment logged.";
+        rdrBlk.classList.add('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completed.includes('Manual-Lensometer')) {
+          completed.push('Manual-Lensometer');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        }
+        syncCompletionBadge();
+      } else {
+        soundFeedback('warning');
+        card.className += "bg-red-50 dark:bg-red-950/25 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-300";
+        statTxt.innerText = `FAILED (${totalScore}%)`;
+        statDsc.innerText = "Assessment score falls below the 80% passing standard criteria.";
+        rdrBlk.classList.remove('hidden');
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        completed = completed.filter(el => el !== 'Manual-Lensometer');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        syncCompletionBadge();
+      }
+    }
+
+    function syncCompletionBadge() {
+      const completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completed.includes('Manual-Lensometer')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/45 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+
+    // Modal control handlers
+    function openMenuModal(modalId) { soundFeedback('click'); document.getElementById(`${modalId}Modal`).classList.remove('hidden'); }
+    function closeMenuModal(modalId) { soundFeedback('click'); document.getElementById(`${modalId}Modal`).classList.add('hidden'); }
+    function toggleDarkMode() { const isDark = document.documentElement.classList.toggle('dark'); localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light'); soundFeedback('switch'); }
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const icon = document.getElementById('muteIcon');
+      const text = document.getElementById('muteText');
+      if (simState.soundMuted) {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400"; text.innerText = "Unmute";
+      } else {
+        icon.className = "fa-solid fa-volume-high text-teal-600 animate-pulse"; text.innerText = "Mute"; soundFeedback('click');
+      }
+    }
+  </script>
+
+  <div id="aboutModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-microscope text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">About Lensometer Lab</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Refraction Unit</p>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        This high-fidelity educational module simulates manual focal neutralization, axis alignment (scissoring effects), and spherical/cylindrical principal meridians measurement up to &plusmn;20.00 diopters.
+      </p>
+    </div>
+  </div>
+
+  <div id="referenceModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">Clinical References</h3>
+          <p class="text-[10px] text-slate-600 dark:text-slate-400">Lensometry Guidelines</p>
+        </div>
+      </div>
+      <div class="space-y-3 text-xs">
+        <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+          <strong>Minus Cylinder Form Rule:</strong> Always focus the thin sphere lines first to establish the spherical power. Then rotate the power wheel toward the minus direction to bring the thick cylinder lines into focus. The difference between these two readings is the cylinder power.
+        </p>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

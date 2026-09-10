@@ -1,0 +1,2018 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAHS-E-LAB | Clinical Color Vision &amp; Cone Pathway Lab</title>
+    
+    <!-- Tailwind CSS & Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0f172a',    /* Slate 900 */
+                        secondary: '#0284c7',  /* Sky 600 */
+                        accent: '#0d9488',     /* Teal 600 */
+                        lightbg: '#f8fafc',    /* Slate 50 */
+                        panelbg: 'rgba(255, 255, 255, 0.95)'
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        .dark ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        ::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.8); }
+        .dark .glass-panel { background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(51, 65, 85, 0.8); }
+        .dark-glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        
+        .cone-transition { transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-500" id="bodyFrame">
+
+    <script>
+        let audioCtx = null;
+        const hubState = { 
+            soundMuted: false,
+            completedSimulators: {
+                Ishihara: false,
+                D15: false,
+                FM100: false,
+                Syllabus: false,
+                Quiz: false
+            }
+        };
+
+        function playAudioTone(freq = 440, type = 'sine', duration = 0.12, vol = 0.05) {
+            if (hubState.soundMuted) return;
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.start(); osc.stop(audioCtx.currentTime + duration);
+            } catch (e) { console.warn("AudioContext blocked or unsupported."); }
+        }
+
+        function soundFeedback(profile) {
+            switch (profile) {
+                case 'click':
+                    playAudioTone(680, 'sine', 0.08, 0.04);
+                    break;
+                case 'tick':
+                    playAudioTone(950, 'triangle', 0.04, 0.012);
+                    break;
+                case 'warning':
+                    playAudioTone(190, 'sawtooth', 0.22, 0.05);
+                    break;
+                case 'success':
+                    playAudioTone(520, 'sine', 0.1, 0.05);
+                    setTimeout(() => playAudioTone(640, 'sine', 0.15, 0.05), 80);
+                    break;
+                case 'blip':
+                    playAudioTone(440, 'sine', 0.06, 0.03);
+                    break;
+                case 'switch':
+                    playAudioTone(380, 'triangle', 0.12, 0.04);
+                    break;
+            }
+        }
+    </script>
+
+    <!-- HEADER / CLINICAL BRANDING BAR -->
+    <header class="w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between shrink-0 z-10 shadow-xs">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800">
+                <i class="fa-solid fa-palette text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white leading-none flex items-center gap-1.5">
+                    SAHS-E-LAB | <span class="text-secondary">Color Vision Clinic</span>
+                    <span class="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900">v1.5</span>
+                </h1>
+                <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-extrabold mt-1">Hereditary &amp; Acquired Dyschromatopsia Diagnostics</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button onclick="openMenuModal('about')" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition items-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+            </button>
+            <button onclick="openMenuModal('reference')" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition items-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-book-bookmark text-teal-600"></i> Reference
+            </button>
+            <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+                <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600"></i> <span id="muteText">Mute</span>
+            </button>
+            <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition">
+                <i class="fa-solid fa-circle-half-stroke"></i>
+            </button>
+            
+            <div class="flex items-center gap-3 text-xs">
+                <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+                    <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> <span id="progressIndicator">0 / 5 Labs Completed</span>
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN TWO-COLUMN SPLIT CONTAINER -->
+    <main class="flex-grow flex flex-col lg:flex-row overflow-hidden relative">
+        
+        <!-- LEFT COLUMN: VIEWPORT & CHARTS -->
+        <div id="simulationViewport" class="flex-grow h-[45vh] lg:h-full p-4 sm:p-6 overflow-y-auto space-y-4">
+            
+            <!-- CLINICAL VIEWPORT BOX -->
+            <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs relative transition-all duration-500">
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Clinical Examination Screen</span>
+                    <div class="flex gap-2">
+                        <button onclick="switchExamination('ishihara')" id="examTab-ishihara" class="px-3 py-1 text-[10px] font-black uppercase rounded-lg transition bg-secondary text-white shadow-xs cursor-pointer">
+                            Ishihara Plates
+                        </button>
+                        <button onclick="switchExamination('farnsworth')" id="examTab-farnsworth" class="px-3 py-1 text-[10px] font-black uppercase rounded-lg transition border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+                            Farnsworth D-15
+                        </button>
+                        <button onclick="switchExamination('fm100')" id="examTab-fm100" class="px-3 py-1 text-[10px] font-black uppercase rounded-lg transition border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+                            FM 100 Hue
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950 rounded-2xl p-4 flex flex-col justify-center items-center overflow-hidden h-[300px] md:h-[350px] relative shadow-inner" id="clinicalViewportBox">
+                    
+                    <!-- ISHIHARA PLATES -->
+                    <div id="view-ishihara" class="flex flex-col justify-center items-center space-y-3">
+                        <canvas id="ishiharaCanvas" width="220" height="220" class="rounded-full shadow-lg border border-slate-800"></canvas>
+                        <div class="flex flex-col items-center gap-1 text-center">
+                            <span id="ishiharaPlateName" class="text-xs font-black text-white">Plate 1 (Demonstration)</span>
+                            <p id="plateInstructions" class="text-[10px] text-slate-400 max-w-[340px]">Normal read: 12 | Color blind read: 12. Demonstration plate used to screen for malingering.</p>
+                        </div>
+                    </div>
+
+                    <!-- FARNSWORTH D-15 -->
+                    <div id="view-farnsworth" class="hidden flex-col justify-center items-center space-y-4 w-full px-2">
+                        <p class="text-[10px] text-slate-500 text-center font-bold">
+                            Rearrange the caps. Click any two color caps to swap their sequence positions.
+                        </p>
+                        
+                        <div class="grid grid-cols-8 gap-2 justify-center w-full max-w-[480px]" id="d15CapContainer"></div>
+
+                        <div class="flex justify-around items-center w-full gap-4 pt-2 border-t border-slate-900">
+                            <div class="flex flex-col items-center relative">
+                                <canvas id="d15PlotCanvas" width="130" height="130" class="bg-slate-900 border border-slate-900 rounded-xl shadow-xs"></canvas>
+                                <span class="text-[9px] text-slate-500 mt-1 font-bold">Polar Crossover Graph</span>
+                                <label class="flex items-center gap-1 mt-1 cursor-pointer select-none">
+                                    <input type="checkbox" id="chkShowIdeal" onchange="drawD15Plot()" class="w-3.5 h-3.5 text-secondary accent-secondary rounded">
+                                    <span class="text-[9px] font-bold text-slate-500">Show Ideal Loop</span>
+                                </label>
+                            </div>
+                            <div class="text-left space-y-1 font-mono text-[10px] text-slate-400 max-w-[200px]" id="d15CrossoverSummary">
+                                <p class="font-extrabold text-white">D-15 ANALYSIS:</p>
+                                <p id="d15Status">Arrangement matches CIE normal locus spectrum.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FM-100 HUE TEST -->
+                    <div id="view-fm100" class="hidden flex-col justify-center items-center space-y-3 w-full px-2">
+                        <div class="flex items-center justify-between w-full max-w-[480px] gap-2">
+                            <p class="text-[9px] text-slate-400 font-bold">
+                                FM-100 Hue Test (85 Caps). Rearrange the inner caps. Fixed anchors at ends.
+                            </p>
+                            <div class="flex gap-1" id="fm100BoxSelector">
+                                <button onclick="selectFM100Box(1)" id="fm100BoxBtn-1" class="px-2 py-0.5 text-[8.5px] rounded font-bold bg-secondary text-white">Tray 1</button>
+                                <button onclick="selectFM100Box(2)" id="fm100BoxBtn-2" class="px-2 py-0.5 text-[8.5px] rounded font-bold bg-slate-800 text-slate-400">Tray 2</button>
+                                <button onclick="selectFM100Box(3)" id="fm100BoxBtn-3" class="px-2 py-0.5 text-[8.5px] rounded font-bold bg-slate-800 text-slate-400">Tray 3</button>
+                                <button onclick="selectFM100Box(4)" id="fm100BoxBtn-4" class="px-2 py-0.5 text-[8.5px] rounded font-bold bg-slate-800 text-slate-400">Tray 4</button>
+                            </div>
+                        </div>
+
+                        <!-- Cap scrolling/grid tray container -->
+                        <div class="grid grid-cols-11 gap-1 justify-center w-full max-w-[480px] p-2 bg-slate-900 rounded-xl" id="fm100CapContainer"></div>
+
+                        <div class="flex justify-around items-center w-full gap-4 pt-1.5 border-t border-slate-900">
+                            <div class="flex flex-col items-center">
+                                <canvas id="fm100PlotCanvas" width="130" height="130" class="bg-slate-900 border border-slate-900 rounded-xl shadow-xs"></canvas>
+                                <span class="text-[9px] text-slate-500 mt-1 font-bold">FM polar Error Graph</span>
+                            </div>
+                            <div class="text-left space-y-1 font-mono text-[9.5px] text-slate-400 max-w-[200px]">
+                                <p class="font-extrabold text-white">FM-100 STATUS ANALYSIS:</p>
+                                <p id="fm100Status">Perfect chromatic sorting across all hue trays.</p>
+                                <p id="fm100ErrorScore" class="font-bold text-sky-400">Total Error Score (TES): 0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400 pt-1" id="viewportFooterBar">
+                    <div class="flex items-center gap-1.5">
+                        <i class="fa-solid fa-eye-dropper text-secondary animate-bounce"></i>
+                        <span id="viewportHelpText">Select plate indices on the right panel to test response variations.</span>
+                    </div>
+                    <span id="activeCvdFilterBadge" class="text-[9px] uppercase font-black text-teal-600 dark:text-teal-400 px-2 py-0.5 bg-teal-50 dark:bg-teal-950/40 rounded border border-teal-100 dark:border-teal-900/60 font-mono">
+                        Filter: OFF
+                    </span>
+                </div>
+            </div>
+
+            <!-- CLINICAL STANDARDS EXPECTED READINGS -->
+            <div id="comparisonDashboardCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs transition-all duration-500">
+                <div class="flex justify-between items-center">
+                    <h4 class="text-xs uppercase font-black text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                        <i class="fa-solid fa-table-list text-secondary"></i> Clinical Standard Expected Readings
+                    </h4>
+                    <span class="text-[9px] font-mono font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400" id="currentReadoutPlateLabel">Plate 1</span>
+                </div>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                    Compare what a Normal Observer reads against the expected responses of various chromatic pathologies. The row matching the current simulated pathology is highlighted.
+                </p>
+
+                <div class="border border-slate-200 dark:border-slate-900 rounded-2xl overflow-hidden text-xs">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-900 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                                <th class="px-4 py-2.5">Ocular Profile</th>
+                                <th class="px-4 py-2.5 text-center">Expected Number Read</th>
+                                <th class="px-4 py-2.5">Pathology Mechanism</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-900" id="comparisonTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- CONE PHOTOPIGMENT & PATHWAY MONITOR -->
+            <div id="pathwayMonitorCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs transition-all duration-500">
+                <h4 class="text-xs uppercase font-black text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+                    <i class="fa-solid fa-chart-bar text-secondary animate-pulse"></i> Realtime Cone Photopigment &amp; Pathway Monitors
+                </h4>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80">
+                        <span class="text-[9px] font-black text-sky-600 dark:text-sky-400 uppercase tracking-widest block border-b border-slate-200 dark:border-slate-700/60 pb-1">Photoreceptor Outer Segments</span>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] font-bold">
+                                <span>L-Cones (Erythrolabe - 564nm)</span>
+                                <span id="lconeVal" class="text-red-500 font-mono">100%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                                <div id="lconeBar" class="cone-transition bg-red-500 h-full w-[100%]"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] font-bold">
+                                <span>M-Cones (Chlorolabe - 534nm)</span>
+                                <span id="mconeVal" class="text-emerald-500 font-mono">100%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                                <div id="mconeBar" class="cone-transition bg-emerald-500 h-full w-[100%]"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-[10px] font-bold">
+                                <span>S-Cones (Cyanolabe - 420nm)</span>
+                                <span id="sconeVal" class="text-blue-500 font-mono">100%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                                <div id="sconeBar" class="cone-transition bg-blue-500 h-full w-[100%]"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800/80">
+                        <span class="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block border-b border-slate-200 dark:border-slate-700/60 pb-1">Lateral Geniculate Nucleus (LGN) Channels</span>
+                        <div class="space-y-2 text-xs font-mono">
+                            <div class="flex justify-between items-center" id="path-parvocellular">
+                                <span>Parvocellular (Red-Green):</span>
+                                <span id="status-parvo" class="font-extrabold text-emerald-600">INTACT</span>
+                            </div>
+                            <div class="flex justify-between items-center" id="path-koniocellular">
+                                <span>Koniocellular (Blue-Yellow):</span>
+                                <span id="status-konio" class="font-extrabold text-emerald-600">INTACT</span>
+                            </div>
+                            <div class="flex justify-between items-center" id="path-opticneuritis">
+                                <span>Myelin Axonal Washout:</span>
+                                <span id="status-myelin" class="font-extrabold text-slate-500">ABSENT</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT SIDEBAR: CONTROLS & DIAGNOSTIC MODULE -->
+        <aside class="bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 flex flex-col shrink-0 w-full lg:w-[420px] h-[55vh] lg:h-full overflow-y-auto shadow-xl transition-all duration-500">
+            
+            <div class="p-5 sm:p-6 space-y-5">
+                
+                <div class="bg-white dark:bg-slate-900 p-2.5 rounded-3xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-xs">
+                    <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer">
+                        <i class="fa-solid fa-chalkboard-user"></i> Practice Mode
+                    </button>
+                    <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer">
+                        <i class="fa-solid fa-vial"></i> Assessment
+                    </button>
+                </div>
+
+                <!-- PRACTICE CONTROLS -->
+                <div id="practiceControlsCard" class="space-y-5">
+                    <div>
+                        <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-secondary"></i> Practice Settings Panel
+                        </h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Model genetic &amp; acquired visual receptor pathway mutations.</p>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Color Vision Profile</label>
+                        <select id="pathologySelect" onchange="updatePathology()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary shadow-sm">
+                            <option value="normal">Normal Trichromacy (Symmetrical Cone Pigments)</option>
+                            <option value="protanopia">Protanopia (L-Cone Defect / Red-Blind)</option>
+                            <option value="protanomaly">Protanomaly (L-Cone Shift / Red-Weak)</option>
+                            <option value="deuteranopia">Deuteranopia (M-Cone Defect / Green-Blind)</option>
+                            <option value="deuteranomaly">Deuteranomaly (M-Cone Shift / Green-Weak)</option>
+                            <option value="tritanopia">Tritanopia (S-Cone Defect / Blue-Blind)</option>
+                            <option value="achromatopsia">Achromatopsia (Complete Rod Monochromacy • Complete Cone Block)</option>
+                            <option value="optic_neuritis">Optic Neuritis (Acquired Myelin Washout • Marked Red-Green Desaturation)</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-2 p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+                        <span class="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400 tracking-wider flex items-center gap-1">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Diagnostic Arrangement Presets
+                        </span>
+                        <p class="text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
+                            Instantly apply color confusion tracks on both D-15 and FM-100 test panels:
+                        </p>
+                        <div class="grid grid-cols-2 gap-1.5 pt-1">
+                            <button onclick="simulateD15Sort('normal')" class="px-2.5 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold rounded-lg text-slate-700 dark:text-slate-200 shadow-xs cursor-pointer">
+                                Normal Locus
+                            </button>
+                            <button onclick="simulateD15Sort('protanopia')" class="px-2.5 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold rounded-lg text-slate-700 dark:text-slate-200 shadow-xs cursor-pointer">
+                                Protan Confusion
+                            </button>
+                            <button onclick="simulateD15Sort('deuteranopia')" class="px-2.5 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold rounded-lg text-slate-700 dark:text-slate-200 shadow-xs cursor-pointer">
+                                Deutan Confusion
+                            </button>
+                            <button onclick="simulateD15Sort('tritanopia')" class="px-2.5 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold rounded-lg text-slate-700 dark:text-slate-200 shadow-xs cursor-pointer">
+                                Tritan Confusion
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2" id="ishiharaControllerPanel">
+                        <label class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block">Clinical Ishihara Plate Series</label>
+                        
+                        <div class="flex flex-wrap gap-1.5 mb-2">
+                            <button onclick="filterPlates('all')" id="filter-all" class="px-2 py-1 bg-sky-100 text-sky-900 rounded text-[9px] font-black uppercase tracking-wider">All</button>
+                            <button onclick="filterPlates('Transformation')" id="filter-trans" class="px-2 py-1 bg-slate-100 text-slate-600 hover:bg-sky-50 rounded text-[9px] font-black uppercase tracking-wider">Transformation</button>
+                            <button onclick="filterPlates('Vanishing')" id="filter-vanish" class="px-2 py-1 bg-slate-100 text-slate-600 hover:bg-sky-50 rounded text-[9px] font-black uppercase tracking-wider">Vanishing</button>
+                            <button onclick="filterPlates('Tritan')" id="filter-hidden" class="px-2 py-1 bg-slate-100 text-slate-600 hover:bg-sky-50 rounded text-[9px] font-black uppercase tracking-wider">Tritan</button>
+                        </div>
+
+                        <div class="grid grid-cols-4 gap-1.5 max-h-[160px] overflow-y-auto pr-1" id="platesGrid"></div>
+                    </div>
+
+                    <!-- D-15 CLINICAL TRAINING ACADEMY -->
+                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden text-xs shadow-xs transition-colors duration-500">
+                        <div class="bg-slate-100 dark:bg-slate-900/80 px-4 py-3 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 font-extrabold uppercase text-slate-800 dark:text-slate-100">
+                            <i class="fa-solid fa-graduation-cap text-secondary"></i>
+                            <span>Clinical Training Academy</span>
+                        </div>
+                        <div class="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                            <button onclick="switchAcademyTab('how-to-use')" id="acadTabBtn-how-to-use" class="flex-1 py-2 text-center text-secondary border-b-2 border-secondary font-bold">How To Use</button>
+                            <button onclick="switchAcademyTab('interpretation')" id="acadTabBtn-interpretation" class="flex-1 py-2 text-center text-slate-500 font-bold">Evaluation</button>
+                            <button onclick="switchAcademyTab('axis')" id="acadTabBtn-axis" class="flex-1 py-2 text-center text-slate-500 font-bold">Axis Explorer</button>
+                        </div>
+
+                        <div class="p-4 bg-white dark:bg-slate-900 space-y-3 leading-relaxed text-slate-700 dark:text-slate-400 max-h-[250px] overflow-y-auto">
+                            <div id="acadView-how-to-use" class="space-y-2">
+                                <p class="font-extrabold text-secondary text-[11px] uppercase tracking-wider"><i class="fa-solid fa-paste"></i> Clinical Examination Protocol</p>
+                                <ol class="list-decimal list-inside space-y-1.5 text-[11px]">
+                                    <li><strong>Illumination Setup:</strong> Position the patient under standardized daylight illumination ($\ge 270 \text{ lux}$).</li>
+                                    <li><strong>Arrangement:</strong> Direct the patient to look through the scrambled caps, select the cap matching closest in color shade to the fixed pilot, and slide it adjacent to it.</li>
+                                    <li><strong>Diagnosis:</strong> Examine the polar crossover graphs to identify confusion paths.</li>
+                                </ol>
+                            </div>
+
+                            <div id="acadView-interpretation" class="hidden space-y-3">
+                                <p class="font-extrabold text-amber-500 text-[11px] uppercase tracking-wider"><i class="fa-solid fa-circle-nodes"></i> Diagnostic Evaluation Metrics</p>
+                                <div class="p-2.5 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 rounded-xl space-y-1 text-[11px]">
+                                    <span class="font-extrabold text-amber-700 dark:text-amber-400 uppercase tracking-widest text-[9px] block">Anomalous Trichromacy</span>
+                                    <p>One cone photopigment class experiences a partial shift in its absorption peak. Central opponent channel retains general sequence integrity.</p>
+                                    <p class="font-bold text-slate-700 dark:text-slate-200 mt-1"><i class="fa-solid fa-arrow-right-arrow-left"></i> Scorecard Sign: Minor Transpositions</p>
+                                </div>
+                                <div class="p-2.5 bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/60 rounded-xl space-y-1 text-[11px]">
+                                    <span class="font-extrabold text-rose-700 dark:text-rose-400 uppercase tracking-widest text-[9px] block">Dichromacy (Anopias)</span>
+                                    <p>Absolute genetic absence of an entire cone cell class. Wavelength distinction collapses along standard isometric confusion tracks.</p>
+                                    <p class="font-bold text-slate-700 dark:text-slate-200 mt-1"><i class="fa-solid fa-shuffle"></i> Scorecard Sign: Major Parallel Crossovers</p>
+                                </div>
+                            </div>
+
+                            <div id="acadView-axis" class="hidden space-y-2 text-[11px]">
+                                <p class="font-extrabold text-indigo-500 text-[11px] uppercase tracking-wider"><i class="fa-solid fa-compass"></i> Mapping Confusion Coordinates</p>
+                                <p class="text-[10.5px]">The angular inclination of parallel scorecard crossovers defines the underlying photoreceptor deficiency:</p>
+                                <div class="space-y-1.5 font-mono text-[10px] pt-1">
+                                    <button onclick="highlightAxisOnPlot('protan')" class="w-full p-2 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-left rounded-lg border border-slate-200 dark:border-slate-800 flex justify-between items-center cursor-pointer">
+                                        <span class="font-bold text-red-500">PROTAN AXIS (L-Cone Absent):</span>
+                                        <span class="text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-1.5 py-0.5 rounded">Cap 1 to 12/13</span>
+                                    </button>
+                                    <button onclick="highlightAxisOnPlot('deutan')" class="w-full p-2 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-left rounded-lg border border-slate-200 dark:border-slate-800 flex justify-between items-center cursor-pointer">
+                                        <span class="font-bold text-emerald-500">DEUTAN AXIS (M-Cone Absent):</span>
+                                        <span class="text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-1.5 py-0.5 rounded">Cap 15 to 7/8</span>
+                                    </button>
+                                    <button onclick="highlightAxisOnPlot('tritan')" class="w-full p-2 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-left rounded-lg border border-slate-200 dark:border-slate-800 flex justify-between items-center cursor-pointer">
+                                        <span class="font-bold text-blue-500">TRITAN AXIS (S-Cone Absent):</span>
+                                        <span class="text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-1.5 py-0.5 rounded">Cap 4 to 14</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TEST/ASSESSMENT MODE CONSOLE -->
+                <div id="testModeConsole" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+                    <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div>
+                            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Diagnostic Assessment Board</h3>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400">Examine the plates and arranged cap spectrums to declare diagnosis.</p>
+                        </div>
+                        <span id="assessmentScoreReadout" class="text-xs font-black bg-slate-100 dark:bg-slate-900 border border-slate-200 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">Score: Unsubmitted</span>
+                    </div>
+
+                    <div class="space-y-1.5" id="assessmentPlateSelectorBox">
+                        <span class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider font-mono">Examine Plate:</span>
+                        <div class="flex gap-1.5 overflow-x-auto pb-1 font-mono" id="testPlatesRow"></div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider">Clinical Color Pathology Diagnosis (50% Marks)</label>
+                        <select id="testDiagnosisSelect" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 font-extrabold focus:outline-none focus:border-secondary shadow-sm">
+                            <option value="">-- Choose Color Pathology --</option>
+                            <option value="normal">Normal Trichromatic Color Locus</option>
+                            <option value="protanopia">Hereditary Protanopia (L-cone absent)</option>
+                            <option value="deuteranopia">Hereditary Deuteranopia (M-cone absent)</option>
+                            <option value="tritanopia">Hereditary Tritanopia (S-cone absent)</option>
+                            <option value="achromatopsia">Congenital Achromatopsia (Monochromacy)</option>
+                            <option value="optic_neuritis">Optic Neuritis (Myelin pathway washout)</option>
+                        </select>
+                        <p id="diagnosisFeedback" class="text-[11px] font-bold hidden"></p>
+                    </div>
+
+                    <div class="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-900">
+                        <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block">Pathway Mechanics Quiz (50% Marks)</span>
+                        <div id="testMcqSuite" class="space-y-4"></div>
+                    </div>
+
+                    <button onclick="submitTestAssessment()" class="w-full py-3 bg-secondary text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+                        Submit Assessment Profile
+                    </button>
+                </div>
+
+                <!-- CLINICAL SYLLABUS GUIDELINES -->
+                <div id="clinicalSyllabusCard" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs transition-colors duration-500">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-book-open text-teal-600 animate-pulse"></i> Clinical Syllabus Guidelines
+                        </h3>
+                        <span class="bg-teal-50 dark:bg-teal-950/40 text-teal-600 border border-teal-100 dark:border-teal-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">Dyschromatopsia Keys</span>
+                    </div>
+
+                    <div class="space-y-2 text-xs">
+                        <select id="pearlSelector" onchange="displayClinicalPearl()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-700 dark:text-slate-200 font-extrabold focus:outline-none shadow-xs">
+                            <option value="congenital_vs_acquired">Congenital vs. Acquired Defects</option>
+                            <option value="protan">Protanopia / Protanomaly (L-Cone)</option>
+                            <option value="deutan">Deuteranopia / Deuteranomaly (M-Cone)</option>
+                            <option value="tritan">Tritanopia / Tritanomaly (S-Cone)</option>
+                            <option value="achroma">Complete Achromatopsia (Rod Monochromacy)</option>
+                            <option value="optic_neuritis">Acquired Optic Neuritis Red-Green Loss</option>
+                        </select>
+
+                        <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800" id="pearlDescBox">
+                            <p class="font-extrabold text-slate-900 dark:text-white text-xs" id="pearlTitle">Congenital vs. Acquired Defects</p>
+                            <p class="text-slate-600 dark:text-slate-400 text-[11px] mt-2 leading-relaxed" id="pearlDesc">
+                                Congenital defects are autosomal or X-linked inherited conditions causing developmental cone anomalies. Acquired defects result from demyelination (optic neuritis), trauma, toxicity, or retinal degeneration.
+                            </p>
+                            <div class="mt-3 flex items-center gap-2">
+                                <span class="text-[9px] font-bold bg-sky-50 dark:bg-sky-950 text-secondary border border-sky-100 dark:border-sky-900 px-2 py-0.5 rounded">EyeWiki Standard</span>
+                                <a href="https://eyewiki.org/Color_Vision" target="_blank" class="text-[9px] font-bold text-red-600 hover:underline flex items-center gap-1">
+                                    <i class="fa-brands fa-youtube animate-pulse"></i> Color Pathway Video
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <footer class="mt-auto p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 shrink-0">
+                <div class="space-y-1">
+                    <p class="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em]">Course Director</p>
+                    <h4 class="text-xs font-black text-slate-900 dark:text-white">Shivashangari M</h4>
+                    <p class="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">Asst. Professor | Department of Optometry</p>
+                </div>
+            </footer>
+        </aside>
+    </main>
+
+    <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 text-center text-[10px] font-extrabold text-slate-400 dark:text-slate-500 tracking-wider transition-all duration-500 shrink-0">
+        <p>Colorimetric Locus Coordinates &amp; Symmetrical Cone Calibration Engine</p>
+        <p class="text-slate-500 mt-1">School of Allied Health Sciences, VMRF-DU • Optometry Unit</p>
+    </footer>
+
+    <!-- ABOUT US MODAL -->
+    <div id="aboutModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+            <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer text-slate-600 dark:text-slate-300">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+                <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-graduation-cap text-lg"></i></div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-white">About SAHS-E-LAB</h3>
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400 font-extrabold">Vinayaka Mission's Research Foundation</p>
+                </div>
+            </div>
+            <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                This simulation lab maps the physiological pathways of color vision. Students explore the differences between congenital L, M, and S cone pigment absence, and acquired optic nerve demyelination which affects red-green visual fields.
+            </p>
+            <div class="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-900 space-y-1.5 text-xs">
+                <p class="font-black text-secondary tracking-widest text-[9px] uppercase">Faculty Architect &amp; Program Lead</p>
+                <p class="font-black text-slate-900 dark:text-white">Shivashangari M</p>
+                <p class="text-slate-600 dark:text-slate-500">Assistant Professor, Optometry Unit</p>
+                <p class="text-slate-600 dark:text-slate-500 text-[10px]">School of Allied Health Sciences (SAHS), Salem, Tamil Nadu, India.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- REFERENCE MODAL -->
+    <div id="referenceModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200">
+            <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer text-slate-600 dark:text-slate-300">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="flex items-center gap-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+                <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-white">Clinical References</h3>
+                    <p class="text-[10px] text-slate-600 dark:text-slate-400">Trusted Academic Guidelines &amp; Literature</p>
+                </div>
+            </div>
+            <div class="space-y-3 max-h-[350px] overflow-y-auto pr-1 text-xs">
+                <div class="space-y-1">
+                    <span class="text-[9px] font-black uppercase text-secondary tracking-widest">AAO (Color Vision Assessment)</span>
+                    <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+                        Ishihara pseudoisochromatic plates evaluate the integrity of the red-green parvocellular pathway. The Farnsworth D-15 test is recommended to differentiate protan, deutan, and tritan deficiencies based on confusion axes.
+                    </p>
+                </div>
+                <div class="space-y-1 border-t border-slate-200 dark:border-slate-800 pt-2">
+                    <span class="text-[9px] font-black uppercase text-emerald-600 tracking-widest">AOA Clinical Standards</span>
+                    <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+                        Hereditary dyschromatopsia is predominantly X-linked recessive (Protan and Deutan), affecting roughly 8% of males. Tritan defects are autosomal dominant, mapped to Chromosome 7.
+                    </p>
+                </div>
+                <div class="space-y-1 border-t border-slate-200 dark:border-slate-800 pt-2">
+                    <span class="text-[9px] font-black uppercase text-indigo-700 tracking-widest">Farnsworth-Munsell 100 Hue Test</span>
+                    <p class="leading-relaxed text-slate-600 dark:text-slate-400">
+                        FM-100 Hue Test uses 85 distinct color cap steps forming a continuous hue cycle. Total Error Score (TES) represents the sum of deviations of adjacent sorted caps, where higher scores signify severe chromatic deficiencies.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const simState = {
+            mode: 'practice',          // 'practice' or 'test'
+            examination: 'ishihara',   // 'ishihara' or 'farnsworth' or 'fm100'
+            pathology: 'normal',       // chosen pathway selector
+            activePathology: 'normal', // dynamic runtime target
+            currentPlate: 'demo',      // currently active plate key ('demo', 'redgreen1', 'redgreen2', 'blueyellow')
+            soundMuted: false,
+            selectedQuestions: [],
+            
+            // D-15 state
+            d15Order: [],              // user ordered cap indexes
+            selectedCapIndex: null,    // selected cap index for D-15 swapping
+            
+            // FM-100 state
+            fm100Order: [],            // user ordered 85 cap indices
+            selectedFM100CapIndex: null, // selected cap index for FM-100 swapping in the active tray
+            activeFM100Box: 1,         // current FM100 tray box index (1 to 4)
+
+            activeFilter: 'all',       // active ishihara plate category filter
+            activeAcademyTab: 'how-to-use', // active tab index inside training tracker
+            activeHighlightedAxis: null,   // currently highlighted line axis identifier
+            scores: {
+                diagnosisScore: 0,
+                mcqScore: 0
+            }
+        };
+
+        const d15ReferenceCaps = [
+            { id: 0, hex: '#30a3b0' }, // FIXED Pilot Cap
+            { id: 1, hex: '#3d978a' },
+            { id: 2, hex: '#4c9c73' },
+            { id: 3, hex: '#5e9e5d' },
+            { id: 4, hex: '#769d4d' },
+            { id: 5, hex: '#8d9943' },
+            { id: 6, hex: '#a49141' },
+            { id: 7, hex: '#b3884b' },
+            { id: 8, hex: '#bc7d5c' },
+            { id: 9, hex: '#bb7470' },
+            { id: 10, hex: '#b56e87' },
+            { id: 11, hex: '#a56f9a' },
+            { id: 12, hex: '#8d75aa' },
+            { id: 13, hex: '#707db5' },
+            { id: 14, hex: '#5285b7' },
+            { id: 15, hex: '#3991b5' }
+        ];
+
+        // FM-100 Reference color generation (85 hues computed procedurally)
+        const fm100ReferenceCaps = [];
+        for (let i = 0; i < 85; i++) {
+            // Generate continuous hue spectrum representing typical FM Munsell colors
+            const h = Math.round(i * 360 / 85);
+            fm100ReferenceCaps.push({
+                id: i,
+                hex: `hsl(${h}, 52%, 48%)`
+            });
+        }
+
+        // FM-100 Tray partition bounds (Tray 1: 0-21, Tray 2: 21-42, Tray 3: 42-63, Tray 4: 63-84)
+        const fm100BoxBounds = {
+            1: { start: 0, end: 21 },
+            2: { start: 21, end: 42 },
+            3: { start: 42, end: 63 },
+            4: { start: 63, end: 84 }
+        };
+
+        const pathologyProfiles = {
+            normal: {
+                lcone: 100, mcone: 100, scone: 100,
+                parvo: 'INTACT', konio: 'INTACT', myelin: 'ABSENT',
+                filter: 'normal', desc: "Symmetrical Sensation"
+            },
+            protanopia: {
+                lcone: 0, mcone: 100, scone: 100,
+                parvo: 'MUTATED (Red-Blind)', konio: 'INTACT', myelin: 'ABSENT',
+                filter: 'protanopia', desc: "Protanopia (Red-Blind)"
+            },
+            protanomaly: {
+                lcone: 35, mcone: 100, scone: 100,
+                parvo: 'SLUGGISH (Red-Weak)', konio: 'INTACT', myelin: 'ABSENT',
+                filter: 'protanopia', desc: "Protanomaly (Red-Weak)"
+            },
+            deuteranopia: {
+                lcone: 100, mcone: 0, scone: 100,
+                parvo: 'MUTATED (Green-Blind)', konio: 'INTACT', myelin: 'ABSENT',
+                filter: 'deuteranopia', desc: "Deuteranopia (Green-Blind)"
+            },
+            deuteranomaly: {
+                lcone: 100, mcone: 35, scone: 100,
+                parvo: 'SLUGGISH (Green-Weak)', konio: 'INTACT', myelin: 'ABSENT',
+                filter: 'deuteranopia', desc: "Deuteranomaly (Green-Weak)"
+            },
+            tritanopia: {
+                lcone: 100, mcone: 100, scone: 0,
+                parvo: 'INTACT', konio: 'MUTATED (Blue-Blind)', myelin: 'ABSENT',
+                filter: 'tritanopia', desc: "Tritanopia (Blue-Blind)"
+            },
+            achromatopsia: {
+                lcone: 0, mcone: 0, scone: 0,
+                parvo: 'SILENT (No Signal)', konio: 'SILENT (No Signal)', myelin: 'ABSENT',
+                filter: 'achromatopsia', desc: "Total Cone Achromatopsia"
+            },
+            optic_neuritis: {
+                lcone: 100, mcone: 100, scone: 100,
+                parvo: 'DEGRADED (Red Desat)', konio: 'SLUGGISH', myelin: 'Washout (Optic Nerve)',
+                filter: 'protanopia', desc: "Optic Neuritis Desaturation"
+            }
+        };
+
+        const ishiharaPlatesDatabase = {
+            demo: { 
+                category: "Demonstration", 
+                digit: "12", 
+                label: "Plate 1 (Demonstration)", 
+                hint: "Everyone reads '12'. Screener for malingering/dishonesty.",
+                expected: { normal: "12", protanopia: "12", protanomaly: "12", deuteranopia: "12", deuteranomaly: "12", tritanopia: "12", achromatopsia: "12" }
+            },
+            redgreen1: { 
+                category: "Transformation", 
+                digit: "74", 
+                label: "Plate 2 (Transformation)", 
+                hint: "Normal read: 74 | Color blind read: 21. Examines parvocellular pathways.",
+                expected: { normal: "74", protanopia: "21", protanomaly: "21", deuteranopia: "21", deuteranomaly: "21", tritanopia: "74", achromatopsia: "None" }
+            },
+            redgreen2: { 
+                category: "Vanishing", 
+                digit: "15", 
+                label: "Plate 3 (Vanishing)", 
+                hint: "Normal read: 15 | Color blind read: No number. Analyzes red-green discrimination.",
+                expected: { normal: "15", protanopia: "No Number", protanomaly: "Faint 15", deuteranopia: "No Number", deuteranomaly: "Faint 15", tritanopia: "15", achromatopsia: "No Number" }
+            },
+            blueyellow: { 
+                category: "Tritan", 
+                digit: "9", 
+                label: "Plate 4 (Tritan)", 
+                hint: "Normal read: 9 | S-cone Tritan defects read: No number.",
+                expected: { normal: "9", protanopia: "9", protanomaly: "9", deuteranopia: "9", deuteranomaly: "9", tritanopia: "No Number", achromatopsia: "No Number" }
+            }
+        };
+
+        const pearlsDatabase = {
+            congenital_vs_acquired: {
+                title: "Congenital vs. Acquired Defects",
+                desc: "Congenital defects are symmetrical, hereditary conditions causing L, M, or S cone abnormalities. Acquired defects (like Optic Neuritis) are typically asymmetrical and primarily affect the red-green visual fields."
+            },
+            protan: {
+                title: "Protanopia & Protanomaly (L-Cone Deficiencies)",
+                desc: "Protanopia is complete absence of L-cones. Protanomaly is a mutated absorption peak shifted toward green. Under Farnsworth testing, crossovers align along the red-blue/green-yellow axis."
+            },
+            deutan: {
+                title: "Deuteranopia & Deuteranomaly (M-Cone Deficiencies)",
+                desc: "Deuteranopia is complete absence of M-cones. Deuteranomaly is the most common color deficiency, resulting from a green-shift toward red. Confusion axis lies almost horizontal."
+            },
+            tritan: {
+                title: "Tritanopia & Tritanomaly (S-Cone Deficiencies)",
+                desc: "Extremely rare autosomal dominant defects on Chromosome 7. Total or partial absence of S-cones. Farnsworth tests demonstrate clear vertical crossovers."
+            },
+            achroma: {
+                title: "Complete Achromatopsia (Rod Monochromacy)",
+                desc: "Congenital absence of all three cone classes, causing absolute dependence on rods. Marked by profound photophobia, poor visual acuity, and nystagmus."
+            },
+            optic_neuritis: {
+                title: "Optic Neuritis & Kollner's Rule",
+                desc: "Acquired demyelinating disease affecting the optic nerve. Typically presents with severe red-green desaturation and sluggish pupil reflexes, aligning with Kollner's rule."
+            }
+        };
+
+        const clinicalMcqPool = [
+            {
+                question: "According to Kollner's Rule, which structures primarily cause blue-yellow vision defects when pathologically compromised?",
+                options: {
+                    a: "The optic nerve pathways and visual cortex",
+                    b: "The inner retina and ganglionic layers",
+                    c: "The outer layers of the retina and ocular media"
+                },
+                correct: "c",
+                explanation: "Kollner's Rule dictates that outer retinal diseases/media cause blue-yellow defects, while optic nerve diseases cause red-green defects."
+            },
+            {
+                question: "Which of the following describes the genetic transmission of Protan and Deutan defects?",
+                options: {
+                    a: "Autosomal dominant on Chromosome 7",
+                    b: "X-linked recessive inheritance",
+                    c: "Mitochondrial maternal transmission"
+                },
+                correct: "b",
+                explanation: "L and M cone photopigment genes are located on the X Chromosome, making them X-linked recessive."
+            },
+            {
+                question: "What is the Total Error Score (TES) calculation rule in the Farnsworth-Munsell 100 Hue test?",
+                options: {
+                    a: "Subtracting 2 from the absolute sum of differences with adjacent caps",
+                    b: "Adding the difference between the cap position and its true wavelength",
+                    c: "Multiplying individual cap errors by the observer's pupil size"
+                },
+                correct: "a",
+                explanation: "The standard FM-100 error score for any cap is the sum of differences from its two adjacent caps minus 2 (a perfect score equals 2 - 2 = 0)."
+            },
+            {
+                question: "Which pathway is primarily evaluated by the Farnsworth D-15 and FM-100 Blue-Yellow axis lines?",
+                options: {
+                    a: "The koniocellular pathway (S-cone opponent)",
+                    b: "The magnocellular pathways (luminance focus)",
+                    c: "The parvocellular pathways (L-M cone opponent)"
+                },
+                correct: "a",
+                explanation: "S-cone pathways carry blue-yellow signals via the koniocellular layers of the LGN."
+            },
+            {
+                question: "An acquired optic neuritis primarily presents with what diagnostic visual profile?",
+                options: {
+                    a: "Highly localized blue-yellow macular loss",
+                    b: "Marked red-green desaturation and myelin transmission washout",
+                    c: "Symmetrical photophobia with rod pathway adaptation"
+                },
+                correct: "b",
+                explanation: "Optic neuritis causes optic nerve conduction block, presenting with prominent red desaturation under clinical assessment."
+            }
+        ];
+
+        function syncCompletionBadge() {
+            let total = 0;
+            if (hubState.completedSimulators.Ishihara) total++;
+            if (hubState.completedSimulators.D15) total++;
+            if (hubState.completedSimulators.FM100) total++;
+            if (hubState.completedSimulators.Syllabus) total++;
+            if (hubState.completedSimulators.Quiz) total++;
+
+            const badge = document.getElementById('completionStatusBadge');
+            const progress = document.getElementById('progressIndicator');
+            
+            if (badge && progress) {
+                progress.innerText = `${total} / 5 Labs Completed`;
+                if (total === 5) {
+                    badge.className = "px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-500 font-bold flex items-center gap-1";
+                    badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+                } else {
+                    badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1";
+                    badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> ${total} / 5 Labs Completed`;
+                }
+            }
+        }
+
+        function markLabCompleted(labId) {
+            hubState.completedSimulators[labId] = true;
+            syncCompletionBadge();
+        }
+
+        function renderComparisonTable() {
+            const tbody = document.getElementById('comparisonTableBody');
+            if (!tbody) return;
+
+            const plateData = ishiharaPlatesDatabase[simState.currentPlate];
+            if (!plateData) return;
+
+            const exp = plateData.expected;
+            const act = simState.activePathology;
+
+            const isNormActive = act === 'normal';
+            const isProtActive = act === 'protanopia' || act === 'optic_neuritis';
+            const isProtAnomActive = act === 'protanomaly';
+            const isDeutActive = act === 'deuteranopia';
+            const isDeutAnomActive = act === 'deuteranomaly';
+            const isTritActive = act === 'tritanopia';
+            const isAchromActive = act === 'achromatopsia';
+
+            tbody.innerHTML = `
+                <tr class="${isNormActive ? 'bg-sky-500/10 border-l-4 border-sky-500 font-extrabold text-sky-700 dark:text-sky-300' : ''} transition-all duration-300">
+                    <td class="px-4 py-2 flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                        <i class="fa-solid fa-circle-check text-sky-500"></i> Normal Trichromacy
+                    </td>
+                    <td class="px-4 py-2 text-center font-bold text-slate-900 dark:text-white font-mono">${exp.normal}</td>
+                    <td class="px-4 py-2 text-slate-500 dark:text-slate-400">All standard cone segments operating at symmetrical levels.</td>
+                </tr>
+                <tr class="${isProtActive ? 'bg-rose-500/10 border-l-4 border-rose-500 font-extrabold text-rose-700 dark:text-rose-300' : ''} transition-all duration-300">
+                    <td class="px-4 py-2 flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                        <i class="fa-solid fa-circle-exclamation text-rose-500"></i> Protanopia (Red-Blind)
+                    </td>
+                    <td class="px-4 py-2 text-center font-bold text-slate-900 dark:text-white font-mono">${exp.protanopia}</td>
+                    <td class="px-4 py-2 text-slate-500 dark:text-slate-400">L-cone (Red) complete absence. Erythrolabe pigment missing.</td>
+                </tr>
+                <tr class="${isProtAnomActive ? 'bg-amber-500/10 border-l-4 border-amber-500 font-extrabold text-amber-700 dark:text-amber-300' : ''} transition-all duration-300">
+                    <td class="px-4 py-2 flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Protanomaly (Red-Weak)
+                    </td>
+                    <td class="px-4 py-2 text-center font-bold text-slate-900 dark:text-white font-mono">${exp.protanomaly}</td>
+                    <td class="px-4 py-2 text-slate-500 dark:text-slate-400">L-cone pigment shifted. Blended/unstable spectral separation.</td>
+                </tr>
+                <tr class="${isDeutActive ? 'bg-emerald-500/10 border-l-4 border-emerald-500 font-extrabold text-emerald-700 dark:text-emerald-300' : ''} transition-all duration-300">
+                    <td class="px-4 py-2 flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                        <i class="fa-solid fa-circle-exclamation text-emerald-500"></i> Deuteranopia (Green-Blind)
+                    </td>
+                    <td class="px-4 py-2 text-center font-bold text-slate-900 dark:text-white font-mono">${exp.deuteranopia}</td>
+                    <td class="px-4 py-2 text-slate-500 dark:text-slate-400">M-cone (Green) complete absence. Chlorolabe pigment missing.</td>
+                </tr>
+                <tr class="${isDeutAnomActive ? 'bg-teal-500/10 border-l-4 border-teal-500 font-extrabold text-teal-700 dark:text-teal-300' : ''} transition-all duration-300">
+                    <td class="px-4 py-2 flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                        <i class="fa-solid fa-triangle-exclamation text-teal-500"></i> Deuteranomaly (Green-Weak)
+                    </td>
+                    <td class="px-4 py-2 text-center font-bold text-slate-900 dark:text-white font-mono">${exp.deuteranomaly}</td>
+                    <td class="px-4 py-2 text-slate-500 dark:text-slate-400">M-cone shifted. High confusion overlay under standard light.</td>
+                </tr>
+                <tr class="${isTritActive ? 'bg-indigo-500/10 border-l-4 border-indigo-500 font-extrabold text-indigo-700 dark:text-indigo-300' : ''} transition-all duration-300">
+                    <td class="px-4 py-2 flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                        <i class="fa-solid fa-circle-exclamation text-indigo-500"></i> Tritanopia (Blue-Blind)
+                    </td>
+                    <td class="px-4 py-2 text-center font-bold text-slate-900 dark:text-white font-mono">${exp.tritanopia}</td>
+                    <td class="px-4 py-2 text-slate-500 dark:text-slate-400">S-cone (Blue) deficiency. Cyanolabe pigment shifted or absent.</td>
+                </tr>
+                <tr class="${isAchromActive ? 'bg-purple-500/10 border-l-4 border-purple-500 font-extrabold text-purple-700 dark:text-purple-300' : ''} transition-all duration-300">
+                    <td class="px-4 py-2 flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                        <i class="fa-solid fa-circle-minus text-purple-500"></i> Total Achromatopsia
+                    </td>
+                    <td class="px-4 py-2 text-center font-bold text-slate-900 dark:text-white font-mono">${exp.achromatopsia}</td>
+                    <td class="px-4 py-2 text-slate-500 dark:text-slate-400">Complete rod monochromacy. Silent pathway block on all cones.</td>
+                </tr>
+            `;
+        }
+
+        const d15Presets = {
+            normal: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+            protanopia: [0, 1, 2, 3, 4, 13, 12, 11, 10, 9, 8, 7, 6, 5, 14, 15], 
+            deuteranopia: [0, 1, 2, 3, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 15], 
+            tritanopia: [0, 1, 2, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3],  
+            protanomaly: [0, 1, 2, 4, 3, 5, 6, 7, 9, 8, 10, 11, 12, 13, 15, 14], 
+            deuteranomaly: [0, 1, 3, 2, 4, 5, 7, 6, 8, 9, 10, 11, 13, 12, 14, 15] 
+        };
+
+        function simulateD15Sort(type) {
+            soundFeedback('switch');
+            if (simState.examination === 'farnsworth') {
+                if (d15Presets[type]) {
+                    simState.d15Order = [...d15Presets[type]];
+                    renderD15Caps();
+                    drawD15Plot();
+                    evaluateD15Results();
+                    markLabCompleted('D15');
+                }
+            } else if (simState.examination === 'fm100') {
+                simulateFM100Preset(type);
+            }
+        }
+
+        function renderPlatesSelectorGrid() {
+            const grid = document.getElementById('platesGrid');
+            if (!grid) return;
+            grid.innerHTML = "";
+
+            Object.keys(ishiharaPlatesDatabase).forEach(key => {
+                const plate = ishiharaPlatesDatabase[key];
+                if (simState.activeFilter !== 'all' && plate.category !== simState.activeFilter) return;
+
+                const btn = document.createElement('button');
+                btn.id = `plateBtn-${key}`;
+                btn.onclick = () => {
+                    setIshiharaPlate(key);
+                    markLabCompleted('Ishihara');
+                };
+                btn.className = "py-1 text-[10px] font-black uppercase rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-sky-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition shadow-xs cursor-pointer";
+                btn.innerText = `P-${key === 'demo' ? '1' : key === 'redgreen1' ? '2' : key === 'redgreen2' ? '3' : '4'}`;
+                grid.appendChild(btn);
+            });
+        }
+
+        function filterPlates(category) {
+            soundFeedback('click');
+            simState.activeFilter = category;
+            
+            const filterBtns = {
+                'all': 'filter-all',
+                'Transformation': 'filter-trans',
+                'Vanishing': 'filter-vanish',
+                'Tritan': 'filter-hidden'
+            };
+
+            Object.keys(filterBtns).forEach(key => {
+                const btn = document.getElementById(filterBtns[key]);
+                if (!btn) return;
+                if (key === category) {
+                    btn.className = "px-2 py-1 bg-secondary text-white rounded text-[9px] font-black uppercase tracking-wider cursor-pointer";
+                } else {
+                    btn.className = "px-2 py-1 bg-slate-100 text-slate-600 hover:bg-sky-50 rounded text-[9px] font-black uppercase tracking-wider cursor-pointer dark:bg-slate-800 dark:text-slate-300";
+                }
+            });
+
+            renderPlatesSelectorGrid();
+            
+            const keys = Object.keys(ishiharaPlatesDatabase);
+            for (let i = 0; i < keys.length; i++) {
+                if (category === 'all' || ishiharaPlatesDatabase[keys[i]].category === category) {
+                    setIshiharaPlate(keys[i]);
+                    break;
+                }
+            }
+        }
+
+        function switchAcademyTab(tabId) {
+            soundFeedback('click');
+            simState.activeAcademyTab = tabId;
+
+            const tabs = ['how-to-use', 'interpretation', 'axis'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`acadTabBtn-${t}`);
+                const view = document.getElementById(`acadView-${t}`);
+                if (t === tabId) {
+                    btn.className = "flex-1 py-2 text-center text-secondary border-b-2 border-secondary bg-white dark:bg-slate-900 transition cursor-pointer";
+                    view.classList.remove('hidden');
+                } else {
+                    btn.className = "flex-1 py-2 text-center text-slate-500 hover:bg-slate-100/50 dark:hover:bg-slate-800 border-b border-transparent transition cursor-pointer";
+                    view.classList.add('hidden');
+                }
+            });
+        }
+
+        function highlightAxisOnPlot(axis) {
+            soundFeedback('blip');
+            simState.activeHighlightedAxis = (simState.activeHighlightedAxis === axis) ? null : axis;
+            drawD15Plot();
+            drawFM100Plot();
+        }
+
+        function switchExamination(tab) {
+            soundFeedback('switch');
+            simState.examination = tab;
+
+            const ishBtn = document.getElementById('examTab-ishihara');
+            const farnBtn = document.getElementById('examTab-farnsworth');
+            const fmBtn = document.getElementById('examTab-fm100');
+
+            const ishView = document.getElementById('view-ishihara');
+            const farnView = document.getElementById('view-farnsworth');
+            const fmView = document.getElementById('view-fm100');
+
+            const helpText = document.getElementById('viewportHelpText');
+            const comparisonCard = document.getElementById('comparisonDashboardCard');
+
+            ishBtn.className = "px-3 py-1 text-[10px] font-black uppercase rounded-lg transition border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer";
+            farnBtn.className = "px-3 py-1 text-[10px] font-black uppercase rounded-lg transition border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer";
+            fmBtn.className = "px-3 py-1 text-[10px] font-black uppercase rounded-lg transition border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer";
+
+            ishView.classList.add('hidden');
+            farnView.classList.add('hidden');
+            fmView.classList.add('hidden');
+
+            if (tab === 'ishihara') {
+                ishBtn.className = "px-3 py-1 text-[10px] font-black uppercase rounded-lg transition bg-secondary text-white shadow-xs cursor-pointer";
+                ishView.classList.remove('hidden');
+                if (comparisonCard) comparisonCard.classList.remove('hidden');
+                helpText.innerText = "Select plate indices on the right panel to test response variations.";
+                document.getElementById('ishiharaControllerPanel').classList.remove('hidden');
+            } else if (tab === 'farnsworth') {
+                farnBtn.className = "px-3 py-1 text-[10px] font-black uppercase rounded-lg transition bg-secondary text-white shadow-xs cursor-pointer";
+                farnView.classList.remove('hidden');
+                if (comparisonCard) comparisonCard.classList.add('hidden');
+                helpText.innerText = "Click Caps to select, then click another Cap to swap. Match the continuous color spectrum.";
+                document.getElementById('ishiharaControllerPanel').classList.add('hidden');
+                renderD15Caps();
+                drawD15Plot();
+                evaluateD15Results();
+            } else {
+                fmBtn.className = "px-3 py-1 text-[10px] font-black uppercase rounded-lg transition bg-secondary text-white shadow-xs cursor-pointer";
+                fmView.classList.remove('hidden');
+                if (comparisonCard) comparisonCard.classList.add('hidden');
+                helpText.innerText = "Drag or click color caps to swap. Organize all 4 trays of the Farnsworth-Munsell 100 Hue Test.";
+                document.getElementById('ishiharaControllerPanel').classList.add('hidden');
+                renderFM100Caps();
+                drawFM100Plot();
+                evaluateFM100Results();
+            }
+        }
+
+        // --- FARNSWORTH D-15 FUNCTIONS ---
+        function initD15Test() {
+            const scrambledIndices = Array.from({ length: 15 }, (_, i) => i + 1);
+            for (let i = scrambledIndices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [scrambledIndices[i], scrambledIndices[j]] = [scrambledIndices[j], scrambledIndices[i]];
+            }
+            simState.d15Order = [0, ...scrambledIndices];
+        }
+
+        function renderD15Caps() {
+            const container = document.getElementById('d15CapContainer');
+            if (!container) return;
+            container.innerHTML = "";
+
+            simState.d15Order.forEach((refIdx, uiPosition) => {
+                const cap = d15ReferenceCaps[refIdx];
+                const capEl = document.createElement('div');
+                
+                let innerStyle = `background-color: ${cap.hex};`;
+                let classStr = "relative w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-xs transition-all duration-300 ";
+
+                if (uiPosition === 0) {
+                    classStr += "border-slate-300 dark:border-slate-600 scale-95 cursor-not-allowed";
+                } else {
+                    const isSelected = simState.selectedCapIndex === uiPosition;
+                    classStr += isSelected ? "border-amber-400 scale-115 ring-2 ring-amber-400/40 cursor-pointer" 
+                                           : "border-slate-800 dark:border-slate-900 hover:scale-105 cursor-pointer";
+                }
+
+                capEl.className = classStr;
+                capEl.style = innerStyle;
+                capEl.onclick = () => handleD15CapClick(uiPosition);
+
+                if (simState.mode === 'practice' || uiPosition === 0) {
+                    capEl.innerHTML = `<span class="text-[9px] font-black text-black select-none drop-shadow-sm bg-white/70 px-1 rounded-full">${cap.id}</span>`;
+                } else {
+                    capEl.innerHTML = `<span class="text-[9px] font-black text-black select-none opacity-0 hover:opacity-100">?</span>`;
+                }
+
+                container.appendChild(capEl);
+            });
+        }
+
+        function drawD15Plot() {
+            const canvas = document.getElementById('d15PlotCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 130, 130);
+
+            const cx = 65, cy = 65, radius = 48;
+            
+            const points = [];
+            for (let i = 0; i < 16; i++) {
+                const angle = (i * Math.PI * 2 / 16) - Math.PI / 2;
+                const x = cx + radius * Math.cos(angle);
+                const y = cy + radius * Math.sin(angle);
+                points.push({ x, y });
+
+                ctx.fillStyle = d15ReferenceCaps[i].hex;
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            const idealChk = document.getElementById('chkShowIdeal');
+            if (idealChk && idealChk.checked) {
+                ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < 16; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            // Standard confusion tracks
+            const isProtanSel = simState.activeHighlightedAxis === 'protan';
+            ctx.strokeStyle = isProtanSel ? 'rgba(239, 68, 68, 0.95)' : 'rgba(239, 68, 68, 0.2)'; 
+            ctx.lineWidth = isProtanSel ? 2 : 1;
+            ctx.setLineDash([2, 3]);
+            ctx.beginPath();
+            ctx.moveTo(points[1].x, points[1].y);
+            ctx.lineTo(points[12].x, points[12].y);
+            ctx.stroke();
+
+            const isDeutanSel = simState.activeHighlightedAxis === 'deutan';
+            ctx.strokeStyle = isDeutanSel ? 'rgba(16, 185, 129, 0.95)' : 'rgba(16, 185, 129, 0.2)';
+            ctx.lineWidth = isDeutanSel ? 2 : 1;
+            ctx.beginPath();
+            ctx.moveTo(points[15].x, points[15].y);
+            ctx.lineTo(points[7].x, points[7].y);
+            ctx.stroke();
+
+            const isTritanSel = simState.activeHighlightedAxis === 'tritan';
+            ctx.strokeStyle = isTritanSel ? 'rgba(59, 130, 246, 0.95)' : 'rgba(59, 130, 246, 0.2)';
+            ctx.lineWidth = isTritanSel ? 2 : 1;
+            ctx.beginPath();
+            ctx.moveTo(points[4].x, points[4].y);
+            ctx.lineTo(points[14].x, points[14].y);
+            ctx.stroke();
+            ctx.setLineDash([]); 
+
+            // Active user connections
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 2.0;
+            ctx.beginPath();
+            
+            const startPoint = points[simState.d15Order[0]];
+            ctx.moveTo(startPoint.x, startPoint.y);
+
+            for (let i = 1; i < 16; i++) {
+                const p = points[simState.d15Order[i]];
+                ctx.lineTo(p.x, p.y);
+            }
+            ctx.stroke();
+        }
+
+        function evaluateD15Results() {
+            const statusEl = document.getElementById('d15Status');
+            if (!statusEl) return;
+            
+            let mistakes = 0;
+            let crossings = [];
+
+            for (let i = 0; i < 15; i++) {
+                const currentCap = d15ReferenceCaps[simState.d15Order[i]].id;
+                const nextCap = d15ReferenceCaps[simState.d15Order[i+1]].id;
+                const diff = Math.abs(currentCap - nextCap);
+                
+                if (diff > 2) {
+                    mistakes++;
+                    crossings.push([currentCap, nextCap]);
+                }
+            }
+
+            if (mistakes === 0) {
+                statusEl.innerHTML = `<span class="text-emerald-500 font-extrabold">NORMAL TRICHROMACY:</span> Perfect chromatic arrangement. Zero crossings detected.`;
+                return;
+            }
+
+            let maxJumpDistance = 0;
+            crossings.forEach(([c1, c2]) => {
+                const dist = Math.abs(c1 - c2);
+                if (dist > maxJumpDistance) maxJumpDistance = dist;
+            });
+
+            if (mistakes <= 3 && maxJumpDistance <= 3) {
+                let anomalyType = "Anomalous Trichromacy";
+                let protanTranspositions = 0, deutanTranspositions = 0, tritanTranspositions = 0;
+                crossings.forEach(([c1, c2]) => {
+                    const sum = c1 + c2;
+                    if (sum >= 11 && sum <= 15) protanTranspositions++;
+                    else if (sum >= 16 && sum <= 18) deutanTranspositions++;
+                    else tritanTranspositions++;
+                });
+
+                if (protanTranspositions > deutanTranspositions && protanTranspositions > tritanTranspositions) {
+                    anomalyType = "PROTANOMALY (Red-Weak)";
+                } else if (deutanTranspositions > protanTranspositions && deutanTranspositions > tritanTranspositions) {
+                    anomalyType = "DEUTERANOMALY (Green-Weak)";
+                } else if (tritanTranspositions > protanTranspositions && tritanTranspositions > deutanTranspositions) {
+                    anomalyType = "TRITANOMALY (Blue-Weak)";
+                }
+
+                statusEl.innerHTML = `<span class="text-amber-500 font-extrabold">${anomalyType}:</span> Minor adjacent transpositions detected. Error score remains within functional limits.`;
+            } else {
+                let protanLines = 0, deutanLines = 0, tritanLines = 0;
+
+                crossings.forEach(([c1, c2]) => {
+                    const sum = c1 + c2;
+                    if (sum >= 11 && sum <= 15) protanLines++;
+                    else if (sum >= 16 && sum <= 18) deutanLines++;
+                    else tritanLines++;
+                });
+
+                if (protanLines > deutanLines && protanLines > tritanLines) {
+                    statusEl.innerHTML = `<span class="text-rose-500 font-extrabold">PROTANOPIA (Red-Blind):</span> Major crossovers align parallel to the Protan axis (Cap 1 to 12/13). Complete L-cone absence.`;
+                } else if (deutanLines > protanLines && deutanLines > tritanLines) {
+                    statusEl.innerHTML = `<span class="text-emerald-500 font-extrabold">DEUTERANOPIA (Green-Blind):</span> Major crossovers align parallel to the Deutan axis (Cap 15 to 7/8). Complete M-cone absence.`;
+                } else if (tritanLines > protanLines && tritanLines > deutanLines) {
+                    statusEl.innerHTML = `<span class="text-blue-500 font-extrabold">TRITANOPIA (Blue-Blind):</span> Major crossovers align parallel to the Tritan axis (Cap 4 to 14). Complete S-cone absence.`;
+                } else {
+                    statusEl.innerHTML = `<span class="text-slate-400 font-extrabold">SCATTERED PATTERN / MONOCHROMACY:</span> Multi-directional crossovers. Visual performance typical of complete Achromatopsia.`;
+                }
+            }
+        }
+
+        function handleD15CapClick(pos) {
+            if (pos === 0) return; 
+            soundFeedback('tick');
+
+            if (simState.selectedCapIndex === null) {
+                simState.selectedCapIndex = pos;
+            } else {
+                if (simState.selectedCapIndex !== pos) {
+                    const temp = simState.d15Order[simState.selectedCapIndex];
+                    simState.d15Order[simState.selectedCapIndex] = simState.d15Order[pos];
+                    simState.d15Order[pos] = temp;
+                }
+                simState.selectedCapIndex = null;
+                markLabCompleted('D15');
+            }
+
+            renderD15Caps();
+            drawD15Plot();
+            evaluateD15Results();
+        }
+
+        // --- FARNSWORTH-MUNSELL 100 HUE TEST FUNCTIONS ---
+        function initFM100Test() {
+            // Populate complete reference order 0 to 84
+            const sorted = Array.from({ length: 85 }, (_, i) => i);
+            simState.fm100Order = [...sorted];
+
+            // Scramble internal caps for each of the 4 bins, keeping fixed anchors at tray borders
+            Object.keys(fm100BoxBounds).forEach(boxId => {
+                scrambleFM100Box(boxId);
+            });
+        }
+
+        function scrambleFM100Box(boxId) {
+            const bounds = fm100BoxBounds[boxId];
+            // Inner indices strictly exclude first and last caps of the tray (anchors)
+            const inner = [];
+            for (let i = bounds.start + 1; i < bounds.end; i++) {
+                inner.push(simState.fm100Order[i]);
+            }
+
+            // Shuffle inner array
+            for (let i = inner.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [inner[i], inner[j]] = [inner[j], inner[i]];
+            }
+
+            // Replace shuffled indices back
+            let innerIdx = 0;
+            for (let i = bounds.start + 1; i < bounds.end; i++) {
+                simState.fm100Order[i] = inner[innerIdx++];
+            }
+        }
+
+        function selectFM100Box(boxId) {
+            soundFeedback('click');
+            simState.activeFM100Box = boxId;
+            simState.selectedFM100CapIndex = null;
+
+            for (let i = 1; i <= 4; i++) {
+                const btn = document.getElementById(`fm100BoxBtn-${i}`);
+                if (btn) {
+                    if (i === boxId) {
+                        btn.className = "px-2 py-0.5 text-[8.5px] rounded font-bold bg-secondary text-white";
+                    } else {
+                        btn.className = "px-2 py-0.5 text-[8.5px] rounded font-bold bg-slate-800 text-slate-400";
+                    }
+                }
+            }
+
+            renderFM100Caps();
+        }
+
+        function renderFM100Caps() {
+            const container = document.getElementById('fm100CapContainer');
+            if (!container) return;
+            container.innerHTML = "";
+
+            const bounds = fm100BoxBounds[simState.activeFM100Box];
+            
+            for (let i = bounds.start; i <= bounds.end; i++) {
+                const originalCapIndex = simState.fm100Order[i];
+                const cap = fm100ReferenceCaps[originalCapIndex];
+                
+                const capEl = document.createElement('div');
+                let innerStyle = `background-color: ${cap.hex};`;
+                let classStr = "relative w-8 h-8 rounded-lg flex items-center justify-center border shadow-xs transition-all duration-300 ";
+
+                const isAnchor = (i === bounds.start || i === bounds.end);
+
+                if (isAnchor) {
+                    classStr += "border-slate-300 dark:border-slate-600 opacity-90 cursor-not-allowed";
+                } else {
+                    const isSelected = simState.selectedFM100CapIndex === i;
+                    classStr += isSelected ? "border-amber-400 ring-2 ring-amber-400/40 cursor-pointer scale-110 z-10"
+                                           : "border-slate-800 hover:scale-105 cursor-pointer";
+                }
+
+                capEl.className = classStr;
+                capEl.style = innerStyle;
+                
+                if (!isAnchor) {
+                    capEl.onclick = () => handleFM100CapClick(i);
+                }
+
+                // Numbers visible in practice mode or if anchor cap
+                if (simState.mode === 'practice' || isAnchor) {
+                    capEl.innerHTML = `<span class="text-[8px] font-black text-black select-none bg-white/70 px-1 rounded-full">${cap.id + 1}</span>`;
+                } else {
+                    capEl.innerHTML = `<span class="text-[8px] font-black text-black select-none opacity-0 hover:opacity-100">?</span>`;
+                }
+
+                container.appendChild(capEl);
+            }
+        }
+
+        function handleFM100CapClick(positionIndex) {
+            soundFeedback('tick');
+
+            if (simState.selectedFM100CapIndex === null) {
+                simState.selectedFM100CapIndex = positionIndex;
+            } else {
+                if (simState.selectedFM100CapIndex !== positionIndex) {
+                    // Perform swap inside the global fm100Order array
+                    const temp = simState.fm100Order[simState.selectedFM100CapIndex];
+                    simState.fm100Order[simState.selectedFM100CapIndex] = simState.fm100Order[positionIndex];
+                    simState.fm100Order[positionIndex] = temp;
+                }
+                simState.selectedFM100CapIndex = null;
+                markLabCompleted('FM100');
+            }
+
+            renderFM100Caps();
+            drawFM100Plot();
+            evaluateFM100Results();
+        }
+
+        function drawFM100Plot() {
+            const canvas = document.getElementById('fm100PlotCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 130, 130);
+
+            const cx = 65, cy = 65, innerRadius = 25, outerRadius = 55;
+
+            // Pre-calculate all cap error scores globally
+            const errors = calculateFM100Errors();
+
+            // Render polar background dots representing ideal spectrum
+            for (let i = 0; i < 85; i++) {
+                const angle = (i * Math.PI * 2 / 85) - Math.PI / 2;
+                const refCap = fm100ReferenceCaps[i];
+
+                // Plot ideal color point
+                const xIdeal = cx + innerRadius * Math.cos(angle);
+                const yIdeal = cy + innerRadius * Math.sin(angle);
+                
+                ctx.fillStyle = refCap.hex;
+                ctx.beginPath();
+                ctx.arc(xIdeal, yIdeal, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw error spikes radially outward based on error score
+                const errorFactor = Math.max(0, errors[i]); // Standard perfect error is 0 (score 2 - 2)
+                const radialExtent = innerRadius + (errorFactor * 2.5); // Scaled visual extent
+                
+                const xError = cx + Math.min(outerRadius, radialExtent) * Math.cos(angle);
+                const yError = cy + Math.min(outerRadius, radialExtent) * Math.sin(angle);
+
+                ctx.strokeStyle = refCap.hex;
+                ctx.lineWidth = 1.0;
+                ctx.beginPath();
+                ctx.moveTo(xIdeal, yIdeal);
+                ctx.lineTo(xError, yError);
+                ctx.stroke();
+            }
+
+            // Draw Standard FM Axis indicator tracks if highlighted in side academy
+            if (simState.activeHighlightedAxis) {
+                ctx.strokeStyle = simState.activeHighlightedAxis === 'protan' ? 'rgba(239, 68, 68, 0.4)' :
+                                  simState.activeHighlightedAxis === 'deutan' ? 'rgba(16, 185, 129, 0.4)' :
+                                  'rgba(59, 130, 246, 0.4)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([2, 2]);
+                ctx.beginPath();
+                ctx.arc(cx, cy, outerRadius - 2, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        function calculateFM100Errors() {
+            const errors = new Array(85).fill(0);
+            
+            // Loop through the arranged caps to calculate FM-100 error values
+            for (let i = 0; i < 85; i++) {
+                const currentVal = simState.fm100Order[i];
+                
+                // Circular indices for neighbors
+                const prevVal = simState.fm100Order[(i - 1 + 85) % 85];
+                const nextVal = simState.fm100Order[(i + 1) % 85];
+
+                // Standard FM Munsell error score calculation: e_i = |current-prev| + |current-next| - 2
+                const err = Math.abs(currentVal - prevVal) + Math.abs(currentVal - nextVal) - 2;
+                errors[currentVal] = Math.max(0, err); // Stored against the original color index
+            }
+
+            return errors;
+        }
+
+        function evaluateFM100Results() {
+            const errors = calculateFM100Errors();
+            const totalErrorScore = errors.reduce((sum, val) => sum + val, 0);
+
+            const scoreEl = document.getElementById('fm100ErrorScore');
+            const statusEl = document.getElementById('fm100Status');
+
+            if (scoreEl) scoreEl.innerText = `Total Error Score (TES): ${totalErrorScore}`;
+
+            if (!statusEl) return;
+
+            if (totalErrorScore === 0) {
+                statusEl.innerHTML = `<span class="text-emerald-500 font-extrabold">SUPERIOR DISCRIMINATION:</span> Symmetrical spectrum sorting. Zero errors recorded across all trays.`;
+                return;
+            }
+
+            if (totalErrorScore <= 16) {
+                statusEl.innerHTML = `<span class="text-emerald-500 font-extrabold">NORMAL CHROMA SENSE:</span> Mild error score (${totalErrorScore}). Performance lies within typical clinical baseline bounds.`;
+            } else if (totalErrorScore <= 70) {
+                statusEl.innerHTML = `<span class="text-amber-500 font-extrabold">MODERATE DEFICIENCY:</span> Error score (${totalErrorScore}). Transpositions indicate mild to moderate chromatic weaknesses.`;
+            } else {
+                // Determine deficiency axis based on quadrants of highest error density
+                let redGreenErrors = 0, blueYellowErrors = 0;
+                for (let i = 0; i < 85; i++) {
+                    // Caps corresponding to red-green regions (Trays 1 & 3) vs blue-yellow (Trays 2 & 4)
+                    if ((i >= 0 && i < 21) || (i >= 42 && i < 63)) {
+                        redGreenErrors += errors[i];
+                    } else {
+                        blueYellowErrors += errors[i];
+                    }
+                }
+
+                if (redGreenErrors > blueYellowErrors) {
+                    statusEl.innerHTML = `<span class="text-rose-500 font-extrabold">PROTAN/DEUTAN COLLAPSE:</span> High error score (${totalErrorScore}). Distinct error spikes centered over red-green confusion bands.`;
+                } else {
+                    statusEl.innerHTML = `<span class="text-blue-500 font-extrabold">TRITAN AXIS COLLAPSE:</span> High error score (${totalErrorScore}). Distinct error spikes centered over blue-yellow confusion bands.`;
+                }
+            }
+        }
+
+        function simulateFM100Preset(type) {
+            // Apply standard FM-100 pattern distortions
+            const sorted = Array.from({ length: 85 }, (_, i) => i);
+            simState.fm100Order = [...sorted];
+
+            if (type === 'protanopia') {
+                // Introduce severe swaps along the protan axis
+                for (let i = 5; i < 18; i++) {
+                    const swapPartner = 22 - (i - 5);
+                    if (swapPartner < 85) {
+                        const temp = simState.fm100Order[i];
+                        simState.fm100Order[i] = simState.fm100Order[swapPartner];
+                        simState.fm100Order[swapPartner] = temp;
+                    }
+                }
+            } else if (type === 'deuteranopia') {
+                // Deutan swaps
+                for (let i = 12; i < 26; i++) {
+                    const swapPartner = 36 - (i - 12);
+                    if (swapPartner < 85) {
+                        const temp = simState.fm100Order[i];
+                        simState.fm100Order[i] = simState.fm100Order[swapPartner];
+                        simState.fm100Order[swapPartner] = temp;
+                    }
+                }
+            } else if (type === 'tritanopia') {
+                // Tritan swaps
+                for (let i = 0; i < 10; i++) {
+                    const swapPartner = 84 - i;
+                    const temp = simState.fm100Order[i];
+                    simState.fm100Order[i] = simState.fm100Order[swapPartner];
+                    simState.fm100Order[swapPartner] = temp;
+                }
+            } else if (type === 'protanomaly' || type === 'deuteranomaly') {
+                // Minor swaps
+                for (let i = 2; i < 80; i += 8) {
+                    const temp = simState.fm100Order[i];
+                    simState.fm100Order[i] = simState.fm100Order[i+1];
+                    simState.fm100Order[i+1] = temp;
+                }
+            }
+
+            renderFM100Caps();
+            drawFM100Plot();
+            evaluateFM100Results();
+            markLabCompleted('FM100');
+        }
+
+        // --- ISHIHARA PLATES ENGINE ---
+        function drawIshiharaPlateCanvas(activePathology) {
+            const canvas = document.getElementById('ishiharaCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 220, 220);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(110, 110, 105, 0, Math.PI * 2);
+            ctx.fill();
+
+            const plateData = ishiharaPlatesDatabase[simState.currentPlate];
+            if (!plateData) return;
+
+            const offscreenNormal = document.createElement('canvas');
+            offscreenNormal.width = 220;
+            offscreenNormal.height = 220;
+            const oCtxNorm = offscreenNormal.getContext('2d');
+
+            const offscreenDefect = document.createElement('canvas');
+            offscreenDefect.width = 220;
+            offscreenDefect.height = 220;
+            const oCtxDef = offscreenDefect.getContext('2d');
+
+            const normalRead = plateData.expected.normal;
+            
+            let defectReadKey = 'normal';
+            if (activePathology.startsWith('protan')) defectReadKey = 'protanopia';
+            else if (activePathology.startsWith('deuteran')) defectReadKey = 'deuteranopia';
+            else if (activePathology === 'tritanopia') defectReadKey = 'tritanopia';
+            else if (activePathology === 'achromatopsia') defectReadKey = 'achromatopsia';
+            else if (activePathology === 'optic_neuritis') defectReadKey = 'protanopia'; 
+
+            const defectRead = plateData.expected[defectReadKey] || "No Number";
+
+            if (normalRead && normalRead !== "No Number") {
+                oCtxNorm.fillStyle = 'black';
+                oCtxNorm.font = '900 110px "Plus Jakarta Sans", Arial';
+                oCtxNorm.textAlign = 'center';
+                oCtxNorm.textBaseline = 'middle';
+                oCtxNorm.fillText(normalRead, 110, 110);
+            }
+
+            if (defectRead && defectRead !== "No Number") {
+                oCtxDef.fillStyle = 'black';
+                oCtxDef.font = '900 110px "Plus Jakarta Sans", Arial';
+                oCtxDef.textAlign = 'center';
+                oCtxDef.textBaseline = 'middle';
+                oCtxDef.fillText(defectRead, 110, 110);
+            }
+
+            const bgPalette = ['#5e7c4f', '#6b824a', '#869460', '#546b30', '#7a6f4d', '#8a7751', '#4b5c3d', '#3f4f34'];
+            const normalFgPalette = ['#e11d48', '#f43f5e', '#fb7185', '#ff4500', '#ff6347', '#ff8c00', '#db7093', '#b22222'];
+            const defectFgPalette = ['#d97706', '#ca8a04', '#eab308', '#854d0e', '#a16207', '#ca8a04', '#b45309', '#fef08a'];
+
+            const tritanBg = ['#7c3aed', '#6d28d9', '#4f46e5', '#4338ca', '#818cf8', '#5b21b6', '#312e81'];
+            const tritanFg = ['#f59e0b', '#fbbf24', '#f59e0b', '#d97706', '#ca8a04', '#b45309', '#eab308'];
+
+            let paletteBg = bgPalette;
+            let paletteNormal = normalFgPalette;
+            let paletteDefect = defectFgPalette;
+
+            if (plateData.category === 'Tritan') {
+                paletteBg = tritanBg;
+                paletteNormal = tritanFg;
+                paletteDefect = bgPalette; 
+            }
+
+            const numDots = 620;
+            for (let i = 0; i < numDots; i++) {
+                const r = Math.random() * 100;
+                const theta = Math.random() * Math.PI * 2;
+                const x = 110 + r * Math.cos(theta);
+                const y = 110 + r * Math.sin(theta);
+                const size = Math.random() * 3.8 + 2.0;
+
+                const normAlpha = oCtxNorm.getImageData(x, y, 1, 1).data[3];
+                const defAlpha = oCtxDef.getImageData(x, y, 1, 1).data[3];
+
+                const isNormArea = normAlpha > 128;
+                const isDefArea = defAlpha > 128;
+
+                if (activePathology === 'normal') {
+                    ctx.fillStyle = isNormArea ? 
+                        paletteNormal[Math.floor(Math.random() * paletteNormal.length)] : 
+                        paletteBg[Math.floor(Math.random() * paletteBg.length)];
+                } 
+                else if (activePathology === 'achromatopsia') {
+                    ctx.fillStyle = paletteBg[Math.floor(Math.random() * paletteBg.length)];
+                }
+                else if (activePathology === 'protanopia' || activePathology === 'deuteranopia' || activePathology === 'tritanopia' || activePathology === 'optic_neuritis') {
+                    ctx.fillStyle = isDefArea ? 
+                        paletteDefect[Math.floor(Math.random() * paletteDefect.length)] : 
+                        paletteBg[Math.floor(Math.random() * paletteBg.length)];
+                } 
+                else if (activePathology === 'protanomaly' || activePathology === 'deuteranomaly') {
+                    if (isNormArea && isDefArea) {
+                        ctx.fillStyle = Math.random() > 0.5 ? 
+                            paletteNormal[Math.floor(Math.random() * paletteNormal.length)] : 
+                            paletteDefect[Math.floor(Math.random() * paletteDefect.length)];
+                    } else if (isNormArea) {
+                        ctx.fillStyle = Math.random() > 0.45 ? 
+                            paletteNormal[Math.floor(Math.random() * paletteNormal.length)] : 
+                            paletteBg[Math.floor(Math.random() * paletteBg.length)];
+                    } else if (isDefArea) {
+                        ctx.fillStyle = Math.random() > 0.45 ? 
+                            paletteDefect[Math.floor(Math.random() * paletteDefect.length)] : 
+                            paletteBg[Math.floor(Math.random() * paletteBg.length)];
+                    } else {
+                        ctx.fillStyle = paletteBg[Math.floor(Math.random() * paletteBg.length)];
+                    }
+                }
+
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function setIshiharaPlate(plateKey) {
+            soundFeedback('blip');
+            simState.currentPlate = plateKey;
+
+            const plateData = ishiharaPlatesDatabase[plateKey];
+            if (!plateData) return;
+
+            const keys = Object.keys(ishiharaPlatesDatabase);
+            keys.forEach(key => {
+                const btnPrac = document.getElementById(`plateBtn-${key}`);
+                const btnTest = document.getElementById(`testPlateBtn-${key}`);
+                const active = key === plateKey;
+
+                if (btnPrac) {
+                    btnPrac.className = active ? 
+                        "py-1 text-[10px] font-black uppercase rounded-lg border-sky-400 bg-sky-600 text-white transition shadow-md scale-95 cursor-pointer" :
+                        "py-1 text-[10px] font-black uppercase rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-sky-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition shadow-xs cursor-pointer";
+                }
+                if (btnTest) {
+                    btnTest.className = active ? 
+                        "px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border-sky-400 bg-sky-600 text-white transition shadow-md cursor-pointer" :
+                        "px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-50";
+                }
+            });
+
+            const label = document.getElementById('ishiharaPlateName');
+            const instructions = document.getElementById('plateInstructions');
+            if (label) label.innerText = plateData.label;
+            if (instructions) instructions.innerText = plateData.hint;
+
+            const readablePlateNo = plateKey === 'demo' ? '1' : plateKey === 'redgreen1' ? '2' : plateKey === 'redgreen2' ? '3' : '4';
+            const labelPlate = document.getElementById('currentReadoutPlateLabel');
+            if (labelPlate) labelPlate.innerText = `Plate ${readablePlateNo}`;
+
+            drawIshiharaPlateCanvas(simState.activePathology);
+            renderComparisonTable();
+        }
+
+        function updatePathology() {
+            const selected = document.getElementById('pathologySelect').value;
+            if (simState.mode === 'practice') {
+                simState.activePathology = selected;
+            }
+            
+            const profile = pathologyProfiles[simState.activePathology];
+            
+            document.getElementById('lconeVal').innerText = `${profile.lcone}%`;
+            document.getElementById('mconeVal').innerText = `${profile.mcone}%`;
+            document.getElementById('sconeVal').innerText = `${profile.scone}%`;
+
+            document.getElementById('lconeBar').style.width = `${profile.lcone}%`;
+            document.getElementById('mconeBar').style.width = `${profile.mcone}%`;
+            document.getElementById('sconeBar').style.width = `${profile.scone}%`;
+
+            document.getElementById('status-parvo').innerText = profile.parvo;
+            document.getElementById('status-konio').innerText = profile.konio;
+            document.getElementById('status-myelin').innerText = profile.myelin;
+
+            document.getElementById('status-parvo').className = profile.parvo.includes('INTACT') ? "font-extrabold text-emerald-600" : "font-extrabold text-red-500";
+            document.getElementById('status-konio').className = profile.konio.includes('INTACT') ? "font-extrabold text-emerald-600" : "font-extrabold text-red-500";
+            document.getElementById('status-myelin').className = profile.myelin.includes('ABSENT') ? "font-extrabold text-slate-500" : "font-extrabold text-amber-500";
+
+            const viewport = document.getElementById('clinicalViewportBox');
+            const badge = document.getElementById('activeCvdFilterBadge');
+
+            viewport.className = "bg-slate-950 rounded-2xl p-4 flex flex-col justify-center items-center overflow-hidden h-[300px] md:h-[350px] relative shadow-inner " + `filter-${profile.filter}`;
+            badge.innerText = `Filter: ${profile.desc.toUpperCase()}`;
+
+            setIshiharaPlate(simState.currentPlate);
+        }
+
+        function changeMode(target) {
+            soundFeedback('switch');
+            simState.mode = target;
+
+            const pracBtn = document.getElementById('btnMode-practice');
+            const testBtn = document.getElementById('btnMode-test');
+            const pracConsole = document.getElementById('practiceControlsCard');
+            const testConsole = document.getElementById('testModeConsole');
+            const finalScoreCard = document.getElementById('finalScoreCard');
+            const clinicalSyllabusCard = document.getElementById('clinicalSyllabusCard');
+            const bodyFrame = document.getElementById('bodyFrame');
+
+            document.getElementById('testDiagnosisSelect').value = "";
+            document.getElementById('diagnosisFeedback').classList.add('hidden');
+            if (finalScoreCard) finalScoreCard.classList.add('hidden');
+
+            if (target === 'practice') {
+                bodyFrame.className = "bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-500";
+                pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+                testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 shadow-xs cursor-pointer";
+                
+                pracConsole.classList.remove('hidden');
+                testConsole.classList.add('hidden');
+                clinicalSyllabusCard.classList.remove('hidden');
+
+                simState.activePathology = simState.pathology;
+                filterPlates('all'); 
+            } else {
+                bodyFrame.className = "bg-slate-950 text-slate-200 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-500";
+                testBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-xs cursor-pointer";
+                pracBtn.className = "flex-1 py-2.5 text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-800 text-slate-400 hover:bg-slate-900 shadow-xs cursor-pointer";
+                
+                pracConsole.classList.add('hidden');
+                testConsole.classList.remove('hidden');
+                clinicalSyllabusCard.classList.add('hidden');
+
+                // Pick random assessment pathology
+                const keys = Object.keys(pathologyProfiles);
+                const randomKey = keys[Math.floor(Math.random() * keys.length)];
+                simState.activePathology = randomKey;
+
+                simState.scores.diagnosisScore = 0;
+                simState.scores.mcqScore = 0;
+                setupTestMcqSuite();
+                buildTestPlatesRow();
+            }
+
+            initD15Test();
+            initFM100Test();
+            renderD15Caps();
+            renderFM100Caps();
+            drawD15Plot();
+            drawFM100Plot();
+            updatePathology();
+        }
+
+        function buildTestPlatesRow() {
+            const row = document.getElementById('testPlatesRow');
+            if (!row) return;
+            row.innerHTML = "";
+
+            Object.keys(ishiharaPlatesDatabase).forEach(key => {
+                const btn = document.createElement('button');
+                btn.id = `testPlateBtn-${key}`;
+                btn.onclick = () => setIshiharaPlate(key);
+                btn.className = "px-3 py-1.5 text-[10px] font-black uppercase rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-50";
+                btn.innerText = `Plate ${key === 'demo' ? '1' : key === 'redgreen1' ? '2' : key === 'redgreen2' ? '3' : '4'}`;
+                row.appendChild(btn);
+            });
+        }
+
+        function setupTestMcqSuite() {
+            const shuffled = [...clinicalMcqPool].sort(() => 0.5 - Math.random());
+            simState.selectedQuestions = shuffled.slice(0, 3); 
+
+            const container = document.getElementById('testMcqSuite');
+            container.innerHTML = "";
+
+            simState.selectedQuestions.forEach((q, idx) => {
+                const div = document.createElement('div');
+                div.className = "bg-white p-4 rounded-2xl border border-slate-200 space-y-2 text-xs text-slate-900 shadow-xs";
+                div.innerHTML = `
+                    <p class="font-extrabold text-slate-950">${idx + 1}. ${q.question}</p>
+                    <div class="grid grid-cols-1 gap-1.5 pt-1">
+                        <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 font-bold">
+                            <input type="radio" name="mcq_${idx}" value="a" class="accent-secondary text-slate-950">
+                            <span>${q.options.a}</span>
+                        </label>
+                        <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 font-bold">
+                            <input type="radio" name="mcq_${idx}" value="b" class="accent-secondary text-slate-950">
+                            <span>${q.options.b}</span>
+                        </label>
+                        <label class="flex items-center gap-2.5 cursor-pointer p-2 rounded hover:bg-slate-50 border border-slate-100 font-bold">
+                            <input type="radio" name="mcq_${idx}" value="c" class="accent-secondary text-slate-950">
+                            <span>${q.options.c}</span>
+                        </label>
+                    </div>
+                    <p id="mcq_${idx}_feedback" class="text-[10px] font-bold hidden"></p>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function displayClinicalPearl() {
+            soundFeedback('blip');
+            const val = document.getElementById('pearlSelector').value;
+            const pearl = pearlsDatabase[val];
+            if (pearl) {
+                document.getElementById('pearlTitle').innerText = pearl.title;
+                document.getElementById('pearlDesc').innerText = pearl.desc;
+            }
+            markLabCompleted('Syllabus');
+        }
+
+        function submitTestAssessment() {
+            if (simState.mode !== 'test') return;
+
+            const selectedDiag = document.getElementById('testDiagnosisSelect').value;
+            let unanswered = false;
+            const answers = [];
+
+            simState.selectedQuestions.forEach((q, idx) => {
+                const checked = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+                if (!checked) {
+                    unanswered = true;
+                } else {
+                    answers.push({
+                        idx: idx,
+                        selected: checked.value,
+                        correct: q.correct,
+                        explanation: q.explanation
+                    });
+                }
+            });
+
+            if (!selectedDiag || unanswered) {
+                soundFeedback('warning');
+                const feedback = document.getElementById('diagnosisFeedback');
+                feedback.innerText = "Please choose your Clinical Color Pathology and complete all Pathway MCQs.";
+                feedback.className = "text-[11px] font-extrabold text-red-700 block mt-2 animate-pulse";
+                feedback.classList.remove('hidden');
+                return;
+            }
+
+            const feedback = document.getElementById('diagnosisFeedback');
+            feedback.classList.remove('hidden');
+
+            let normActivePath = simState.activePathology;
+            if (normActivePath === 'protanomaly') normActivePath = 'protanopia';
+            if (normActivePath === 'deuteranomaly') normActivePath = 'deuteranopia';
+
+            if (selectedDiag === normActivePath) {
+                feedback.innerText = "Correct Clinical Diagnosis! (+50 pts)";
+                feedback.className = "text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+                simState.scores.diagnosisScore = 50;
+            } else {
+                const correctProfile = pathologyProfiles[simState.activePathology];
+                feedback.innerText = `Incorrect. Active pathology profile was: ${correctProfile.desc}. (+0 pts)`;
+                feedback.className = "text-[11px] font-bold text-red-500 block mt-1";
+                simState.scores.diagnosisScore = 0;
+            }
+
+            let correctCount = 0;
+            answers.forEach((ans) => {
+                const box = document.getElementById(`mcq_${ans.idx}_feedback`);
+                box.classList.remove('hidden');
+                if (ans.selected === ans.correct) {
+                    box.innerText = `Correct! (+16.6 pts) — ${ans.explanation}`;
+                    box.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+                    correctCount++;
+                } else {
+                    box.innerText = `Incorrect. (Correct Answer: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+                    box.className = "text-[10px] font-bold text-red-500 block mt-1";
+                }
+            });
+            simState.scores.mcqScore = Math.round(correctCount * 16.66);
+
+            const totalScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+            document.getElementById('assessmentScoreReadout').innerText = `Score: ${totalScore}/100`;
+
+            let card = document.getElementById('finalScoreCard');
+            if (!card) {
+                const parent = document.getElementById('simulationViewport');
+                card = document.createElement('div');
+                card.id = "finalScoreCard";
+                parent.appendChild(card);
+            }
+
+            card.className = "p-5 rounded-3xl text-center space-y-3 transition-all duration-500 ";
+            card.innerHTML = `
+                <div class="space-y-1">
+                    <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText"></p>
+                    <p class="text-xs text-slate-700 dark:text-slate-400 leading-relaxed" id="finalStatusDescription"></p>
+                </div>
+                <div id="practiceRedirectBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                    <p class="text-[10px] text-red-500 font-extrabold">Return to practice mode to review Farnsworth color sorting &amp; Ishihara plates.</p>
+                    <button onclick="changeMode('practice')" class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+                        <i class="fa-solid fa-graduation-cap mr-1"></i> Return to Practice
+                    </button>
+                </div>
+            `;
+
+            card.classList.remove('hidden');
+            const statTxt = card.querySelector('#finalStatusText');
+            const statDsc = card.querySelector('#finalStatusDescription');
+            const rdrBlk = card.querySelector('#practiceRedirectBlock');
+
+            if (totalScore >= 80) {
+                soundFeedback('success');
+                card.className += "bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300";
+                statTxt.innerText = `PASSED (${totalScore}%)`;
+                statDsc.innerText = "Symmetrical cone pigment and LGN pathway diagnostics completed. Your milestone has been logged.";
+                rdrBlk.classList.add('hidden');
+                markLabCompleted('Quiz');
+            } else {
+                soundFeedback('warning');
+                card.className += "bg-rose-50 dark:bg-rose-950/25 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300";
+                statTxt.innerText = `FAILED (${totalScore}%)`;
+                statDsc.innerText = "Assessment score is below the 80% passing standard. Practice and review pathways.";
+                rdrBlk.classList.remove('hidden');
+            }
+        }
+
+        function openMenuModal(modalId) { 
+            document.getElementById(`${modalId}Modal`).classList.remove('hidden'); 
+        }
+        function closeMenuModal(modalId) { 
+            document.getElementById(`${modalId}Modal`).classList.add('hidden'); 
+        }
+        function toggleMute() { 
+            simState.soundMuted = !simState.soundMuted; 
+            document.getElementById('muteIcon').className = simState.soundMuted ? "fa-solid fa-volume-xmark text-rose-500" : "fa-solid fa-volume-high text-teal-600";
+            document.getElementById('muteText').innerText = simState.soundMuted ? "Unmute" : "Mute";
+        }
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+        }
+
+        window.onload = () => {
+            if (localStorage.getItem('sahselab_theme') === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+            initD15Test();
+            initFM100Test();
+            filterPlates('all');
+            updatePathology();
+            syncCompletionBadge();
+        };
+
+        window.onresize = () => {
+            drawIshiharaPlateCanvas(simState.activePathology);
+            drawD15Plot();
+            drawFM100Plot();
+        };
+    </script>
+</body>
+</html>

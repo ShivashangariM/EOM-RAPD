@@ -1,0 +1,2995 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Clinical Slit Lamp Biomicroscopy, Gonioscopy & 90D Suite</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Three.js CDN for Real-Time 3D Slit Lamp Stage -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',
+            secondary: '#0284c7',
+            accent: '#0d9488',
+            cobalt: '#1d4ed8',
+            amberGold: '#d97706',
+            gonioIris: '#854d0e',
+            lightbg: '#f8fafc',
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    .dark ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    ::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+
+    input[type=range] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      height: 18px; width: 18px;
+      border-radius: 50%;
+      background: #0284c7;
+      cursor: pointer;
+      margin-top: -7px;
+      box-shadow: 0 0 10px rgba(2, 132, 199, 0.5);
+      border: 2px solid #ffffff;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      appearance: none;
+      width: 100%; height: 4px;
+      cursor: pointer;
+      background: #cbd5e1;
+      border-radius: 2px;
+    }
+    .dark input[type=range]::-webkit-slider-runnable-track {
+      background: #334155;
+    }
+
+    /* 3D Hardware Stage on Clinical White Studio Background */
+    .studio-hardware-bg {
+      background: radial-gradient(circle at 50% 35%, #ffffff 0%, #f1f5f9 65%, #e2e8f0 100%);
+    }
+    .dark .studio-hardware-bg {
+      background: radial-gradient(circle at 50% 35%, #1e293b 0%, #0f172a 70%, #020617 100%);
+    }
+
+    .biomicroscope-bg {
+      background: radial-gradient(circle at center, #171c26 0%, #080a0f 70%, #020305 100%);
+      box-shadow: inset 0 0 60px rgba(0,0,0,0.95);
+    }
+    .room-lights-on .biomicroscope-bg {
+      background: radial-gradient(circle at center, #242f42 0%, #151d2c 70%, #0b111a 100%);
+    }
+
+    .fundus-bg {
+      background: radial-gradient(circle at center, #7f1d1d 0%, #450a0a 65%, #050101 100%);
+      box-shadow: inset 0 0 65px rgba(0,0,0,0.95);
+    }
+
+    .gonioscopy-bg {
+      background: radial-gradient(circle at center, #292524 0%, #1c1917 65%, #0c0a09 100%);
+      box-shadow: inset 0 0 50px rgba(0,0,0,0.98);
+    }
+
+    .slit-beam-glow {
+      filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 14px rgba(56, 189, 248, 0.6));
+    }
+
+    @keyframes thermalConvectionRise {
+      0% { transform: translateY(12px) translateX(0px); opacity: 0.2; }
+      20% { opacity: 0.9; }
+      80% { opacity: 0.9; }
+      100% { transform: translateY(-16px) translateX(3px); opacity: 0.2; }
+    }
+    @keyframes thermalConvectionSink {
+      0% { transform: translateY(-16px) translateX(0px); opacity: 0.2; }
+      20% { opacity: 0.9; }
+      80% { opacity: 0.9; }
+      100% { transform: translateY(14px) translateX(-3px); opacity: 0.2; }
+    }
+    .tyndall-cell-rise { animation: thermalConvectionRise 3.6s ease-in-out infinite; }
+    .tyndall-cell-sink { animation: thermalConvectionSink 4.2s ease-in-out infinite; }
+
+    /* EOM-style always-on floating part labels for the 3D slit lamp */
+    .floating-part-label {
+      position: absolute; pointer-events: auto; cursor: pointer;
+      background: rgba(15, 23, 42, 0.9); color: white; padding: 3px 8px;
+      border-radius: 6px; font-size: 9px; font-weight: 800; white-space: nowrap;
+      transform: translate(-50%, -50%); z-index: 25; border: 1px solid rgba(255,255,255,0.2);
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0.55;
+      letter-spacing: 0.04em;
+    }
+    .floating-part-label:hover,
+    .highlight-part-label {
+      background: #0284c7 !important; opacity: 1 !important;
+      transform: translate(-50%, -50%) scale(1.2) !important; z-index: 45;
+      box-shadow: 0 0 16px rgba(2, 132, 199, 0.55);
+    }
+    .active-part-label {
+      background: #0d9488 !important; opacity: 1 !important;
+      transform: translate(-50%, -50%) scale(1.1);
+      box-shadow: 0 0 12px rgba(13, 148, 136, 0.5);
+    }
+  </style>
+</head>
+
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <script>
+    /* Global Clinical Simulator State Engine */
+    const simState = {
+      currentModule: 'techniques',
+      trainingMode: 'practice',
+      soundMuted: false,
+      lampPower: true,
+      roomLightsOn: false,
+      activeView: 'split',
+      activeInspectedPart: 'eyepieces',
+      magnification: 16,
+      magScale: 2.4,
+      panX: 0,
+      panY: 0,
+      zFocus: 0,
+      slitWidth: 0.4,
+      slitHeight: 14.0,
+      slitAngle: 90,
+      illumAngle: 45,
+      microscopeAngle: 0,
+      gonioClock: 12,
+      shafferGrade: 4,
+      gonioLabelsVisible: true,
+      fundusSlitX: 36,
+      assessmentTargetTech: 'specular',
+      selectedQuestions: [],
+      scores: { practical: 0, mcq: 0 },
+      isDraggingViewport: false,
+      dragStartX: 0,
+      dragStartY: 0
+    };
+
+    /* Slit Lamp Hardware Anatomy Knowledge Base */
+    const slitLampPartsData = {
+      eyepieces: {
+        title: "1. Binocular Eyepieces & Diopter Rings",
+        description: "High-contrast stereoscopic eyepieces with knurled diopter compensation rings (-8D to +8D) and adjustable interpupillary distance (PD 54-74mm). Both eyes receive separate optical paths, providing full stereoscopic depth perception essential for depth assessment across the cornea, anterior chamber, and lens.",
+        tip: "Before examination, focus your ocular reticle and set your refractive correction on the diopter ring to prevent instrument accommodation fatigue."
+      },
+      magTurret: {
+        title: "2. Galilean Magnification Turret Drum",
+        description: "Rotating Galilean magnification drum featuring standard magnification steps: 6.3x, 10x, 16x, 25x, and 40x. Internal afocal telescope lenses flip to provide stepped magnification changes without altering the focal working distance (parfocal system).",
+        tip: "Begin at low magnification (10x-16x) for overall orientation, then advance to high power (25x-40x) for corneal endothelial specular reflection or anterior chamber cell counting."
+      },
+      illumTower: {
+        title: "3. Rotatable Illumination Tower & Column",
+        description: "A counterbalanced swiveling vertical tower housing the halogen or LED light source, condenser lenses, filter wheel, and top deflector prism. Rotates freely around the common mechanical pivot axis from -60° to +60° relative to the observation microscope.",
+        tip: "Decoupling the illumination tower from the microscope axis allows sclerotic scatter and indirect retroillumination."
+      },
+      slitDials: {
+        title: "4. Slit Width, Height & Rotation Dials",
+        description: "Precision micrometric thumbscrews governing the slit aperture jaws. Continuously adjusts slit width from a 0.1mm razor-thin optical section to a 14mm wide diffuse field. The graduated angle scale allows the slit beam to be rotated 360° for horizontal, vertical, and oblique scans.",
+        tip: "For an optical section, use a slit width under 0.5mm at an angle of 45°-60° to sharply separate corneal layers."
+      },
+      joystickBase: {
+        title: "5. 3D Cross-Slide Carriage & Elevation Joystick",
+        description: "Mechanical cross-slide base riding on gear racks and guide rails with millimeter precision. The central vertical joystick tilts in X-Y planes for cross-slide translation and rotates clockwise/counter-clockwise for vertical Z-axis height elevation.",
+        tip: "Use coarse table elevation first, then use the joystick height twist to align the patient's lateral canthus with the chin-rest marker pin."
+      },
+      chinrest: {
+        title: "6. Patient Headrest & Chin-Rest Assembly",
+        description: "Rigid patient stabilization frame consisting of dual upright matte black poles, curved forehead band with paper fasteners, chin-rest cup, elevation thumbwheel, lateral canthus alignment marker, and dual hand-grip handles.",
+        tip: "Align the patient's outer canthus with the black alignment notch on the side pole using the elevation wheel."
+      },
+      fixationTarget: {
+        title: "7. Adjustable Fixation Target Lamp",
+        description: "Illuminated green LED on a flexible gooseneck positioned in front of the non-examined eye to maintain steady patient gaze fixation and control ocular alignment.",
+        tip: "Have the patient fixate on the green LED to control eye movements and keep the cornea positioned in the center of the field."
+      },
+      deflectorMirror: {
+        title: "8. Top Prism & Deflector Mirror",
+        description: "A total reflection prism or front-surface mirror positioned at the apex of the illumination tower that directs the vertical condenser light beam horizontally into the patient's eye.",
+        tip: "Keep the front surface mirror clean and dust-free to avoid stray light flare during anterior chamber flare evaluation."
+      }
+    };
+
+    /* Illumination Techniques Clinical Presets Data */
+    const clinicalTechniquesData = {
+      opticalSection: {
+        title: "1. Optical Section",
+        badge: "Illum: 45° | Obs: 0° | Width: 0.3mm",
+        slitWidth: 0.3, slitHeight: 14, slitAngle: 90, illumAngle: 45, microscopeAngle: 0, filter: 'white', mag: 16,
+        description: "<strong>Optical Section</strong> utilizes a razor-thin, knife-like beam (0.1 - 0.5mm) directed at an angle of 45°-60° to produce a quasi-histological cross-section through transparent ocular tissues. The observation microscope is positioned at 0° perpendicular to the apex, maximizing optical parallax to resolve the tear film, epithelium, stroma, endothelium, and lens reflex.",
+        structures: "Corneal Wedge (Epi/Stroma/Endo), AC Depth, Anterior Lens",
+        clinicalUse: "Localizing depth of corneal foreign bodies, scars, keratoconus thinning, and stromal infiltrates."
+      },
+      diffuse: {
+        title: "2. Diffuse Illumination",
+        badge: "Illum: 30° | Obs: 0° | Width: 12.0mm",
+        slitWidth: 12.0, slitHeight: 14, slitAngle: 90, illumAngle: 30, microscopeAngle: 0, filter: 'white', mag: 10,
+        description: "<strong>Diffuse Illumination</strong> projects a wide, open beam with an optional frosted diffusing filter to provide uniform, glare-free overview lighting across the gross ocular surface, eyelids, and anterior segment. Observation is kept straight (0°) while the illumination tower is placed at 30°-45°.",
+        structures: "Gross Cornea, Bulbar Conjunctiva, Scleral Vessels, Eyelids, Limbus",
+        clinicalUse: "General eye health overview, conjunctivitis, pterygium, and contact lens fitting evaluation."
+      },
+      parallelepiped: {
+        title: "3. Parallelepiped",
+        badge: "Illum: 45° | Obs: 0° | Width: 2.0mm",
+        slitWidth: 2.0, slitHeight: 14, slitAngle: 90, illumAngle: 45, microscopeAngle: 0, filter: 'white', mag: 16,
+        description: "<strong>Parallelepiped</strong> forms a 3-dimensional illuminated rectangular corneal block (1-3mm width). With the illumination arm at 40°-45° and microscope at 0°, both anterior (epithelial) and posterior (endothelial) faces are visible simultaneously, allowing volumetric inspection of stromal depth.",
+        structures: "3D Corneal Block, Stroma Keratocyte Fibrils, Endothelial Face",
+        clinicalUse: "Locating corneal infiltrates, dystrophies, deep neovascularization, and corneal nerve fibers."
+      },
+      tangential: {
+        title: "4. Tangential Illumination",
+        badge: "Illum: 65° (Oblique) | Obs: 0°",
+        slitWidth: 4.0, slitHeight: 14, slitAngle: 90, illumAngle: 65, microscopeAngle: 0, filter: 'white', mag: 16,
+        description: "<strong>Tangential Illumination</strong> directs light at an extreme oblique angle (~60°-70°) across the ocular surface while observing directly from the front (0°). This casts prominent shadows behind subtle surface elevations and depressions, enhancing textural relief.",
+        structures: "Iris Crypts, Trabeculae, Pupillary Ruff, Corneal Surface Ectasias",
+        clinicalUse: "Detecting subtle iris freckles/melanomas, corneal dystrophies, and iris nodules (Koeppe/Busacca)."
+      },
+      specular: {
+        title: "5. Specular Reflection",
+        badge: "Illum: +30° | Obs: -30° (Angle i = r)",
+        slitWidth: 1.5, slitHeight: 10, slitAngle: 90, illumAngle: 30, microscopeAngle: -30, filter: 'white', mag: 40,
+        description: "<strong>Specular Reflection</strong> strictly requires the angle of incidence to equal the angle of reflection ($i = r \\approx 30^\\circ$, total separation $60^\\circ$). The illumination column is positioned at $+30^\\circ$ and the observation microscope swung to $-30^\\circ$. The regular hexagonal honeycomb endothelial cell mosaic reflects directly into the ocular path.",
+        structures: "Hexagonal Endothelial Cell Mosaic, Purkinje Light Reflexes",
+        clinicalUse: "Assessing endothelial cell density, polymegathism, pleomorphism, and guttata in Fuchs' Dystrophy."
+      },
+      sclerotic: {
+        title: "6. Sclerotic Scatter",
+        badge: "Illum: 55° (Limbus) | Obs: 0° (Central)",
+        slitWidth: 1.5, slitHeight: 12, slitAngle: 90, illumAngle: 55, microscopeAngle: 0, filter: 'white', mag: 10,
+        description: "<strong>Sclerotic Scatter</strong> decouples the illumination arm to 50°-60° to focus a narrow beam squarely on the limbal sclera, while the observation microscope focuses on the central cornea at 0°. Light propagates via total internal reflection, causing any central opacity or edema to glow brightly against a dark pupil.",
+        structures: "Full Corneal Dome, Limbal Halo Glow, Stromal Clouding",
+        clinicalUse: "Detecting central corneal edema, subtle nebulae, early corneal graft rejection, and stromal haze."
+      },
+      retroIris: {
+        title: "7. Retroillumination from Iris",
+        badge: "Illum: 35° (Iris Behind) | Obs: 0°",
+        slitWidth: 2.0, slitHeight: 10, slitAngle: 90, illumAngle: 35, microscopeAngle: 0, filter: 'white', mag: 25,
+        description: "<strong>Retroillumination from Iris</strong> directs light at 30°-40° onto the pigmented iris behind the cornea, while the microscope focuses on the cornea at 0°. Reflected light transilluminates the cornea from behind, highlighting microcysts, scars, and neovascularization as silhouettes.",
+        structures: "Backlit Cornea, Deep Stromal Ghost Vessels, Microcysts",
+        clinicalUse: "Visualizing epithelial microcysts, ghost blood vessels, Descemet's folds, and refractive scars."
+      },
+      retroFundus: {
+        title: "8. Retroillumination from Fundus",
+        badge: "Co-Axial: Illum 0° | Obs 0°",
+        slitWidth: 3.0, slitHeight: 14, slitAngle: 90, illumAngle: 0, microscopeAngle: 0, filter: 'white', mag: 16,
+        description: "<strong>Retroillumination from Fundus</strong> aligns both the illumination beam and the microscope co-axial (0°) through a dilated pupil. Light bouncing off the red retinal fundus retroilluminates the crystalline lens and iris pigment epithelium.",
+        structures: "Red Fundus Reflex, Lens Cortex, Iris Pigment Epithelium",
+        clinicalUse: "Quantifying posterior subcapsular cataract, cortical spoking, and pigment dispersion syndrome defects."
+      },
+      conicalBeam: {
+        title: "9. Conical Beam / Tyndall Assessment",
+        badge: "Illum: 45° | Obs: 0° | Pinpoint 1mm",
+        slitWidth: 1.0, slitHeight: 2, slitAngle: 90, illumAngle: 45, microscopeAngle: 0, filter: 'white', mag: 40,
+        description: "<strong>Conical Beam (Tyndall Effect)</strong> projects a high-intensity 1mm circular spot into the dark anterior chamber at 45° while observing at 0° under high magnification (40x). Dark adaptation reveals individual floating inflammatory cells and protein flare in convection currents.",
+        structures: "Anterior Chamber Dark Gap, Aqueous Humor Convection, WBC Cells",
+        clinicalUse: "Grading anterior chamber cells and flare in anterior uveitis according to SUN criteria."
+      },
+      vanHerick: {
+        title: "10. Van Herick Angle Estimation",
+        badge: "Illum: 60° | Obs: 0° (Perpendicular)",
+        slitWidth: 0.3, slitHeight: 10, slitAngle: 90, illumAngle: 60, microscopeAngle: 0, filter: 'white', mag: 16,
+        description: "<strong>Van Herick Technique</strong> requires the illumination arm positioned at an angle of exactly 60°, with the observation microscope positioned at 0° perpendicular to the extreme limbus. The width of the corneal section is compared to the dark anterior chamber gap.",
+        structures: "Limbal Corneal Section, Peripheral Anterior Chamber Gap, Iris Root",
+        clinicalUse: "Rapid screening for angle closure risk before diagnostic pupil dilation."
+      }
+    };
+
+    /* Clinical Assessment Questions Pool */
+    const clinicalMcqPool = [
+      {
+        question: "When performing the Van Herick technique to assess anterior chamber angle depth, what are the recommended illumination and observation angles?",
+        options: { a: "Illumination arm at 60° with microscope observing perpendicularly at 0°", b: "Both illumination and microscope co-axial at 0°", c: "Illumination arm at 20° and microscope at 45°" },
+        correct: "a",
+        explanation: "Van Herick angle estimation requires the illumination arm to be positioned at 60° while the biomicroscope observes perpendicularly (0°) at the peripheral limbus."
+      },
+      {
+        question: "In specular reflection of the corneal endothelium, what physical law governs the relationship between the illumination arm and the observation microscope?",
+        options: { a: "Angle of incidence must equal angle of reflection (e.g. Illum: +30°, Obs: -30°)", b: "The beam must be placed strictly co-axial with the microscope (0°)", c: "Total internal reflection must occur at the limbus" },
+        correct: "a",
+        explanation: "Specular reflection requires equal angles of incidence and reflection (typically around 30° on each side, total 60°) so that the specular ray reflects directly into the microscope optical path."
+      },
+      {
+        question: "Which technique requires the illumination arm and observation microscope to be placed co-axial (0° separation) through a dilated pupil?",
+        options: { a: "Retroillumination from the Fundus (Red Reflex)", b: "Specular Reflection", c: "Sclerotic Scatter" },
+        correct: "a",
+        explanation: "Retroillumination from the fundus requires co-axial alignment (0°) so the reflected retinal red reflex transilluminates lens opacities as dark silhouettes."
+      },
+      {
+        question: "Which technique relies on decoupling the illumination arm to 55°-60° onto the limbus while observing the central cornea perpendicularly at 0°?",
+        options: { a: "Sclerotic Scatter", b: "Optical Section", c: "Tangential Illumination" },
+        correct: "a",
+        explanation: "Sclerotic scatter places the beam on the limbus to propagate light through the cornea via total internal reflection while observing the central cornea directly at 0°."
+      }
+    ];
+
+    /* Audio Synthesis Engine */
+    let audioCtx = null;
+    let slitHumOsc = null;
+    let slitHumGain = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function toggleSlitLampHum(isOn) {
+      if (simState.soundMuted || !simState.lampPower) isOn = false;
+      try {
+        initAudio();
+        if (isOn) {
+          if (!slitHumOsc) {
+            slitHumOsc = audioCtx.createOscillator();
+            slitHumGain = audioCtx.createGain();
+            slitHumOsc.connect(slitHumGain);
+            slitHumGain.connect(audioCtx.destination);
+            slitHumOsc.type = 'triangle';
+            slitHumOsc.frequency.setValueAtTime(110, audioCtx.currentTime);
+            slitHumGain.gain.setValueAtTime(0.012, audioCtx.currentTime);
+            slitHumOsc.start();
+          }
+        } else {
+          if (slitHumOsc) {
+            slitHumOsc.stop();
+            slitHumOsc.disconnect();
+            slitHumOsc = null;
+          }
+        }
+      } catch(e) {}
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click': playAudioTone(720, 'sine', 0.06, 0.03); break;
+        case 'dial': playAudioTone(440, 'triangle', 0.05, 0.02); break;
+        case 'filter': playAudioTone(950, 'sine', 0.08, 0.04); break;
+        case 'mag': playAudioTone(580, 'sine', 0.1, 0.04); break;
+        case 'warning': playAudioTone(190, 'sawtooth', 0.25, 0.05); break;
+        case 'success':
+          playAudioTone(520, 'sine', 0.1, 0.05);
+          setTimeout(() => playAudioTone(680, 'sine', 0.15, 0.05), 80);
+          break;
+        case 'switch': playAudioTone(380, 'triangle', 0.1, 0.03); break;
+      }
+    }
+  </script>
+
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-500">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-y-2">
+      <div class="flex items-center gap-3">
+        <a href="Refraction.html" class="w-9 h-9 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hover:bg-slate-800 transition cursor-pointer">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </a>
+        <div class="w-9 h-9 rounded-xl bg-slate-950 flex items-center justify-center text-secondary border border-slate-800 hidden sm:flex">
+          <i class="fa-solid fa-microscope text-base"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+            SAHS-E-LAB | <span class="text-secondary">Slit Lamp Master Suite</span>
+            <span class="bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900">3D CLINICAL</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-widest font-extrabold">3D Hardware &bull; Techniques &bull; Gonioscopy &bull; 90D</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Module Selector Dropdown -->
+        <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-250 dark:border-slate-700">
+          <label class="text-[9px] font-black uppercase text-slate-400 px-1 hidden md:inline">Module:</label>
+          <select id="simulatorModuleSelect" onchange="onSimulatorModuleChange(this.value)" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs font-black text-secondary focus:outline-none focus:border-secondary shadow-xs cursor-pointer">
+            <option value="parts">1. Parts of Slit Lamp (Hardware Anatomy)</option>
+            <option value="techniques" selected>2. Examination Techniques (10 Methods)</option>
+            <option value="gonioscopy">3. Gonioscopy (Chamber Angle)</option>
+            <option value="fundus90d">4. 90D Lens (Fundoscopy)</option>
+          </select>
+        </div>
+
+        <!-- Practice / Assessment Mode Toggle -->
+        <div class="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center gap-1 border border-slate-250 dark:border-slate-700">
+          <button onclick="setTrainingMode('practice')" id="btnTrainPractice" class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-secondary text-white shadow-xs transition cursor-pointer">
+            Practice
+          </button>
+          <button onclick="setTrainingMode('assessment')" id="btnTrainAssessment" class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+            Assessment
+          </button>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <button onclick="toggleRoomLights()" id="roomLightsBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-250 dark:border-slate-700 transition flex items-center gap-1 cursor-pointer">
+            <i id="roomLightsIcon" class="fa-solid fa-moon text-amber-400 text-xs"></i> <span id="roomLightsText" class="hidden sm:inline text-[11px]">Darkroom</span>
+          </button>
+          <button onclick="toggleLampPower()" id="lampPowerBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-250 dark:border-slate-700 transition flex items-center gap-1 cursor-pointer">
+            <i id="lampPowerIcon" class="fa-solid fa-power-off text-emerald-500 text-xs"></i> <span id="lampPowerText" class="hidden sm:inline text-[11px]">Lamp: ON</span>
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="w-8 h-8 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600"></i>
+          </button>
+          <button onclick="openMenuModal('reference')" class="hidden md:flex px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition items-center gap-1 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Ref
+          </button>
+          <button onclick="toggleDarkMode()" class="w-8 h-8 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke text-sky-600 dark:text-sky-400"></i>
+          </button>
+        </div>
+
+        <span class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-855 border border-slate-200 dark:border-slate-750 text-slate-500 dark:text-slate-400 text-[10px] font-bold hidden sm:flex items-center gap-1 shadow-xs" id="completionStatusBadge">
+          <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+        </span>
+      </div>
+    </nav>
+  </header>
+
+  <main class="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-4 sm:px-6 pt-24 sm:pt-28 pb-12 gap-6">
+    
+    <!-- LEFT COLUMN: 3D Slit Lamp Stage & Eyepiece Viewports -->
+    <section class="lg:w-[58%] space-y-4 font-mono" id="simulationViewport">
+      
+      <div class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3.5 shadow-xs relative transition-all duration-500">
+        
+        <!-- Viewport Top Toolbar -->
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-2">
+            <button onclick="switchActiveView('split')" id="btnViewSplit" class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-secondary text-white shadow-xs cursor-pointer">
+              <i class="fa-solid fa-table-columns mr-1"></i> 3D Hardware &amp; Eyepiece
+            </button>
+            <button onclick="switchActiveView('ocular')" id="btnViewOcular" class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition cursor-pointer">
+              <i class="fa-solid fa-eye mr-1"></i> Eyepiece Only
+            </button>
+            <button onclick="switchActiveView('hardware')" id="btnViewHardware" class="px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition cursor-pointer">
+              <i class="fa-solid fa-cube mr-1"></i> 3D Hardware Only
+            </button>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <span class="text-[9px] font-bold text-slate-400 hidden sm:inline" id="activeModalityBadge">2. Examination Techniques</span>
+            <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-250 dark:border-slate-700">
+              <span class="relative flex h-2 w-2">
+                <span id="lampPing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span id="lampDot" class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span class="text-[9px] font-black uppercase text-slate-600 dark:text-slate-300" id="lampStatusText">Lamp On</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEWPORTS CONTAINER (Three.js 3D Canvas + Medical Eyepiece) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="viewportsWrapper">
+          
+          <!-- VIEWPORT 1: True Real-Time 3D Slit Lamp Stage (Three.js WebGL) -->
+          <div class="relative rounded-2xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800 min-h-[460px] studio-hardware-bg flex flex-col justify-between" id="hardwareStageBox">
+            
+            <!-- 3D Overlay Header -->
+            <div class="w-full flex justify-between items-center text-[9px] font-black text-slate-700 dark:text-slate-300 p-2.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs z-10 border-b border-slate-200 dark:border-slate-800">
+              <span class="flex items-center gap-1.5 font-bold">
+                <i class="fa-solid fa-cube text-secondary"></i> REAL-TIME 3D HAAG-STREIT BQ 900
+                <span class="text-[8px] bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded font-black text-secondary">DUAL-ARM PIVOT</span>
+              </span>
+              <div class="flex items-center gap-2">
+                <span id="hardwareAngleDisplay" class="text-secondary font-mono font-bold">Illum: +45° | Obs: 0°</span>
+                <span id="specularMatchTag" class="hidden text-[8px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-300 animate-pulse">SPECULAR i=r</span>
+              </div>
+            </div>
+
+            <!-- Three.js Canvas Container -->
+            <div id="threeJsCanvasContainer" class="w-full h-[400px] cursor-grab active:cursor-grabbing relative">
+              <!-- EOM-Style Always-On Floating Part Name Labels (one per interactive part) -->
+              <div id="threeJsPartLabelsOverlay" class="absolute inset-0 pointer-events-none"></div>
+
+              <!-- Floating Hover Part Tooltip (EOM-Style Interactive Hover Badge) -->
+              <div id="hoverPartTooltip" class="absolute pointer-events-none hidden z-40 bg-slate-950/95 text-white px-3 py-2 rounded-xl shadow-2xl border-2 border-sky-400 backdrop-blur-md ring-2 ring-sky-500/30 transition-all duration-75">
+                <div class="flex items-center gap-2">
+                  <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+                  </span>
+                  <span id="hoverPartName" class="text-xs font-black font-sans tracking-wide text-white whitespace-nowrap">Eyepieces</span>
+                </div>
+                <div class="flex items-center justify-between gap-3 mt-1 pt-1 border-t border-slate-800 text-[8.5px] font-mono text-slate-400">
+                  <span id="hoverPartSubtext">Diopter calibration &amp; PD</span>
+                  <span class="text-sky-400 font-bold uppercase"><i class="fa-solid fa-hand-pointer mr-0.5"></i> Click</span>
+                </div>
+              </div>
+
+              <!-- 3D Pinned Physical Part Label Directly on the Slit Lamp (Shown ONLY during Parts module) -->
+              <div id="threeJsPartAnchorTag" class="absolute pointer-events-none hidden z-30 -translate-x-1/2 -translate-y-full transition-all duration-75">
+                <div class="flex items-center gap-1.5 bg-slate-950/95 text-white border-2 border-secondary px-3 py-1 rounded-xl shadow-2xl backdrop-blur-md ring-2 ring-sky-500/30">
+                  <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+                  </span>
+                  <span id="threeJsPartAnchorTitle" class="text-[11px] font-black font-sans tracking-wide text-white whitespace-nowrap">1. Binocular Eyepieces</span>
+                </div>
+                <div class="w-0.5 h-4 bg-secondary mx-auto"></div>
+                <div class="w-2.5 h-2.5 bg-secondary rounded-full mx-auto -mt-1 shadow-md ring-2 ring-white"></div>
+              </div>
+
+              <div class="absolute bottom-2 left-2 pointer-events-none text-[8px] bg-white/90 dark:bg-slate-900/90 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded border border-slate-250 dark:border-slate-800 shadow-xs">
+                <i class="fa-solid fa-hand-pointer mr-1 text-secondary"></i> Click parts to inspect &bull; Drag to rotate
+              </div>
+              <div class="absolute top-2 right-2 pointer-events-none text-[8px] font-bold bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-amber-400 px-2 py-0.5 rounded border border-slate-250 dark:border-slate-800 shadow-xs" id="threeJsPerspectiveLabel">
+                Patient (Top/Away) &bull; Optometrist (Bottom/Near)
+              </div>
+            </div>
+
+            <div class="w-full flex justify-between items-center text-[9px] text-slate-600 dark:text-slate-400 font-bold border-t border-slate-200 dark:border-slate-800 p-2 bg-white/80 dark:bg-slate-900/80">
+              <button onclick="reset3DCamera()" class="hover:text-secondary text-[8px] font-black uppercase cursor-pointer">
+                <i class="fa-solid fa-rotate-left mr-1"></i> Reset 3D Angle
+              </button>
+              <span id="magHardwareReadout" class="text-secondary font-black">Turret: 16x</span>
+            </div>
+          </div>
+
+          <!-- VIEWPORT 2: Interactive Biomicroscope / 90D Fundus / Gonioscopy Field -->
+          <div class="biomicroscope-bg rounded-2xl relative flex items-center justify-center overflow-hidden shadow-2xl border-[6px] border-slate-800 dark:border-slate-950 select-none min-h-[460px] cursor-grab active:cursor-grabbing" id="biomicroscopeEyepiece">
+            
+            <!-- 1. SLIT LAMP ANTERIOR SEGMENT SVG -->
+            <svg viewBox="-100 -100 200 200" class="w-full h-full max-w-[430px] max-h-[430px]" id="anteriorSvgView">
+              <defs>
+                <clipPath id="cornealRoundClip">
+                  <circle cx="0" cy="0" r="92" />
+                </clipPath>
+                
+                <radialGradient id="irisColorGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#141a24" />
+                  <stop offset="45%" stop-color="#1e3a5f" />
+                  <stop offset="85%" stop-color="#0f172a" />
+                  <stop offset="100%" stop-color="#020617" />
+                </radialGradient>
+
+                <radialGradient id="crystallineLensGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#1e293b" stop-opacity="0.8"/>
+                  <stop offset="80%" stop-color="#0a0f1d" stop-opacity="0.95"/>
+                  <stop offset="100%" stop-color="#000000" />
+                </radialGradient>
+
+                <!-- Endothelial Specular Honeycomb Cell Pattern (40x Zoom) -->
+                <pattern id="endothelialMosaicPattern" width="6" height="10.4" patternUnits="userSpaceOnUse" patternTransform="scale(0.8)">
+                  <path d="M 3 0 L 6 1.73 L 6 5.2 L 3 6.93 L 0 5.2 L 0 1.73 Z M 3 5.2 L 6 6.93 L 6 10.4 L 3 12.13 L 0 10.4 L 0 6.93 Z" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.35" />
+                  <circle cx="3" cy="3.46" r="0.6" fill="rgba(255,255,255,0.3)" />
+                </pattern>
+
+                <filter id="slitFilterTint" x="-50%" y="-50%" width="200%" height="200%">
+                  <feColorMatrix id="filterColorMatrix" type="matrix" values="
+                    1 0 0 0 0
+                    0 1 0 0 0
+                    0 0 1 0 0
+                    0 0 0 1 0" />
+                </filter>
+
+                <filter id="corneaDefocusBlur">
+                  <feGaussianBlur id="corneaBlurStd" stdDeviation="0.2" />
+                </filter>
+              </defs>
+
+              <circle cx="0" cy="0" r="96" fill="none" stroke="#0f172a" stroke-width="9" />
+
+              <g id="masterOcularZoomGroup" transform="translate(0, 0) scale(1.0)" clip-path="url(#cornealRoundClip)" filter="url(#slitFilterTint)">
+                <!-- Sclera -->
+                <rect x="-160" y="-160" width="320" height="320" fill="#f1f5f9" />
+                
+                <!-- Fine Ciliary Conjunctival Vessels -->
+                <g stroke="#e11d48" stroke-width="0.8" opacity="0.45" fill="none" id="scleralVesselGroup">
+                  <path d="M-90 -50 Q -70 -40 -50 -42 Q -30 -38 -10 -40" />
+                  <path d="M-85 30 Q -65 25 -45 28 Q -20 22 -5 25" />
+                  <path d="M50 -70 Q 65 -50 85 -55" />
+                  <path d="M45 60 Q 60 40 85 45" />
+                </g>
+
+                <!-- Corneal Limbus -->
+                <circle cx="0" cy="0" r="68" fill="#040812" stroke="#64748b" stroke-width="2" opacity="0.95" />
+                
+                <!-- Iris -->
+                <circle cx="0" cy="0" r="66" fill="url(#irisColorGrad)" />
+                <g stroke="#38bdf8" stroke-width="0.5" opacity="0.3" fill="none" id="irisFiberGroup">
+                  <circle cx="0" cy="0" r="54" stroke-dasharray="3 4" />
+                  <circle cx="0" cy="0" r="42" stroke-dasharray="2 3" />
+                  <circle cx="0" cy="35" r="35" stroke="#94a3b8" stroke-dasharray="4 2" />
+                </g>
+
+                <!-- Pupil & Lens -->
+                <circle cx="0" cy="0" r="26" fill="url(#crystallineLensGrad)" stroke="#0f172a" stroke-width="1.5" id="pupilApertureCircle" />
+                <circle cx="0" cy="0" r="26.3" stroke="#451a03" stroke-width="0.8" stroke-dasharray="1.5 1" fill="none" opacity="0.75" />
+
+                <!-- Lens Y-Suture -->
+                <g id="lensYSuture" opacity="0" stroke="rgba(254, 240, 138, 0.4)" stroke-width="0.8" stroke-linecap="round">
+                  <line x1="26" y1="0" x2="26" y2="-8" />
+                  <line x1="26" y1="0" x2="22" y2="7" />
+                  <line x1="26" y1="0" x2="30" y2="7" />
+                </g>
+
+                <!-- Anterior Chamber Cells & Flare (Tyndall Convection) -->
+                <g id="pathologyCellsFlare" opacity="0">
+                  <rect x="-30" y="-45" width="60" height="90" fill="rgba(255, 255, 210, 0.14)" filter="blur(4px)" />
+                  <g class="tyndall-cell-rise">
+                    <circle cx="4" cy="-8" r="0.85" fill="#ffffff" filter="drop-shadow(0 0 1px #fff)" />
+                    <circle cx="6" cy="14" r="0.9" fill="#ffffff" filter="drop-shadow(0 0 1px #fff)" />
+                    <circle cx="8" cy="-2" r="0.75" fill="#ffffff" />
+                  </g>
+                  <g class="tyndall-cell-sink">
+                    <circle cx="-6" cy="-14" r="0.85" fill="#ffffff" filter="drop-shadow(0 0 1px #fff)" />
+                    <circle cx="-8" cy="6" r="0.9" fill="#ffffff" filter="drop-shadow(0 0 1px #fff)" />
+                  </g>
+                </g>
+
+                <!-- Retroillumination Iris Transillumination Defects -->
+                <g id="retroTransillumDefects" opacity="0" fill="#f97316" filter="blur(0.5px)">
+                  <circle cx="-38" cy="12" r="2" opacity="0.8" />
+                  <circle cx="-36" cy="15" r="1.5" opacity="0.7" />
+                  <circle cx="34" cy="-18" r="1.8" opacity="0.8" />
+                </g>
+
+                <!-- Optical Section & Slit Beam Group -->
+                <g id="slitBeamTransformGroup" transform="translate(0, 0) rotate(90)">
+                  <rect id="diffuseLightWash" x="-90" y="-90" width="180" height="180" fill="rgba(255, 255, 255, 0.05)" opacity="0" />
+                  <path id="tearFilmLipidStrip" d="M -2.5 -75 Q 11 0 -2.5 75 L -1 75 Q 12 0 -1 -75 Z" fill="rgba(186, 230, 253, 0.6)" opacity="0" />
+                  <path id="cornealEpithelialStrip" d="M -1 -75 Q 12 0 -1 75 L 3 75 Q 16 0 3 -75 Z" fill="#ffffff" opacity="0.95" class="slit-beam-glow" />
+                  <path id="cornealStromaWedge" d="M 3 -75 Q 16 0 3 75 L 9 75 Q 22 0 9 -75 Z" fill="rgba(224, 242, 254, 0.45)" />
+                  <g id="stromaFineTexture" opacity="0" stroke="rgba(255,255,255,0.25)" stroke-width="0.3" stroke-dasharray="1 2">
+                    <path d="M 4 -50 Q 17 0 4 50" />
+                    <path d="M 6 -50 Q 19 0 6 50" />
+                    <path d="M 8 -50 Q 21 0 8 50" />
+                  </g>
+                  <path id="cornealEndotheliumStrip" d="M 9 -75 Q 22 0 9 75 L 11 75 Q 24 0 11 -75 Z" fill="rgba(255, 255, 255, 0.9)" />
+                  <rect id="endothelialMosaicBox" x="8.5" y="-30" width="8" height="60" fill="url(#endothelialMosaicPattern)" opacity="0" style="mix-blend-mode: screen;" />
+                  <path id="lensSurfaceSlit" d="M 28 -40 Q 36 0 28 40 L 32 40 Q 40 0 32 -40 Z" fill="rgba(254, 240, 138, 0.65)" opacity="0.8" />
+                </g>
+
+                <circle cx="-12" cy="-15" r="2.2" fill="#ffffff" opacity="0.9" filter="drop-shadow(0 0 3px #ffffff)" />
+              </g>
+            </svg>
+
+            <!-- 2. VOLK 90D RETINAL FUNDUS BIOMICROSCOPY SVG -->
+            <svg viewBox="-100 -100 200 200" class="w-full h-full max-w-[430px] max-h-[430px] hidden" id="fundus90dSvgView">
+              <defs>
+                <clipPath id="lens90dRoundClip">
+                  <circle cx="0" cy="0" r="88" />
+                </clipPath>
+                <radialGradient id="opticCupGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#fef08a" />
+                  <stop offset="50%" stop-color="#fde047" />
+                  <stop offset="85%" stop-color="#ea580c" />
+                  <stop offset="100%" stop-color="#c2410c" />
+                </radialGradient>
+                <radialGradient id="foveaGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#450a0a" />
+                  <stop offset="70%" stop-color="#991b1b" />
+                  <stop offset="100%" stop-color="#7f1d1d" />
+                </radialGradient>
+              </defs>
+
+              <circle cx="0" cy="0" r="92" fill="#020617" stroke="#38bdf8" stroke-width="5" />
+
+              <g id="fundusMasterGroup" clip-path="url(#lens90dRoundClip)" transform="translate(0,0) scale(1.0)">
+                <rect x="-120" y="-120" width="240" height="240" fill="#991b1b" />
+                <circle cx="0" cy="0" r="110" fill="url(#foveaGrad)" opacity="0.75" />
+
+                <!-- Optic Nerve Head (Disc & Cup) Inverted View -->
+                <g id="opticDiscGroup" transform="translate(36, -8)">
+                  <ellipse cx="0" cy="0" rx="20" ry="24" fill="url(#opticCupGrad)" stroke="#f8fafc" stroke-width="0.8" />
+                  <ellipse cx="2" cy="0" rx="8" ry="10" fill="#fef08a" opacity="0.9" />
+                  <circle cx="1" cy="-3" r="0.7" fill="#713f12" opacity="0.5" />
+                  <circle cx="3" cy="2" r="0.6" fill="#713f12" opacity="0.5" />
+                  <circle cx="0" cy="3" r="0.5" fill="#713f12" opacity="0.5" />
+                </g>
+
+                <!-- Retinal Vascular Tree -->
+                <g id="retinalVesselsGroup" stroke-linecap="round" fill="none">
+                  <path d="M 36 -8 Q 15 -35 -30 -42" stroke="#dc2626" stroke-width="2.5" />
+                  <path d="M 36 -8 Q 15 -35 -30 -42" stroke="#fca5a5" stroke-width="0.7" opacity="0.7" />
+                  <path d="M 38 -8 Q 20 -40 -25 -48" stroke="#7f1d1d" stroke-width="3.2" />
+
+                  <path d="M 36 -8 Q 15 25 -32 38" stroke="#dc2626" stroke-width="2.5" />
+                  <path d="M 36 -8 Q 15 25 -32 38" stroke="#fca5a5" stroke-width="0.7" opacity="0.7" />
+                  <path d="M 38 -8 Q 18 32 -26 44" stroke="#7f1d1d" stroke-width="3.2" />
+
+                  <path d="M 38 -8 L 78 -18" stroke="#dc2626" stroke-width="2" />
+                  <path d="M 38 -8 L 80 8" stroke="#7f1d1d" stroke-width="2.5" />
+                </g>
+
+                <!-- Macula Lutea & Foveal Light Reflex -->
+                <g id="maculaGroup" transform="translate(-25, 0)">
+                  <circle cx="0" cy="0" r="18" fill="#450a0a" opacity="0.55" filter="blur(2px)" />
+                  <circle cx="0" cy="0" r="2.5" fill="#fef08a" opacity="0.85" filter="drop-shadow(0 0 2px #fff)" />
+                </g>
+
+                <!-- Slit Lamp Vertical Optical Beam Slicing Retina & Optic Disc -->
+                <g id="fundusSlitBeam" transform="translate(36, 0)">
+                  <rect x="-3.5" y="-95" width="7" height="190" fill="rgba(255, 255, 255, 0.45)" style="mix-blend-mode: screen;" />
+                  <path d="M 0 -95 L 0 -10 Q -6 0 0 10 L 0 95" stroke="#ffffff" stroke-width="2" fill="none" class="slit-beam-glow" />
+                </g>
+              </g>
+
+              <circle cx="0" cy="0" r="88" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" />
+              <circle cx="-16" cy="-20" r="3" fill="#ffffff" opacity="0.6" filter="blur(1px)" />
+            </svg>
+
+            <!-- 3. GONIOSCOPY (CHAMBER ANGLE) VIEWPORT SVG -->
+            <svg viewBox="-100 -100 200 200" class="w-full h-full max-w-[430px] max-h-[430px] hidden" id="gonioscopySvgView">
+              <defs>
+                <clipPath id="gonioMirrorClip">
+                  <rect x="-85" y="-85" width="170" height="170" rx="12" />
+                </clipPath>
+              </defs>
+
+              <rect x="-92" y="-92" width="184" height="184" rx="16" fill="#0c0a09" stroke="#78716c" stroke-width="3" />
+
+              <g clip-path="url(#gonioMirrorClip)" id="gonioAngleScene" transform="rotate(0)">
+                <rect x="-90" y="-90" width="180" height="180" fill="#000000" />
+
+                <!-- Layer 1: Peripheral Iris Base & Radial Crypt Furrows -->
+                <path id="gonioIrisBand" d="M -90 -30 Q 0 -22 90 -30 L 90 -90 L -90 -90 Z" fill="#854d0e" />
+                <g stroke="#b45309" stroke-width="0.8" opacity="0.65">
+                  <line x1="-70" y1="-85" x2="-65" y2="-32" />
+                  <line x1="-50" y1="-85" x2="-47" y2="-30" />
+                  <line x1="-25" y1="-85" x2="-23" y2="-28" />
+                  <line x1="0" y1="-85" x2="0" y2="-26" />
+                  <line x1="25" y1="-85" x2="23" y2="-28" />
+                  <line x1="50" y1="-85" x2="47" y2="-30" />
+                  <line x1="70" y1="-85" x2="65" y2="-32" />
+                </g>
+
+                <!-- Layer 2: Ciliary Body Band (CBB) -->
+                <path id="gonioCbbBand" d="M -90 -20 Q 0 -12 90 -20 L 90 -30 Q 0 -22 -90 -30 Z" fill="#382923" />
+
+                <!-- Layer 3: Scleral Spur (SS) -->
+                <path id="gonioSsBand" d="M -90 -14 Q 0 -6 90 -14 L 90 -20 Q 0 -12 -90 -20 Z" fill="#f8fafc" stroke="#e2e8f0" stroke-width="0.4" />
+
+                <!-- Layer 4: Trabecular Meshwork (TM) -->
+                <path id="gonioTmPigmented" d="M -90 -4 Q 0 4 90 -4 L 90 -14 Q 0 -6 -90 -14 Z" fill="#78350f" />
+                <g fill="#451a03" opacity="0.7">
+                  <circle cx="-60" cy="-9" r="1.2" /><circle cx="-30" cy="-5" r="1.4" /><circle cx="0" cy="-3" r="1.3" /><circle cx="35" cy="-5" r="1.2" /><circle cx="65" cy="-9" r="1.4" />
+                </g>
+                <path id="gonioTmNonPigmented" d="M -90 4 Q 0 12 90 4 L 90 -4 Q 0 4 -90 -4 Z" fill="#d6d3d1" />
+
+                <!-- Layer 5: Schwalbe's Line (SL) -->
+                <path id="gonioSlBand" d="M -90 11 Q 0 19 90 11 L 90 4 Q 0 12 -90 4 Z" fill="#ffffff" opacity="0.95" />
+
+                <!-- Layer 6: Inner Corneal Endothelium -->
+                <path id="gonioCornealWedge" d="M -90 90 L 90 90 L 90 11 Q 0 19 -90 11 Z" fill="rgba(241, 245, 249, 0.25)" />
+
+                <!-- Optical Corneal Wedge Beams -->
+                <g id="gonioCornealWedgeBeams" stroke="#ffffff" stroke-width="1.8" opacity="0.95">
+                  <path d="M -20 85 Q -5 45 0 15" />
+                  <path d="M 20 85 Q 5 45 0 15" />
+                  <circle cx="0" cy="15" r="2.2" fill="#38bdf8" />
+                </g>
+
+                <!-- Anatomical Labels Overlay -->
+                <g id="gonioAnatomyLabels" opacity="1" class="transition-opacity duration-300 font-mono text-[6.5px] font-bold">
+                  <text x="-80" y="-45" fill="#fef08a">&bull; Iris Root &amp; Crypts</text>
+                  <text x="-80" y="-23" fill="#fdba74">&bull; Ciliary Body Band (CBB)</text>
+                  <text x="-80" y="-12" fill="#38bdf8">&bull; Scleral Spur (SS)</text>
+                  <text x="-80" y="0" fill="#fde047">&bull; Trabecular Meshwork (TM)</text>
+                  <text x="-80" y="10" fill="#ffffff">&bull; Schwalbe's Line (SL)</text>
+                  <text x="-80" y="32" fill="#bae6fd">&bull; Corneal Wedge</text>
+                </g>
+              </g>
+
+              <!-- Clock Position Readout inside Mirror -->
+              <rect x="-35" y="65" width="70" height="15" rx="5" fill="rgba(0,0,0,0.85)" stroke="#44403c" stroke-width="1" />
+              <text x="0" y="75" fill="#38bdf8" font-size="7.5" font-weight="bold" font-family="monospace" text-anchor="middle" dominant-baseline="central" id="gonioClockText">12 o'clock (Inferior Angle)</text>
+            </svg>
+
+            <!-- HUD Overlay Details -->
+            <div class="absolute top-3 left-3 bg-slate-950/85 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-slate-800 text-[9px] font-mono font-bold text-slate-300 space-y-0.5 pointer-events-none">
+              <div class="flex items-center gap-1.5">
+                <span id="hudMagReadout" class="text-secondary font-black">16x (FOV: 13mm)</span>
+                <span>|</span>
+                <span id="hudFilterReadout">White Light</span>
+              </div>
+              <div id="hudCellularBadge" class="text-[8px] text-amber-400 font-bold hidden">
+                <i class="fa-solid fa-microscope text-teal-400 mr-0.5"></i> Micro-Structure Cellular Zoom
+              </div>
+            </div>
+
+            <div class="absolute bottom-3 right-3 bg-slate-950/85 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-slate-800 text-[9px] font-mono font-bold text-slate-300 pointer-events-none">
+              <span id="hudSecondaryStatus" class="text-emerald-400">Angle: Grade 4 (Open)</span>
+            </div>
+
+            <div class="absolute bottom-3 left-3 text-[8px] text-slate-400 bg-slate-950/70 px-2 py-0.5 rounded border border-slate-800 pointer-events-none">
+              <i class="fa-solid fa-up-down-left-right mr-1"></i> Drag to pan view
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Clinical Live Commentary / Diagnostics Bar -->
+        <div class="bg-slate-100 dark:bg-slate-855 border border-slate-200 dark:border-slate-800 p-2.5 px-4 rounded-xl">
+          <div class="flex items-center gap-2 max-w-2xl mx-auto">
+            <span class="text-[8px] bg-sky-100 dark:bg-sky-950 text-secondary border border-sky-200 dark:border-sky-800 font-black tracking-widest uppercase px-2 py-0.5 rounded flex-shrink-0 animate-pulse">Clinical Feed</span>
+            <p id="commentaryText" class="text-[10.5px] text-slate-700 dark:text-slate-200 font-mono truncate font-bold text-center flex-1">
+              Optical section active: Visualizing corneal curvature wedge, anterior chamber depth, and crystalline lens reflex.
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 3-Axis Joystick & Elevation Console -->
+      <div id="joystickConsoleBox" class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
+          <h4 class="text-xs uppercase font-black text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+            <i class="fa-solid fa-gamepad text-secondary"></i> 3-Axis Joystick &amp; Magnification Drum
+          </h4>
+          <span class="text-[9px] font-bold text-slate-400 font-mono" id="joystickCoordText">X: 0.0mm | Y: 0.0mm | Z: Focus 0</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs">
+          <!-- Cross-Slide Joystick -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-855 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-2 flex flex-col items-center justify-center">
+            <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest block text-center">Joystick Cross-Slide</span>
+            <div class="flex items-center gap-2">
+              <button onclick="panJoystick(-3, 0)" class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold transition text-xs cursor-pointer"><i class="fa-solid fa-arrow-left"></i></button>
+              <div class="flex flex-col gap-1">
+                <button onclick="panJoystick(0, -3)" class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold transition text-xs cursor-pointer"><i class="fa-solid fa-arrow-up"></i></button>
+                <button onclick="panJoystick(0, 3)" class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold transition text-xs cursor-pointer"><i class="fa-solid fa-arrow-down"></i></button>
+              </div>
+              <button onclick="panJoystick(3, 0)" class="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold transition text-xs cursor-pointer"><i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+            <button onclick="recenterJoystick()" class="text-[8px] font-black text-secondary uppercase hover:underline cursor-pointer">Re-Center Apex</button>
+          </div>
+
+          <!-- Fine Z-Axis Elevation & Focus -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-855 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-1.5 flex flex-col justify-between">
+            <span class="text-[9px] font-black text-sky-600 dark:text-sky-400 uppercase tracking-widest block">Z-Focus (Elevation)</span>
+            <div class="flex items-center gap-2 pt-1">
+              <button onclick="stepZFocus(-0.5)" class="w-7 h-7 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold cursor-pointer">-</button>
+              <input type="range" id="zFocusSlider" min="-5" max="5" step="0.25" value="0" oninput="slideZFocus()" class="w-full">
+              <button onclick="stepZFocus(0.5)" class="w-7 h-7 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 font-bold cursor-pointer">+</button>
+            </div>
+            <span class="text-[8px] text-slate-400 block text-center" id="focusSharpnessText">Sharpness: 100% (In Focus)</span>
+          </div>
+
+          <!-- Magnification Turret -->
+          <div class="p-3 bg-slate-50 dark:bg-slate-855 rounded-2xl border border-slate-150 dark:border-slate-800 space-y-1.5 flex flex-col justify-between">
+            <div class="flex justify-between items-center">
+              <span class="text-[9px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest block">Mag Turret</span>
+              <span class="text-[8px] font-bold text-slate-400" id="turretScaleText">Scale: 2.4x</span>
+            </div>
+            <div class="grid grid-cols-5 gap-1 pt-1">
+              <button onclick="setMagnification(6.3)" id="btnMag6" class="py-1 rounded bg-slate-200 dark:bg-slate-700 text-[9px] font-black hover:bg-secondary hover:text-white transition cursor-pointer">6x</button>
+              <button onclick="setMagnification(10)" id="btnMag10" class="py-1 rounded bg-slate-200 dark:bg-slate-700 text-[9px] font-black hover:bg-secondary hover:text-white transition cursor-pointer">10x</button>
+              <button onclick="setMagnification(16)" id="btnMag16" class="py-1 rounded bg-secondary text-white text-[9px] font-black transition cursor-pointer">16x</button>
+              <button onclick="setMagnification(25)" id="btnMag25" class="py-1 rounded bg-slate-200 dark:bg-slate-700 text-[9px] font-black hover:bg-secondary hover:text-white transition cursor-pointer">25x</button>
+              <button onclick="setMagnification(40)" id="btnMag40" class="py-1 rounded bg-slate-200 dark:bg-slate-700 text-[9px] font-black hover:bg-secondary hover:text-white transition cursor-pointer">40x</button>
+            </div>
+            <span class="text-[8px] text-slate-400 block text-center" id="magDescriptionText">Overview &rarr; Cellular Detail</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT COLUMN: Adaptive Interactive Console based on Mode Selection -->
+    <section class="lg:w-[42%] space-y-4">
+      
+      <!-- PANEL 1: PARTS OF SLIT LAMP -->
+      <div id="modulePanel-parts" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div class="flex items-center gap-1.5 text-secondary text-[10px] font-black uppercase tracking-wider">
+            <i class="fa-solid fa-screwdriver-wrench"></i> Hardware Anatomy Guide
+          </div>
+          <h3 class="text-sm font-extrabold text-slate-900 dark:text-white">Slit Lamp Biomicroscope Components</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Click any component to orbit the 3D model and learn its clinical operation.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="partsButtonsList">
+          <button onclick="inspectSlitPart('eyepieces')" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-750 bg-slate-50 dark:bg-slate-850 hover:border-secondary hover:bg-sky-50 dark:hover:bg-sky-950/20 text-left transition flex items-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-glasses text-secondary text-sm"></i>
+            <div>
+              <span class="text-xs font-bold block text-slate-800 dark:text-slate-200">1. Binocular Eyepieces</span>
+              <span class="text-[9px] text-slate-400">Diopter calibration &amp; PD adjustment</span>
+            </div>
+          </button>
+
+          <button onclick="inspectSlitPart('magTurret')" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-750 bg-slate-50 dark:bg-slate-850 hover:border-secondary hover:bg-sky-50 dark:hover:bg-sky-950/20 text-left transition flex items-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-arrows-spin text-purple-500 text-sm"></i>
+            <div>
+              <span class="text-xs font-bold block text-slate-800 dark:text-slate-200">2. Magnification Turret</span>
+              <span class="text-[9px] text-slate-400">6.3x to 40x Galilean drum</span>
+            </div>
+          </button>
+
+          <button onclick="inspectSlitPart('illumTower')" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-750 bg-slate-50 dark:bg-slate-850 hover:border-secondary hover:bg-sky-50 dark:hover:bg-sky-950/20 text-left transition flex items-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-lightbulb text-amber-500 text-sm"></i>
+            <div>
+              <span class="text-xs font-bold block text-slate-800 dark:text-slate-200">3. Illumination Column</span>
+              <span class="text-[9px] text-slate-400">Swiveling halogen/LED lamp</span>
+            </div>
+          </button>
+
+          <button onclick="inspectSlitPart('slitDials')" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-750 bg-slate-50 dark:bg-slate-850 hover:border-secondary hover:bg-sky-50 dark:hover:bg-sky-950/20 text-left transition flex items-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-sliders text-teal-500 text-sm"></i>
+            <div>
+              <span class="text-xs font-bold block text-slate-800 dark:text-slate-200">4. Slit Control Dials</span>
+              <span class="text-[9px] text-slate-400">Width (0-14mm) &amp; Angle ring</span>
+            </div>
+          </button>
+
+          <button onclick="inspectSlitPart('joystickBase')" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-750 bg-slate-50 dark:bg-slate-850 hover:border-secondary hover:bg-sky-50 dark:hover:bg-sky-950/20 text-left transition flex items-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-gamepad text-rose-500 text-sm"></i>
+            <div>
+              <span class="text-xs font-bold block text-slate-800 dark:text-slate-200">5. 3D Joystick Carriage</span>
+              <span class="text-[9px] text-slate-400">X-Y cross slide &amp; elevation twist</span>
+            </div>
+          </button>
+
+          <button onclick="inspectSlitPart('chinrest')" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-750 bg-slate-50 dark:bg-slate-850 hover:border-secondary hover:bg-sky-50 dark:hover:bg-sky-950/20 text-left transition flex items-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-head-side-couch text-indigo-500 text-sm"></i>
+            <div>
+              <span class="text-xs font-bold block text-slate-800 dark:text-slate-200">6. Headrest &amp; Chin-Rest</span>
+              <span class="text-[9px] text-slate-400">Canthus alignment pin &amp; wheel</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- Part Details Card -->
+        <div id="partDescriptionCard" class="p-4 bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900 rounded-2xl space-y-2">
+          <h4 class="text-xs font-black text-secondary uppercase tracking-wider flex items-center gap-1.5" id="partTitle">
+            <i class="fa-solid fa-circle-info text-amber-500"></i> Haag-Streit Component Selected
+          </h4>
+          <p class="text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed font-sans" id="partDescription">
+            Select any part above to explore its optical and mechanical function on the biomicroscope.
+          </p>
+          <div class="p-2 bg-white/80 dark:bg-slate-900/80 rounded-lg border border-sky-100 dark:border-slate-800 text-[10px] font-mono">
+            <span class="font-bold text-slate-400 block text-[8px] uppercase">Clinical Operation Tip:</span>
+            <span id="partClinicalTip" class="text-sky-700 dark:text-sky-300 font-bold">Always calibrate the eyepiece focus to 0 diopters before beginning examination.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL 2: EXAMINATION TECHNIQUES -->
+      <div id="modulePanel-techniques" class="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="border-b border-slate-100 dark:border-slate-800 pb-3 flex justify-between items-center">
+          <div>
+            <span class="text-[10px] font-black uppercase text-secondary tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-graduation-cap"></i> Slit Lamp Examination Technique
+            </span>
+            <h3 class="text-sm font-extrabold text-slate-900 dark:text-white">Teaching &amp; Automated Setup</h3>
+          </div>
+          <button onclick="resetSimulator()" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-250 dark:bg-rose-950/20 dark:border-rose-900 rounded-lg text-[9px] font-black text-rose-600 dark:text-rose-400 transition flex items-center gap-1 cursor-pointer">
+            <i class="fa-solid fa-arrow-rotate-left"></i> Reset
+          </button>
+        </div>
+
+        <!-- Techniques Dropdown -->
+        <div>
+          <label class="text-[9px] uppercase font-black text-slate-400 block mb-1.5">Select Illumination Technique</label>
+          <select id="techniqueSelect" onchange="onTechniqueDropdownChange(this.value)" class="w-full bg-slate-50 dark:bg-slate-855 border-2 border-secondary/50 rounded-xl px-3 py-2.5 text-xs font-extrabold text-slate-900 dark:text-white focus:outline-none focus:border-secondary shadow-xs cursor-pointer">
+            <option value="opticalSection">1. Optical Section (Corneal Layers &amp; Depth)</option>
+            <option value="diffuse">2. Diffuse Illumination (Gross Eye, Sclera, Lids)</option>
+            <option value="parallelepiped">3. Parallelepiped (3D Corneal Block &amp; Stroma)</option>
+            <option value="tangential">4. Tangential Illumination (Iris Texture &amp; Lesions)</option>
+            <option value="specular">5. Specular Reflection (Endothelial Cell Mosaic)</option>
+            <option value="sclerotic">6. Sclerotic Scatter (Total Internal Reflection &amp; Edema)</option>
+            <option value="retroIris">7. Retroillumination from Iris (Corneal Scars &amp; Vessels)</option>
+            <option value="retroFundus">8. Retroillumination from Fundus (Cataracts &amp; Iris Defects)</option>
+            <option value="conicalBeam">9. Conical Beam / Tyndall (Aqueous Cells &amp; Flare)</option>
+            <option value="vanHerick">10. Van Herick Technique (Anterior Chamber Angle Depth)</option>
+          </select>
+        </div>
+
+        <!-- Pedagogical Card -->
+        <div id="pedagogyCard" class="p-4 bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900/60 rounded-2xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-black text-secondary uppercase tracking-wider flex items-center gap-1.5" id="pedagogyTitle">
+              <i class="fa-solid fa-lightbulb text-amber-500"></i> What You Are Seeing
+            </h4>
+            <span class="text-[9px] font-mono font-bold bg-white dark:bg-slate-900 px-2 py-0.5 rounded text-slate-500 border border-slate-200 dark:border-slate-800" id="pedagogyPresetBadge">Angle: 45° | Width: 0.4mm</span>
+          </div>
+          
+          <p class="text-[11px] text-slate-700 dark:text-slate-200 leading-relaxed font-sans" id="pedagogyDescription">
+            <strong>Optical Section</strong> slices through the transparent cornea like a histology cross-section. It resolves the tear film, epithelium (~50&mu;m), collagen stroma (~450&mu;m), and endothelium. The dark gap beneath is the anterior chamber depth before the anterior crystalline lens reflex.
+          </p>
+
+          <div class="grid grid-cols-2 gap-2 text-[10px] font-mono pt-1 text-slate-600 dark:text-slate-300">
+            <div class="p-2 bg-white/80 dark:bg-slate-900/80 rounded-lg border border-sky-100 dark:border-slate-800">
+              <span class="font-bold block text-[8px] text-slate-400 uppercase">Structures Visible</span>
+              <span id="pedagogyStructures" class="font-bold text-sky-700 dark:text-sky-300">Corneal Wedge, Stroma, Endothelium, AC Depth</span>
+            </div>
+            <div class="p-2 bg-white/80 dark:bg-slate-900/80 rounded-lg border border-sky-100 dark:border-slate-800">
+              <span class="font-bold block text-[8px] text-slate-400 uppercase">Primary Clinical Use</span>
+              <span id="pedagogyClinicalUse" class="font-bold text-amber-600 dark:text-amber-400">Depth localization of foreign bodies, infiltrates &amp; thinning</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Manual Slit Tower Adjusters -->
+        <div class="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] font-black uppercase text-slate-400 tracking-wider">Dual-Arm Optical Alignment</span>
+            <span class="text-[9px] text-slate-400 font-mono" id="armSeparationReadout">Δ Separation: 45°</span>
+          </div>
+
+          <!-- Microscope Observation Arm Angle Slider -->
+          <div class="space-y-1 p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-xl">
+            <div class="flex justify-between items-center text-[9px] font-black uppercase text-sky-600 dark:text-sky-400">
+              <span>Microscope Arm Angle (Observation)</span>
+              <span id="microscopeAngleLabel" class="font-mono text-slate-800 dark:text-slate-100">0° (Direct)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="range" id="microscopeAngleSlider" min="-60" max="60" step="1" value="0" oninput="updateBeamOptics()" class="w-full">
+              <button onclick="setMicroscopeAngleDirect(0)" class="text-[8px] px-2 py-0.5 bg-slate-200 dark:bg-slate-700 hover:bg-secondary hover:text-white rounded font-bold cursor-pointer transition">0°</button>
+            </div>
+            <div class="flex justify-between text-[8px] text-slate-400">
+              <button onclick="setMicroscopeAngleDirect(-30)" class="hover:underline cursor-pointer">-30° (Specular)</button>
+              <button onclick="setMicroscopeAngleDirect(0)" class="hover:underline cursor-pointer">0° (Co-Axial / Frontal)</button>
+              <button onclick="setMicroscopeAngleDirect(30)" class="hover:underline cursor-pointer">+30°</button>
+            </div>
+          </div>
+
+          <!-- Illumination Arm Angle Slider -->
+          <div class="space-y-1 p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-xl">
+            <div class="flex justify-between items-center text-[9px] font-black uppercase text-teal-600">
+              <span>Illumination Tower Angle (Light Source)</span>
+              <span id="illumAngleLabel" class="font-mono text-slate-800 dark:text-slate-100">+45°</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="range" id="illumAngleSlider" min="-60" max="60" step="1" value="45" oninput="updateBeamOptics()" class="w-full">
+              <button onclick="setIllumAngleDirect(0)" class="text-[8px] px-2 py-0.5 bg-slate-200 dark:bg-slate-700 hover:bg-secondary hover:text-white rounded font-bold cursor-pointer transition">0°</button>
+            </div>
+            <div class="flex justify-between text-[8px] text-slate-400">
+              <button onclick="setIllumAngleDirect(0)" class="hover:underline cursor-pointer">0° (Co-Axial Fundus)</button>
+              <button onclick="setIllumAngleDirect(30)" class="hover:underline cursor-pointer">30° (Specular / Diffuse)</button>
+              <button onclick="setIllumAngleDirect(45)" class="hover:underline cursor-pointer">45° (Section)</button>
+              <button onclick="setIllumAngleDirect(60)" class="hover:underline cursor-pointer">60° (Van Herick)</button>
+            </div>
+          </div>
+
+          <!-- Slit Width Slider -->
+          <div class="space-y-1 p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-xl">
+            <div class="flex justify-between items-center text-[9px] font-black uppercase text-secondary">
+              <span>Slit Width (0.1mm - 14mm)</span>
+              <span id="slitWidthLabel" class="font-mono text-slate-800 dark:text-slate-100">0.4 mm</span>
+            </div>
+            <input type="range" id="slitWidthSlider" min="0.1" max="14" step="0.1" value="0.4" oninput="updateBeamOptics()" class="w-full">
+          </div>
+
+          <!-- Slit Height Slider -->
+          <div class="space-y-1 p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-xl">
+            <div class="flex justify-between items-center text-[9px] font-black uppercase text-amber-500">
+              <span>Slit Height (1mm - 14mm)</span>
+              <span id="slitHeightLabel" class="font-mono text-slate-800 dark:text-slate-100">14.0 mm</span>
+            </div>
+            <input type="range" id="slitHeightSlider" min="1" max="14" step="0.5" value="14" oninput="updateBeamOptics()" class="w-full">
+          </div>
+
+          <!-- Slit Beam Angle Slider -->
+          <div class="space-y-1 p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-xl">
+            <div class="flex justify-between items-center text-[9px] font-black uppercase text-purple-500">
+              <span>Slit Beam Angle (0° to 180°)</span>
+              <span id="slitAngleLabel" class="font-mono text-slate-800 dark:text-slate-100">90° (Vertical)</span>
+            </div>
+            <input type="range" id="slitAngleSlider" min="0" max="180" step="5" value="90" oninput="updateBeamOptics()" class="w-full">
+          </div>
+
+          <!-- Filter Buttons -->
+          <div class="p-2.5 bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1.5">
+            <span class="text-[9px] font-black uppercase text-slate-500 block">Filter Turret</span>
+            <div class="grid grid-cols-4 gap-1.5">
+              <button onclick="setFilter('white')" id="btnFilter-white" class="py-1.5 rounded-lg border border-secondary text-secondary bg-sky-50 dark:bg-sky-950/40 text-[9px] font-black transition cursor-pointer">White</button>
+              <button onclick="setFilter('cobalt')" id="btnFilter-cobalt" class="py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[9px] font-black transition hover:bg-slate-100 cursor-pointer">Cobalt</button>
+              <button onclick="setFilter('redfree')" id="btnFilter-redfree" class="py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[9px] font-black transition hover:bg-slate-100 cursor-pointer">Red-Free</button>
+              <button onclick="setFilter('neutral')" id="btnFilter-neutral" class="py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[9px] font-black transition hover:bg-slate-100 cursor-pointer">Diffuse ND</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL 3: GONIOSCOPY MODULE -->
+      <div id="modulePanel-gonioscopy" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs font-mono">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <span class="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-compass-drafting"></i> Gonioscopy 4-Mirror Angle Controller
+            </span>
+            <h3 class="text-sm font-extrabold text-slate-900 dark:text-white">Anterior Chamber Angle Anatomy</h3>
+          </div>
+          <label class="flex items-center gap-1 text-[9px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
+            <input type="checkbox" id="gonioMasksToggle" checked onchange="toggleGonioLabels()" class="accent-secondary rounded">
+            Anatomy Labels
+          </label>
+        </div>
+
+        <!-- Clock Position Slider -->
+        <div class="space-y-1.5 p-3 bg-slate-50 dark:bg-slate-855 rounded-xl border border-slate-200 dark:border-slate-800">
+          <div class="flex justify-between text-[9px] font-bold text-slate-500">
+            <span>Angle Mirror Rotation:</span>
+            <span id="gonioClockLabel" class="text-amber-600 font-black">12 o'clock (Inferior Angle)</span>
+          </div>
+          <input type="range" id="gonioClockSlider" min="1" max="12" step="1" value="12" oninput="slideGonioClock(this.value)" class="w-full">
+          <div class="flex justify-between text-[8px] text-slate-400 pt-0.5">
+            <span>3 o'clock</span>
+            <span>6 o'clock</span>
+            <span>9 o'clock</span>
+            <span>12 o'clock</span>
+          </div>
+        </div>
+
+        <!-- Shaffer Angle Grading -->
+        <div class="space-y-1.5 p-3 bg-slate-50 dark:bg-slate-855 rounded-xl border border-slate-200 dark:border-slate-800">
+          <span class="text-[9px] font-black uppercase text-slate-500 block">Shaffer Angle Closure Grade</span>
+          <div class="grid grid-cols-5 gap-1 text-center">
+            <button onclick="setShafferGrade(4)" id="btnShaffer4" class="p-1 rounded bg-secondary text-white text-[9px] font-black transition cursor-pointer">Gr. 4 (Wide Open)</button>
+            <button onclick="setShafferGrade(3)" id="btnShaffer3" class="p-1 rounded bg-slate-200 dark:bg-slate-700 text-[9px] font-black transition cursor-pointer">Gr. 3 (Open)</button>
+            <button onclick="setShafferGrade(2)" id="btnShaffer2" class="p-1 rounded bg-slate-200 dark:bg-slate-700 text-[9px] font-black transition cursor-pointer">Gr. 2 (Narrow)</button>
+            <button onclick="setShafferGrade(1)" id="btnShaffer1" class="p-1 rounded bg-slate-200 dark:bg-slate-700 text-[9px] font-black transition cursor-pointer">Gr. 1 (Very Narrow)</button>
+            <button onclick="setShafferGrade(0)" id="btnShaffer0" class="p-1 rounded bg-slate-200 dark:bg-slate-700 text-[9px] font-black transition cursor-pointer">Gr. 0 (Closed)</button>
+          </div>
+        </div>
+
+        <!-- Gonioscopy Anatomical Guide -->
+        <div class="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/60 text-[10px] space-y-1">
+          <span class="font-bold text-amber-700 dark:text-amber-300 block uppercase">Angle Landmarks from Posterior to Anterior:</span>
+          <p class="text-slate-600 dark:text-slate-400">
+            1. Iris Root &rarr; 2. Ciliary Body Band &rarr; 3. Scleral Spur &rarr; 4. Trabecular Meshwork &rarr; 5. Schwalbe's Line
+          </p>
+        </div>
+      </div>
+
+      <!-- PANEL 4: 90D FUNDUSCOPY MODULE -->
+      <div id="modulePanel-fundus90d" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs font-mono">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <span class="text-[10px] font-black uppercase text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-dot"></i> Volk 90D High-Power Lens Calibration
+            </span>
+            <h3 class="text-sm font-extrabold text-slate-900 dark:text-white">Posterior Pole Stereoscopic Examination</h3>
+          </div>
+          <span class="text-[9px] font-bold text-slate-500">Inverted Aerial Image</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-[10px]">
+          <button onclick="panFundusTarget('disc')" class="py-2 px-2 rounded-xl bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 font-black text-slate-700 dark:text-slate-200 hover:border-secondary transition cursor-pointer">
+            <i class="fa-solid fa-crosshairs mr-1 text-secondary"></i> Focus Optic Disc (C/D: 0.35)
+          </button>
+          <button onclick="panFundusTarget('macula')" class="py-2 px-2 rounded-xl bg-slate-50 dark:bg-slate-855 border border-slate-200 dark:border-slate-700 font-black text-slate-700 dark:text-slate-200 hover:border-secondary transition cursor-pointer">
+            <i class="fa-solid fa-bullseye mr-1 text-rose-500"></i> Focus Macula &amp; Fovea
+          </button>
+        </div>
+
+        <div class="space-y-1.5 p-3 bg-slate-50 dark:bg-slate-855 rounded-xl border border-slate-200 dark:border-slate-800">
+          <div class="flex justify-between text-[9px] font-bold text-slate-500">
+            <span>Optic Cup Slit Slicing:</span>
+            <span id="fundusSlitPositionLabel" class="text-rose-600 font-bold">Scanning ONH Cup Contour</span>
+          </div>
+          <input type="range" id="fundusSlitSlider" min="-50" max="50" step="2" value="36" oninput="slideFundusSlit(this.value)" class="w-full">
+        </div>
+
+        <div class="p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl border border-rose-200 dark:border-rose-900/60 text-[10px] space-y-1">
+          <span class="font-bold text-rose-700 dark:text-rose-300 block uppercase">Stereoscopic Depth Evaluation:</span>
+          <p class="text-slate-600 dark:text-slate-400">
+            Thin optical section across the optic nerve head allows precise stereoscopic evaluation of the physiological cup depth, neuroretinal rim tissue (ISNT rule), and lamina cribrosa pores.
+          </p>
+        </div>
+      </div>
+
+      <!-- PANEL 5: ASSESSMENT & QUIZ CONSOLE -->
+      <div id="modulePanel-assessment" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
+        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Clinical Slit Lamp Assessment</h3>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400">Complete the clinical practical tasks and verification quiz.</p>
+          </div>
+          <span id="assessmentScoreReadout" class="text-xs font-black bg-slate-100 dark:bg-slate-800 border border-slate-250 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">Score: Unsubmitted</span>
+        </div>
+
+        <!-- Assessment Challenge Prompt -->
+        <div class="p-3.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 rounded-2xl space-y-2 text-xs">
+          <span class="font-black text-amber-700 dark:text-amber-400 uppercase text-[9px] block">
+            <i class="fa-solid fa-clipboard-question mr-1"></i> Objective Examination Challenge
+          </span>
+          <p id="assessmentChallengeText" class="text-slate-700 dark:text-slate-300 font-sans leading-relaxed">
+            Configure the slit lamp to evaluate a suspected corneal endothelial dystrophy (Fuchs' dystrophy) with specular reflection. Select the correct technique and set magnification to at least 25x.
+          </p>
+        </div>
+
+        <div id="diagnosisFeedback" class="text-[11px] font-bold hidden px-3 py-2 rounded-lg"></div>
+
+        <!-- MCQ Suite -->
+        <div class="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <span class="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-wider block">Clinical Slit Lamp Quiz (50% Marks)</span>
+          <div id="testMcqSuite" class="space-y-3.5"></div>
+        </div>
+
+        <button onclick="submitTestAssessment()" class="w-full py-3 bg-secondary text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+          Submit Assessment &amp; Log Clinical Score
+        </button>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Reference Guidelines Modal -->
+  <div id="referenceModal" class="fixed inset-0 bg-black/65 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200 max-h-[85vh] overflow-y-auto">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-150 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white">Slit Lamp, Gonioscopy &amp; 90D Principles</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Clinical Guidelines (AAO / BCLA / EyeWiki)</p>
+        </div>
+      </div>
+      <div class="space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+        <p><strong>1. Optical Section:</strong> Uses a 0.1mm-0.5mm beam at 45°-60° to slice through transparent ocular tissues, separating corneal epithelium, stroma, endothelium, and the crystalline lens.</p>
+        <p><strong>2. Specular Reflection:</strong> Achieved when the angle of reflection equals the angle of incidence (~35°), revealing the endothelial cell mosaic at 25x-40x magnification.</p>
+        <p><strong>3. Gonioscopy Anatomy:</strong> A contact gonioprism neutralizes corneal curvature to overcome total internal reflection. Landmarks from posterior to anterior: Iris root &rarr; Ciliary Body Band &rarr; Scleral Spur &rarr; Trabecular Meshwork &rarr; Schwalbe's Line.</p>
+        <p><strong>4. 90D Funduscopy:</strong> Forms an inverted, real stereoscopic aerial image of the retina and optic nerve head, enabling cup-to-disc ratio and neuroretinal rim assessment.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================
+       THREE.JS REAL-TIME 3D SLIT LAMP HARDWARE ENGINE
+       Perspective: Patient at Top/Away (Z < 0) & Optometrist at Bottom/Near (Z > 0)
+       Realistic Satin Black Haag-Streit BQ 900 on Clinical White Studio
+       Direct Click-to-Inspect Raycasting on 3D Parts
+       ========================================================== */
+    let scene, camera, renderer, raycaster, mousePointer;
+    let slitLampCarriage, illumArmPivot, microscopeArmPivot, patientEyeMesh, beamMesh, auxLensMesh;
+    let interactivePartMeshes = [];
+    let hoveredPartKeyLive = null;
+    const PART_SHORT_LABELS = {
+      eyepieces: 'EP', magTurret: 'MAG', illumTower: 'ILT', slitDials: 'SLT',
+      joystickBase: 'JOY', chinrest: 'CHN', fixationTarget: 'FIX', deflectorMirror: 'MIR'
+    };
+    let isMouseDown3D = false;
+    let hasDragged3D = false;
+    let mouseX3D = 0, mouseY3D = 0;
+    let targetRotationY = 0, targetRotationX = 0.28;
+    let currentCameraTarget = new THREE.Vector3(0, 22, -2);
+    let cameraTargetPosition = new THREE.Vector3(0, 56, 76);
+
+    function initThreeJsSlitLamp() {
+      const container = document.getElementById('threeJsCanvasContainer');
+      if (!container) return;
+
+      const width = container.clientWidth || 320;
+      const height = container.clientHeight || 320;
+
+      scene = new THREE.Scene();
+      scene.background = null; // Transparent: lets the .studio-hardware-bg CSS gradient
+                                // (light/dark aware) show through, matching other simulators
+
+      camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+      camera.position.copy(cameraTargetPosition);
+      camera.lookAt(currentCameraTarget);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.innerHTML = "";
+      container.appendChild(renderer.domElement);
+
+      raycaster = new THREE.Raycaster();
+      mousePointer = new THREE.Vector2();
+      interactivePartMeshes = [];
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.95);
+      scene.add(ambientLight);
+
+      const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+      mainLight.position.set(30, 85, 50);
+      mainLight.castShadow = true;
+      mainLight.shadow.mapSize.width = 1024;
+      mainLight.shadow.mapSize.height = 1024;
+      scene.add(mainLight);
+
+      const fillLight = new THREE.DirectionalLight(0xe0f2fe, 0.55);
+      fillLight.position.set(-35, 45, -30);
+      scene.add(fillLight);
+
+      const backLight = new THREE.DirectionalLight(0xffffff, 0.4);
+      backLight.position.set(0, 60, -50);
+      scene.add(backLight);
+
+      // Studio Examination Table Surface
+      const tableGeo = new THREE.BoxGeometry(84, 2.5, 96);
+      const tableMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25, metalness: 0.05 });
+      const table = new THREE.Mesh(tableGeo, tableMat);
+      table.position.set(0, -1.25, 0);
+      table.receiveShadow = true;
+      scene.add(table);
+
+      // Materials Palette (Satin Black, Cast Iron, Chrome, Rubber, Scale Dial)
+      const blackMetalMat = new THREE.MeshStandardMaterial({ 
+        color: 0x18181b, roughness: 0.35, metalness: 0.3 
+      });
+      const darkCastIronMat = new THREE.MeshStandardMaterial({ 
+        color: 0x09090b, roughness: 0.6, metalness: 0.15 
+      });
+      const chromeMat = new THREE.MeshStandardMaterial({ 
+        color: 0xe2e8f0, roughness: 0.15, metalness: 0.9 
+      });
+      const rubberMat = new THREE.MeshStandardMaterial({ 
+        color: 0x09090b, roughness: 0.95 
+      });
+      const dialScaleMat = new THREE.MeshStandardMaterial({ 
+        color: 0x0284c7, roughness: 0.3, metalness: 0.4 
+      });
+
+      // Metallic Chrome Guide Rails on Table
+      const railGeo = new THREE.CylinderGeometry(0.7, 0.7, 62, 16);
+      const railL = new THREE.Mesh(railGeo, chromeMat);
+      railL.rotation.x = Math.PI / 2;
+      railL.position.set(-16, 0.7, 8);
+      scene.add(railL);
+
+      const railR = railL.clone();
+      railR.position.set(16, 0.7, 8);
+      scene.add(railR);
+
+      // PATIENT HEADREST & CHINREST ASSEMBLY (TOP / AWAY SIDE: Z < 0)
+      const patientSideGroup = new THREE.Group();
+      patientSideGroup.position.set(0, 0, -32);
+
+      const poleGeo = new THREE.CylinderGeometry(1.0, 1.0, 48, 16);
+      const poleL = new THREE.Mesh(poleGeo, blackMetalMat);
+      poleL.position.set(-15, 24, 0);
+      patientSideGroup.add(poleL);
+
+      const poleR = poleL.clone();
+      poleR.position.set(15, 24, 0);
+      patientSideGroup.add(poleR);
+
+      const handleGeo = new THREE.CylinderGeometry(0.8, 0.8, 15, 16);
+      const handleL = new THREE.Mesh(handleGeo, chromeMat);
+      handleL.position.set(-17, 15, 2);
+      patientSideGroup.add(handleL);
+
+      const handleR = handleL.clone();
+      handleR.position.set(17, 15, 2);
+      patientSideGroup.add(handleR);
+
+      // Forehead Rest Band (Interactive)
+      const foreheadGeo = new THREE.BoxGeometry(32, 4.0, 3.5);
+      const foreheadRest = new THREE.Mesh(foreheadGeo, blackMetalMat);
+      foreheadRest.position.set(0, 44, 0);
+      foreheadRest.name = "chinrest";
+      foreheadRest.userData = { label: "Patient Forehead Rest & Chin-Rest Assembly", partKey: "chinrest" };
+      interactivePartMeshes.push(foreheadRest);
+      patientSideGroup.add(foreheadRest);
+
+      // White hygienic paper roll strip on forehead rest
+      const paperGeo = new THREE.BoxGeometry(18, 2.5, 0.5);
+      const paperMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+      const paper = new THREE.Mesh(paperGeo, paperMat);
+      paper.position.set(0, 44, 1.8);
+      patientSideGroup.add(paper);
+
+      // Chin Rest Cup & Elevation Thumbwheel (Interactive)
+      const chinCupGeo = new THREE.BoxGeometry(15, 2.4, 8.5);
+      const chinRest = new THREE.Mesh(chinCupGeo, blackMetalMat);
+      chinRest.position.set(0, 20, 2.5);
+      chinRest.name = "chinrest";
+      chinRest.userData = { label: "Patient Chin-Rest Cup", partKey: "chinrest" };
+      interactivePartMeshes.push(chinRest);
+      patientSideGroup.add(chinRest);
+
+      const thumbwheelGeo = new THREE.CylinderGeometry(2.4, 2.4, 5.0, 16);
+      const thumbwheel = new THREE.Mesh(thumbwheelGeo, chromeMat);
+      thumbwheel.position.set(-15, 12, 0);
+      thumbwheel.name = "chinrest";
+      thumbwheel.userData = { label: "Chin-Rest Elevation Thumbwheel", partKey: "chinrest" };
+      interactivePartMeshes.push(thumbwheel);
+      patientSideGroup.add(thumbwheel);
+
+      // Fixation Target Lamp (Interactive)
+      const fixArmGeo = new THREE.CylinderGeometry(0.4, 0.4, 14, 12);
+      const fixArm = new THREE.Mesh(fixArmGeo, chromeMat);
+      fixArm.rotation.z = Math.PI / 4;
+      fixArm.position.set(10, 34, -1);
+      patientSideGroup.add(fixArm);
+
+      const fixTargetGeo = new THREE.SphereGeometry(1.2, 16, 16);
+      const fixTargetMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+      const fixTarget = new THREE.Mesh(fixTargetGeo, fixTargetMat);
+      fixTarget.position.set(15, 39, -1);
+      fixTarget.name = "fixationTarget";
+      fixTarget.userData = { label: "Patient Fixation Target LED", partKey: "fixationTarget" };
+      interactivePartMeshes.push(fixTarget);
+      patientSideGroup.add(fixTarget);
+
+      // Patient Eye Model facing optometrist (Facing +Z)
+      const eyeGeo = new THREE.SphereGeometry(4.8, 32, 32);
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.15 });
+      patientEyeMesh = new THREE.Mesh(eyeGeo, eyeMat);
+      patientEyeMesh.position.set(0, 28, 2.5);
+
+      const irisGeo = new THREE.CircleGeometry(2.6, 32);
+      const irisMat = new THREE.MeshBasicMaterial({ color: 0x0284c7 });
+      const iris = new THREE.Mesh(irisGeo, irisMat);
+      iris.position.set(0, 0, 4.75);
+      patientEyeMesh.add(iris);
+
+      const pupilGeo = new THREE.CircleGeometry(1.2, 32);
+      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      const pupil = new THREE.Mesh(pupilGeo, pupilMat);
+      pupil.position.set(0, 0, 4.78);
+      patientEyeMesh.add(pupil);
+
+      patientSideGroup.add(patientEyeMesh);
+      scene.add(patientSideGroup);
+
+      // BLACK SLIT LAMP CARRIAGE & BIOMICROSCOPE (NEAR / OPTOMETRIST SIDE: Z > 0)
+      slitLampCarriage = new THREE.Group();
+      slitLampCarriage.position.set(0, 0, 10);
+
+      // Carriage Base Plate (Interactive)
+      const basePlateGeo = new THREE.BoxGeometry(26, 3.2, 28);
+      const basePlate = new THREE.Mesh(basePlateGeo, blackMetalMat);
+      basePlate.position.set(0, 1.6, 0);
+      basePlate.name = "joystickBase";
+      basePlate.userData = { label: "Carriage Base Plate & Rails", partKey: "joystickBase" };
+      interactivePartMeshes.push(basePlate);
+      slitLampCarriage.add(basePlate);
+
+      // Cross-Slide Carriage Wheels
+      const wheelGeo = new THREE.CylinderGeometry(1.8, 1.8, 2.2, 16);
+      const wheelFL = new THREE.Mesh(wheelGeo, darkCastIronMat);
+      wheelFL.rotation.z = Math.PI / 2;
+      wheelFL.position.set(-16, 1.6, -8);
+      slitLampCarriage.add(wheelFL);
+      const wheelFR = wheelFL.clone(); wheelFR.position.set(16, 1.6, -8); slitLampCarriage.add(wheelFR);
+      const wheelBL = wheelFL.clone(); wheelBL.position.set(-16, 1.6, 8); slitLampCarriage.add(wheelBL);
+      const wheelBR = wheelFL.clone(); wheelBR.position.set(16, 1.6, 8); slitLampCarriage.add(wheelBR);
+
+      // 3D Elevation Joystick (Interactive)
+      const stickGeo = new THREE.CylinderGeometry(0.85, 0.85, 14, 16);
+      const joystick = new THREE.Mesh(stickGeo, chromeMat);
+      joystick.position.set(0, 9, 10);
+      joystick.name = "joystickBase";
+      joystick.userData = { label: "3D Elevation Joystick", partKey: "joystickBase" };
+      interactivePartMeshes.push(joystick);
+      slitLampCarriage.add(joystick);
+
+      const joyTopGeo = new THREE.SphereGeometry(1.8, 16, 16);
+      const joyTopMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.25 });
+      const joyTop = new THREE.Mesh(joyTopGeo, joyTopMat);
+      joyTop.position.set(0, 16, 10);
+      joyTop.name = "joystickBase";
+      joyTop.userData = { label: "Joystick Height Twist & Trigger", partKey: "joystickBase" };
+      interactivePartMeshes.push(joyTop);
+      slitLampCarriage.add(joyTop);
+
+      // Main Vertical Support Pillar
+      const pillarGeo = new THREE.CylinderGeometry(3.6, 4.0, 18, 24);
+      const pillar = new THREE.Mesh(pillarGeo, chromeMat);
+      pillar.position.set(0, 12, 0);
+      slitLampCarriage.add(pillar);
+
+      // Degree Scale Turntable Ring
+      const scalePlateGeo = new THREE.CylinderGeometry(9.2, 9.2, 1.3, 32);
+      const scalePlate = new THREE.Mesh(scalePlateGeo, dialScaleMat);
+      scalePlate.position.set(0, 20.6, 0);
+      scalePlate.name = "illumTower";
+      scalePlate.userData = { label: "Degree Scale Ring & Pivot Axis", partKey: "illumTower" };
+      interactivePartMeshes.push(scalePlate);
+      slitLampCarriage.add(scalePlate);
+
+      // ROTATABLE MICROSCOPE OBSERVATION ARM
+      microscopeArmPivot = new THREE.Group();
+      microscopeArmPivot.position.set(0, 21, 0);
+
+      const scopeArmGeo = new THREE.CylinderGeometry(1.6, 1.6, 7, 16);
+      const scopeArm = new THREE.Mesh(scopeArmGeo, chromeMat);
+      scopeArm.position.set(0, 3.5, 3);
+      microscopeArmPivot.add(scopeArm);
+
+      const scopeBodyGeo = new THREE.BoxGeometry(10.5, 9.0, 14.5);
+      const scopeBody = new THREE.Mesh(scopeBodyGeo, blackMetalMat);
+      scopeBody.position.set(0, 7, 4);
+      scopeBody.name = "magTurret";
+      scopeBody.userData = { label: "Microscope Optics Housing", partKey: "magTurret" };
+      interactivePartMeshes.push(scopeBody);
+      microscopeArmPivot.add(scopeBody);
+
+      // Galilean Magnification Turret Drum (Interactive)
+      const turretGeo = new THREE.CylinderGeometry(4.8, 4.8, 7.8, 24);
+      const turret = new THREE.Mesh(turretGeo, chromeMat);
+      turret.rotation.z = Math.PI / 2;
+      turret.position.set(0, 7, -2);
+      turret.name = "magTurret";
+      turret.userData = { label: "Galilean Magnification Turret (6.3x - 40x)", partKey: "magTurret" };
+      interactivePartMeshes.push(turret);
+      microscopeArmPivot.add(turret);
+
+      // Binocular Eyepieces & Rubber Eyecups (Interactive)
+      const tubeGeo = new THREE.CylinderGeometry(1.55, 1.4, 10, 16);
+      const eyecupGeo = new THREE.CylinderGeometry(2.2, 1.8, 3.2, 16);
+
+      const tubeL = new THREE.Mesh(tubeGeo, blackMetalMat);
+      tubeL.rotation.x = Math.PI / 3.4;
+      tubeL.position.set(-3.4, 10, 10.5);
+      tubeL.name = "eyepieces";
+      tubeL.userData = { label: "Binocular Eyepieces & Diopter Rings", partKey: "eyepieces" };
+      interactivePartMeshes.push(tubeL);
+      microscopeArmPivot.add(tubeL);
+
+      const eyecupL = new THREE.Mesh(eyecupGeo, rubberMat);
+      eyecupL.rotation.x = Math.PI / 3.4;
+      eyecupL.position.set(-3.4, 12.6, 14.6);
+      eyecupL.name = "eyepieces";
+      eyecupL.userData = { label: "Binocular Eyepieces & Diopter Rings", partKey: "eyepieces" };
+      interactivePartMeshes.push(eyecupL);
+      microscopeArmPivot.add(eyecupL);
+
+      const tubeR = tubeL.clone();
+      tubeR.position.set(3.4, 10, 10.5);
+      tubeR.name = "eyepieces";
+      tubeR.userData = { label: "Binocular Eyepieces & Diopter Rings", partKey: "eyepieces" };
+      interactivePartMeshes.push(tubeR);
+      microscopeArmPivot.add(tubeR);
+
+      const eyecupR = eyecupL.clone();
+      eyecupR.position.set(3.4, 12.6, 14.6);
+      eyecupR.name = "eyepieces";
+      eyecupR.userData = { label: "Binocular Eyepieces & Diopter Rings", partKey: "eyepieces" };
+      interactivePartMeshes.push(eyecupR);
+      microscopeArmPivot.add(eyecupR);
+
+      slitLampCarriage.add(microscopeArmPivot);
+
+      // ROTATABLE ILLUMINATION TOWER
+      illumArmPivot = new THREE.Group();
+      illumArmPivot.position.set(0, 21, 0);
+
+      // Lower Illumination Arm Mount
+      const illumBaseArmGeo = new THREE.BoxGeometry(4.0, 2.5, 9.0);
+      const illumBaseArm = new THREE.Mesh(illumBaseArmGeo, chromeMat);
+      illumBaseArm.position.set(0, 1.25, -4.0);
+      illumArmPivot.add(illumBaseArm);
+
+      // Vertical Illumination Column Tower (Interactive)
+      const towerColGeo = new THREE.CylinderGeometry(2.2, 2.5, 24, 20);
+      const towerCol = new THREE.Mesh(towerColGeo, blackMetalMat);
+      towerCol.position.set(0, 13, -7.0);
+      towerCol.name = "illumTower";
+      towerCol.userData = { label: "Illumination Tower & Column", partKey: "illumTower" };
+      interactivePartMeshes.push(towerCol);
+      illumArmPivot.add(towerCol);
+
+      // Slit Width & Height Adjustment Dials (Interactive)
+      const dialGeo = new THREE.CylinderGeometry(2.2, 2.2, 1.5, 16);
+      const dialL = new THREE.Mesh(dialGeo, chromeMat);
+      dialL.rotation.z = Math.PI / 2;
+      dialL.position.set(-3.2, 12, -7.0);
+      dialL.name = "slitDials";
+      dialL.userData = { label: "Slit Width, Height & Rotation Dials", partKey: "slitDials" };
+      interactivePartMeshes.push(dialL);
+      illumArmPivot.add(dialL);
+
+      const dialR = dialL.clone();
+      dialR.position.set(3.2, 12, -7.0);
+      dialR.name = "slitDials";
+      dialR.userData = { label: "Slit Width, Height & Rotation Dials", partKey: "slitDials" };
+      interactivePartMeshes.push(dialR);
+      illumArmPivot.add(dialR);
+
+      // Top Lamp Housing with Heat Sinks
+      const lampHouseGeo = new THREE.CylinderGeometry(3.0, 3.2, 12, 24);
+      const lampHouse = new THREE.Mesh(lampHouseGeo, blackMetalMat);
+      lampHouse.position.set(0, 26, -7.0);
+      lampHouse.name = "illumTower";
+      lampHouse.userData = { label: "Illumination Lamp Housing & Filter Drum", partKey: "illumTower" };
+      interactivePartMeshes.push(lampHouse);
+      illumArmPivot.add(lampHouse);
+
+      // Top Deflector Prism / Mirror at Tower Apex (Interactive)
+      const prismGeo = new THREE.BoxGeometry(3.4, 4.2, 3.6);
+      const prism = new THREE.Mesh(prismGeo, chromeMat);
+      prism.position.set(0, 33, -7.0);
+      prism.rotation.x = Math.PI / 6;
+      prism.name = "deflectorMirror";
+      prism.userData = { label: "Top Prism & Deflector Mirror", partKey: "deflectorMirror" };
+      interactivePartMeshes.push(prism);
+      illumArmPivot.add(prism);
+
+      // Volumetric Projected Slit Light Beam toward Patient Cornea
+      const beamGeo = new THREE.ConeGeometry(3.6, 28, 16);
+      const beamMat = new THREE.MeshBasicMaterial({ 
+        color: 0xffffff, transparent: true, opacity: 0.45, side: THREE.DoubleSide 
+      });
+      beamMesh = new THREE.Mesh(beamGeo, beamMat);
+      beamMesh.rotation.x = -Math.PI / 2.2;
+      beamMesh.position.set(0, 30, -18);
+      illumArmPivot.add(beamMesh);
+
+      slitLampCarriage.add(illumArmPivot);
+      scene.add(slitLampCarriage);
+
+      // Optional Volk 90D Auxiliary Handheld Lens Mesh (Funduscopy Mode)
+      const auxLensGeo = new THREE.CylinderGeometry(3.0, 3.0, 1.2, 24);
+      const auxLensMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8, roughness: 0.2 });
+      auxLensMesh = new THREE.Mesh(auxLensGeo, auxLensMat);
+      auxLensMesh.rotation.x = Math.PI / 2;
+      auxLensMesh.position.set(0, 28, -20);
+      auxLensMesh.visible = false;
+      scene.add(auxLensMesh);
+
+      // Clone materials across interactive parts so hover highlighting affects only targeted parts
+      interactivePartMeshes.forEach(mesh => {
+        if (mesh.material) {
+          mesh.material = mesh.material.clone();
+          mesh.userData.originalEmissive = mesh.material.emissive ? mesh.material.emissive.getHex() : 0x000000;
+        }
+      });
+
+      function highlightPartKey(partKey) {
+        clearPartHighlight();
+        if (!partKey) return;
+        interactivePartMeshes.forEach(m => {
+          if (m.userData && m.userData.partKey === partKey) {
+            if (m.material && m.material.emissive) {
+              m.material.emissive.setHex(0x0284c7); // Vivid clinical cyan glow
+              m.material.emissiveIntensity = 0.65;
+            }
+          }
+        });
+      }
+
+      function clearPartHighlight() {
+        interactivePartMeshes.forEach(m => {
+          if (m.material && m.material.emissive) {
+            m.material.emissive.setHex(m.userData.originalEmissive || 0x000000);
+            m.material.emissiveIntensity = 0;
+          }
+        });
+      }
+
+      // Mouse and Touch Orbit & Click-to-Inspect Raycasting
+      container.addEventListener('mousedown', (e) => {
+        isMouseDown3D = true;
+        hasDragged3D = false;
+        mouseX3D = e.clientX;
+        mouseY3D = e.clientY;
+      });
+
+      container.addEventListener('mouseleave', () => {
+        clearPartHighlight();
+        hoveredPartKeyLive = null;
+        if (simState.currentModule === 'parts' && simState.activeInspectedPart) {
+          highlightPartKey(simState.activeInspectedPart);
+        }
+        const tooltip = document.getElementById('hoverPartTooltip');
+        if (tooltip) tooltip.classList.add('hidden');
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        const rect = container.getBoundingClientRect();
+        const isInside = (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom);
+
+        if (isInside && !isMouseDown3D) {
+          mousePointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          mousePointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+          // Hover raycast tooltip
+          raycaster.setFromCamera(mousePointer, camera);
+          const intersects = raycaster.intersectObjects(interactivePartMeshes, true);
+          const tooltip = document.getElementById('hoverPartTooltip');
+          const nameSpan = document.getElementById('hoverPartName');
+          const subtextSpan = document.getElementById('hoverPartSubtext');
+
+          if (intersects.length > 0) {
+            const hit = intersects[0].object;
+            const partKey = hit.userData?.partKey;
+            const partData = partKey ? slitLampPartsData[partKey] : null;
+
+            if (partData) {
+              container.style.cursor = 'pointer';
+              highlightPartKey(partKey);
+              hoveredPartKeyLive = partKey;
+
+              if (tooltip && nameSpan) {
+                tooltip.classList.remove('hidden');
+                nameSpan.innerText = partData.title;
+                if (subtextSpan) {
+                  subtextSpan.innerText = hit.userData.label || "Slit Lamp Component";
+                }
+
+                // Keep hover tooltip smoothly bounded inside container
+                const tWidth = tooltip.offsetWidth || 160;
+                const tHeight = tooltip.offsetHeight || 52;
+                let posX = e.clientX - rect.left + 14;
+                let posY = e.clientY - rect.top - tHeight - 10;
+
+                if (posX + tWidth > rect.width - 10) posX = e.clientX - rect.left - tWidth - 14;
+                if (posY < 10) posY = e.clientY - rect.top + 20;
+
+                tooltip.style.left = `${Math.max(10, posX)}px`;
+                tooltip.style.top = `${Math.max(10, posY)}px`;
+              }
+            } else {
+              container.style.cursor = 'grab';
+              clearPartHighlight();
+              hoveredPartKeyLive = null;
+              if (simState.currentModule === 'parts' && simState.activeInspectedPart) {
+                highlightPartKey(simState.activeInspectedPart);
+              }
+              if (tooltip) tooltip.classList.add('hidden');
+            }
+          } else {
+            container.style.cursor = 'grab';
+            clearPartHighlight();
+            hoveredPartKeyLive = null;
+            if (simState.currentModule === 'parts' && simState.activeInspectedPart) {
+              highlightPartKey(simState.activeInspectedPart);
+            }
+            if (tooltip) tooltip.classList.add('hidden');
+          }
+        } else if (!isInside) {
+          hoveredPartKeyLive = null;
+          const tooltip = document.getElementById('hoverPartTooltip');
+          if (tooltip) tooltip.classList.add('hidden');
+        }
+
+        if (!isMouseDown3D) return;
+        const deltaX = e.clientX - mouseX3D;
+        const deltaY = e.clientY - mouseY3D;
+        if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) hasDragged3D = true;
+
+        mouseX3D = e.clientX;
+        mouseY3D = e.clientY;
+
+        // Natural direct manipulation: dragging right turns right, dragging up tilts up
+        targetRotationY += deltaX * 0.008;
+        targetRotationX += deltaY * 0.005;
+        if (targetRotationX > 0.8) targetRotationX = 0.8;
+        if (targetRotationX < 0.05) targetRotationX = 0.05;
+      });
+
+      // Allow natural trackpad and wheel scroll navigation on the 3D stage.
+      // The model turns the same way the user scrolls (scroll down/right = model turns that way),
+      // matching the "natural direct manipulation" drag behavior above.
+      container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        targetRotationY += e.deltaX * 0.003;
+        targetRotationX += e.deltaY * 0.002;
+        if (targetRotationX > 0.8) targetRotationX = 0.8;
+        if (targetRotationX < 0.05) targetRotationX = 0.05;
+      }, { passive: false });
+
+      container.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isMouseDown3D = true;
+          hasDragged3D = false;
+          mouseX3D = e.touches[0].clientX;
+          mouseY3D = e.touches[0].clientY;
+        }
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        if (!isMouseDown3D || e.touches.length === 0) return;
+        const deltaX = e.touches[0].clientX - mouseX3D;
+        const deltaY = e.touches[0].clientY - mouseY3D;
+        if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) hasDragged3D = true;
+
+        mouseX3D = e.touches[0].clientX;
+        mouseY3D = e.touches[0].clientY;
+
+        // Natural direct manipulation for touch gestures: swipe right rotates right, swipe up tilts up
+        targetRotationY += deltaX * 0.008;
+        targetRotationX += deltaY * 0.005;
+        if (targetRotationX > 0.8) targetRotationX = 0.8;
+        if (targetRotationX < 0.05) targetRotationX = 0.05;
+      }, { passive: true });
+
+      window.addEventListener('touchend', (e) => {
+        if (!hasDragged3D && isMouseDown3D && e.changedTouches && e.changedTouches.length > 0) {
+          const touch = e.changedTouches[0];
+          const rect = container.getBoundingClientRect();
+          if (touch.clientX >= rect.left && touch.clientX <= rect.right && touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+            mousePointer.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+            mousePointer.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mousePointer, camera);
+            const intersects = raycaster.intersectObjects(interactivePartMeshes, true);
+            if (intersects.length > 0) {
+              const hit = intersects[0].object;
+              if (hit.userData && hit.userData.partKey) {
+                if (simState.currentModule !== 'parts' && simState.trainingMode === 'practice') {
+                  const modSelect = document.getElementById('simulatorModuleSelect');
+                  if (modSelect) {
+                    modSelect.value = 'parts';
+                    onSimulatorModuleChange('parts');
+                  }
+                }
+                inspectSlitPart(hit.userData.partKey);
+              }
+            }
+          }
+        }
+        isMouseDown3D = false;
+        hasDragged3D = false;
+      });
+
+      window.addEventListener('mouseup', (e) => {
+        if (!hasDragged3D && isMouseDown3D) {
+          const rect = container.getBoundingClientRect();
+          if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            mousePointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mousePointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mousePointer, camera);
+            const intersects = raycaster.intersectObjects(interactivePartMeshes, true);
+            if (intersects.length > 0) {
+              const hit = intersects[0].object;
+              if (hit.userData && hit.userData.partKey) {
+                // Switch to parts module if not already active
+                if (simState.currentModule !== 'parts' && simState.trainingMode === 'practice') {
+                  const modSelect = document.getElementById('simulatorModuleSelect');
+                  if (modSelect) {
+                    modSelect.value = 'parts';
+                    onSimulatorModuleChange('parts');
+                  }
+                }
+                inspectSlitPart(hit.userData.partKey);
+              }
+            }
+          }
+        }
+        isMouseDown3D = false;
+        hasDragged3D = false;
+      });
+
+      // Responsive Resize Observer
+      const resizeObserver = new ResizeObserver(() => {
+        if (!container || !camera || !renderer) return;
+        const w = container.clientWidth || 320;
+        const h = container.clientHeight || 320;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      });
+      resizeObserver.observe(container);
+
+      createSlitLampPartLabels();
+
+      // Start 3D Render Loop
+      animate3D();
+    }
+
+    // EOM-Style always-visible floating name tags, one per interactive part
+    function createSlitLampPartLabels() {
+      const overlay = document.getElementById('threeJsPartLabelsOverlay');
+      if (!overlay) return;
+      overlay.innerHTML = '';
+      Object.keys(slitLampPartsData).forEach(partKey => {
+        const label = document.createElement('div');
+        label.className = 'floating-part-label';
+        label.id = `partLabel-${partKey}`;
+        label.innerText = PART_SHORT_LABELS[partKey] || partKey;
+        label.onclick = () => {
+          if (simState.currentModule !== 'parts' && simState.trainingMode === 'practice') {
+            const modSelect = document.getElementById('simulatorModuleSelect');
+            if (modSelect) { modSelect.value = 'parts'; onSimulatorModuleChange('parts'); }
+          }
+          inspectSlitPart(partKey);
+        };
+        label.onmouseenter = () => { hoveredPartKeyLive = partKey; highlightPartKeyLabels(); };
+        label.onmouseleave = () => { hoveredPartKeyLive = null; highlightPartKeyLabels(); };
+        overlay.appendChild(label);
+      });
+    }
+
+    // Keep the label DOM classes in sync with the live hovered/active part
+    function highlightPartKeyLabels() {
+      Object.keys(slitLampPartsData).forEach(partKey => {
+        const label = document.getElementById(`partLabel-${partKey}`);
+        if (!label) return;
+        const isHovered = hoveredPartKeyLive === partKey;
+        const isActive = simState.currentModule === 'parts' && simState.activeInspectedPart === partKey;
+        label.className = `floating-part-label ${isHovered ? 'highlight-part-label' : ''} ${isActive && !isHovered ? 'active-part-label' : ''}`;
+      });
+    }
+
+    // Reposition every floating part label to track its live 3D anchor each frame
+    function updateSlitLampPartLabelPositions() {
+      const overlay = document.getElementById('threeJsPartLabelsOverlay');
+      const container = document.getElementById('threeJsCanvasContainer');
+      if (!overlay || !container || !camera) return;
+      const w = container.clientWidth, h = container.clientHeight;
+      Object.keys(slitLampPartsData).forEach(partKey => {
+        const label = document.getElementById(`partLabel-${partKey}`);
+        if (!label) return;
+        const worldPos = getPartAnchor3DPosition(partKey);
+        const screenPos = worldPos.clone().project(camera);
+        if (screenPos.z > 1.0) {
+          label.style.display = 'none';
+          return;
+        }
+        label.style.display = 'block';
+        label.style.left = `${(screenPos.x * 0.5 + 0.5) * w}px`;
+        label.style.top = `${(-(screenPos.y * 0.5) + 0.5) * h}px`;
+      });
+      highlightPartKeyLabels();
+    }
+
+    function getPartAnchor3DPosition(partKey) {
+      const pos = new THREE.Vector3();
+      if (!slitLampCarriage) return pos;
+
+      if (partKey === 'eyepieces') {
+        if (microscopeArmPivot) microscopeArmPivot.getWorldPosition(pos);
+        pos.y += 12; pos.z += 12;
+      } else if (partKey === 'magTurret') {
+        if (microscopeArmPivot) microscopeArmPivot.getWorldPosition(pos);
+        pos.y += 8; pos.z += 2;
+      } else if (partKey === 'illumTower') {
+        if (illumArmPivot) illumArmPivot.getWorldPosition(pos);
+        pos.y += 24;
+      } else if (partKey === 'slitDials') {
+        if (illumArmPivot) illumArmPivot.getWorldPosition(pos);
+        pos.y += 20; pos.x += 3.5;
+      } else if (partKey === 'deflectorMirror') {
+        if (illumArmPivot) illumArmPivot.getWorldPosition(pos);
+        pos.y += 33;
+      } else if (partKey === 'joystickBase') {
+        slitLampCarriage.getWorldPosition(pos);
+        pos.y += 14; pos.z += 10;
+      } else if (partKey === 'chinrest') {
+        pos.set(0, 20, -30);
+      } else if (partKey === 'fixationTarget') {
+        pos.set(15, 39, -33);
+      } else {
+        slitLampCarriage.getWorldPosition(pos);
+        pos.y += 20;
+      }
+      return pos;
+    }
+
+    function animate3D() {
+      requestAnimationFrame(animate3D);
+
+      if (!camera || !renderer || !scene) return;
+
+      // Smooth camera orbit
+      const radius = 85;
+      camera.position.x = radius * Math.sin(targetRotationY) * Math.cos(targetRotationX);
+      camera.position.z = radius * Math.cos(targetRotationY) * Math.cos(targetRotationX) + 10;
+      camera.position.y = radius * Math.sin(targetRotationX) + 20;
+      camera.lookAt(currentCameraTarget);
+
+      updateSlitLampPartLabelPositions();
+
+      // Rotate Illumination Arm to match slider angle
+      if (illumArmPivot) {
+        const rad = (simState.illumAngle * Math.PI) / 180;
+        illumArmPivot.rotation.y = -rad;
+      }
+
+      // Rotate Microscope Arm to match slider angle
+      if (microscopeArmPivot) {
+        const radObs = (simState.microscopeAngle * Math.PI) / 180;
+        microscopeArmPivot.rotation.y = -radObs;
+      }
+
+      // Reposition Carriage based on joystick translation
+      if (slitLampCarriage) {
+        slitLampCarriage.position.x = simState.panX * 0.18;
+        slitLampCarriage.position.z = 10 + simState.panY * 0.18;
+      }
+
+      // Update Slit Light Beam mesh
+      if (beamMesh) {
+        if (!simState.lampPower) {
+          beamMesh.visible = false;
+        } else {
+          beamMesh.visible = true;
+          if (simState.filter === 'cobalt') {
+            beamMesh.material.color.setHex(0x38bdf8);
+            beamMesh.material.opacity = 0.55;
+          } else if (simState.filter === 'redfree') {
+            beamMesh.material.color.setHex(0x22c55e);
+            beamMesh.material.opacity = 0.5;
+          } else {
+            beamMesh.material.color.setHex(0xffffff);
+            beamMesh.material.opacity = 0.45;
+          }
+        }
+      }
+
+      // Project In-Situ 3D Label onto Slit Lamp (ONLY during 'parts' module)
+      const anchorTag = document.getElementById('threeJsPartAnchorTag');
+      const container = document.getElementById('threeJsCanvasContainer');
+      if (anchorTag && container) {
+        if (simState.currentModule === 'parts' && simState.activeInspectedPart && slitLampPartsData[simState.activeInspectedPart]) {
+          const worldPos = getPartAnchor3DPosition(simState.activeInspectedPart);
+          const screenPos = worldPos.clone().project(camera);
+          
+          if (screenPos.z < 1.0) {
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            const x = (screenPos.x * 0.5 + 0.5) * w;
+            const y = (-(screenPos.y * 0.5) + 0.5) * h;
+
+            anchorTag.style.left = `${Math.min(w - 60, Math.max(60, x))}px`;
+            anchorTag.style.top = `${Math.min(h - 20, Math.max(30, y))}px`;
+            anchorTag.classList.remove('hidden');
+
+            const titleEl = document.getElementById('threeJsPartAnchorTitle');
+            if (titleEl) titleEl.innerText = slitLampPartsData[simState.activeInspectedPart].title;
+          } else {
+            anchorTag.classList.add('hidden');
+          }
+        } else {
+          anchorTag.classList.add('hidden');
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    function reset3DCamera() {
+      soundFeedback('click');
+      targetRotationY = 0;
+      targetRotationX = 0.28;
+    }
+  </script>
+
+  <script>
+    /* ==========================================================
+       CONTEXT-SENSITIVE SIMULATOR MODULE SWITCHER
+       (1. Parts, 2. Techniques, 3. Gonioscopy, 4. 90D Fundus)
+       ========================================================== */
+    function onSimulatorModuleChange(moduleKey) {
+      soundFeedback('switch');
+      simState.currentModule = moduleKey;
+
+      const panelParts = document.getElementById('modulePanel-parts');
+      const panelTech = document.getElementById('modulePanel-techniques');
+      const panelGonio = document.getElementById('modulePanel-gonioscopy');
+      const panelFundus = document.getElementById('modulePanel-fundus90d');
+      const panelAssess = document.getElementById('modulePanel-assessment');
+
+      const svgAnt = document.getElementById('anteriorSvgView');
+      const svgF90 = document.getElementById('fundus90dSvgView');
+      const svgGon = document.getElementById('gonioscopySvgView');
+      const badge = document.getElementById('activeModalityBadge');
+
+      [panelParts, panelTech, panelGonio, panelFundus, panelAssess].forEach(p => { if (p) p.classList.add('hidden'); });
+      [svgAnt, svgF90, svgGon].forEach(s => { if (s) s.classList.add('hidden'); });
+
+      if (auxLensMesh) auxLensMesh.visible = (moduleKey === 'fundus90d');
+
+      if (simState.trainingMode === 'assessment') {
+        if (panelAssess) panelAssess.classList.remove('hidden');
+        if (svgAnt) svgAnt.classList.remove('hidden');
+        if (badge) badge.innerText = "Assessment Mode";
+        return;
+      }
+
+      if (moduleKey === 'parts') {
+        if (panelParts) panelParts.classList.remove('hidden');
+        if (svgAnt) svgAnt.classList.remove('hidden');
+        if (badge) badge.innerText = "1. Parts of Slit Lamp";
+        inspectSlitPart('eyepieces');
+      } 
+      else if (moduleKey === 'techniques') {
+        if (panelTech) panelTech.classList.remove('hidden');
+        if (svgAnt) svgAnt.classList.remove('hidden');
+        if (badge) badge.innerText = "2. Examination Techniques";
+        const eye = document.getElementById('biomicroscopeEyepiece');
+        if (eye) eye.className = "biomicroscope-bg rounded-2xl relative flex items-center justify-center overflow-hidden shadow-2xl border-[6px] border-slate-800 dark:border-slate-950 select-none min-h-[460px] cursor-grab active:cursor-grabbing";
+      } 
+      else if (moduleKey === 'gonioscopy') {
+        if (panelGonio) panelGonio.classList.remove('hidden');
+        if (svgGon) svgGon.classList.remove('hidden');
+        if (badge) badge.innerText = "3. Gonioscopy (Chamber Angle)";
+        const eye = document.getElementById('biomicroscopeEyepiece');
+        if (eye) eye.className = "gonioscopy-bg rounded-2xl relative flex items-center justify-center overflow-hidden shadow-2xl border-[6px] border-amber-950 select-none min-h-[460px] cursor-grab active:cursor-grabbing";
+        updateGonioscopyOptics();
+      } 
+      else if (moduleKey === 'fundus90d') {
+        if (panelFundus) panelFundus.classList.remove('hidden');
+        if (svgF90) svgF90.classList.remove('hidden');
+        if (badge) badge.innerText = "4. 90D Lens Funduscopy";
+        const eye = document.getElementById('biomicroscopeEyepiece');
+        if (eye) eye.className = "fundus-bg rounded-2xl relative flex items-center justify-center overflow-hidden shadow-2xl border-[6px] border-rose-950 select-none min-h-[460px] cursor-grab active:cursor-grabbing";
+        updateFundusOptics();
+      }
+
+      updateBeamOptics();
+    }
+
+    function setTrainingMode(mode) {
+      soundFeedback('switch');
+      simState.trainingMode = mode;
+
+      const btnPrac = document.getElementById('btnTrainPractice');
+      const btnAssess = document.getElementById('btnTrainAssessment');
+
+      if (mode === 'practice') {
+        if (btnPrac) btnPrac.className = "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-secondary text-white shadow-xs cursor-pointer";
+        if (btnAssess) btnAssess.className = "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition cursor-pointer";
+        onSimulatorModuleChange(simState.currentModule);
+      } else {
+        if (btnAssess) btnAssess.className = "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-secondary text-white shadow-xs cursor-pointer";
+        if (btnPrac) btnPrac.className = "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition cursor-pointer";
+        startAssessmentMode();
+      }
+    }
+
+    /* Mode 1: Inspect Slit Lamp Hardware Component */
+    function inspectSlitPart(partKey) {
+      soundFeedback('click');
+      simState.activeInspectedPart = partKey;
+      const part = slitLampPartsData[partKey];
+      if (!part) return;
+
+      if (typeof interactivePartMeshes !== 'undefined' && interactivePartMeshes.length > 0) {
+        interactivePartMeshes.forEach(m => {
+          if (m.material && m.material.emissive) {
+            if (m.userData && m.userData.partKey === partKey) {
+              m.material.emissive.setHex(0x0284c7);
+              m.material.emissiveIntensity = 0.65;
+            } else {
+              m.material.emissive.setHex(m.userData.originalEmissive || 0x000000);
+              m.material.emissiveIntensity = 0;
+            }
+          }
+        });
+      }
+
+      const pTitle = document.getElementById('partTitle');
+      const pDesc = document.getElementById('partDescription');
+      const pTip = document.getElementById('partClinicalTip');
+
+      if (pTitle) pTitle.innerHTML = `<i class="fa-solid fa-circle-info text-secondary"></i> ${part.title}`;
+      if (pDesc) pDesc.innerText = part.description;
+      if (pTip) pTip.innerText = part.tip;
+
+      // Update in-situ 3D label title immediately
+      const anchorTitle = document.getElementById('threeJsPartAnchorTitle');
+      if (anchorTitle) anchorTitle.innerText = part.title;
+
+      // Animate 3D Camera Focus toward the chosen part
+      if (partKey === 'eyepieces') {
+        targetRotationY = 0; targetRotationX = 0.15;
+      } else if (partKey === 'illumTower' || partKey === 'deflectorMirror') {
+        targetRotationY = 0.55; targetRotationX = 0.35;
+      } else if (partKey === 'joystickBase') {
+        targetRotationY = 0; targetRotationX = 0.55;
+      } else if (partKey === 'chinrest' || partKey === 'fixationTarget') {
+        targetRotationY = 3.14; targetRotationX = 0.3;
+      } else {
+        targetRotationY = 0.25; targetRotationX = 0.3;
+      }
+    }
+
+    /* Mode 2: Techniques Dropdown Automation */
+    function onTechniqueDropdownChange(techKey) {
+      soundFeedback('click');
+      const tech = clinicalTechniquesData[techKey];
+      if (!tech) return;
+
+      const pTitle = document.getElementById('pedagogyTitle');
+      const pBadge = document.getElementById('pedagogyPresetBadge');
+      const pDesc = document.getElementById('pedagogyDescription');
+      const pStruc = document.getElementById('pedagogyStructures');
+      const pUse = document.getElementById('pedagogyClinicalUse');
+
+      if (pTitle) pTitle.innerHTML = `<i class="fa-solid fa-lightbulb text-amber-500"></i> ${tech.title}`;
+      if (pBadge) pBadge.innerText = tech.badge;
+      if (pDesc) pDesc.innerHTML = tech.description;
+      if (pStruc) pStruc.innerText = tech.structures;
+      if (pUse) pUse.innerText = tech.clinicalUse;
+
+      // Apply instrument dual-arm angles & slit presets
+      const sWidth = document.getElementById('slitWidthSlider');
+      const sHeight = document.getElementById('slitHeightSlider');
+      const sAngle = document.getElementById('slitAngleSlider');
+      const iAngle = document.getElementById('illumAngleSlider');
+      const mAngle = document.getElementById('microscopeAngleSlider');
+
+      if (sWidth) sWidth.value = tech.slitWidth;
+      if (sHeight) sHeight.value = tech.slitHeight;
+      if (sAngle) sAngle.value = tech.slitAngle;
+      if (iAngle) iAngle.value = tech.illumAngle;
+      if (mAngle) mAngle.value = tech.microscopeAngle;
+
+      simState.illumAngle = tech.illumAngle;
+      simState.microscopeAngle = tech.microscopeAngle;
+
+      setFilter(tech.filter, true);
+      setMagnification(tech.mag, true);
+
+      if (techKey === 'sclerotic') simState.panX = -32;
+      else if (techKey === 'vanHerick') simState.panX = 28;
+      else if (techKey === 'retroIris') simState.panX = -15;
+      else { simState.panX = 0; simState.panY = 0; }
+
+      updateBeamOptics();
+    }
+
+    function setMicroscopeAngleDirect(deg) {
+      soundFeedback('dial');
+      const mSlider = document.getElementById('microscopeAngleSlider');
+      if (mSlider) mSlider.value = deg;
+      updateBeamOptics();
+    }
+
+    function setIllumAngleDirect(deg) {
+      soundFeedback('dial');
+      const iSlider = document.getElementById('illumAngleSlider');
+      if (iSlider) iSlider.value = deg;
+      updateBeamOptics();
+    }
+
+    /* ==========================================================
+       BEAM OPTICS, PARALLAX & BIOMICROSCOPY MATH
+       ========================================================== */
+    function updateBeamOptics() {
+      const sWidth = document.getElementById('slitWidthSlider');
+      const sHeight = document.getElementById('slitHeightSlider');
+      const sAngle = document.getElementById('slitAngleSlider');
+      const iAngle = document.getElementById('illumAngleSlider');
+      const mAngle = document.getElementById('microscopeAngleSlider');
+
+      if (sWidth) simState.slitWidth = parseFloat(sWidth.value);
+      if (sHeight) simState.slitHeight = parseFloat(sHeight.value);
+      if (sAngle) simState.slitAngle = parseInt(sAngle.value);
+      if (iAngle) simState.illumAngle = parseInt(iAngle.value);
+      if (mAngle) simState.microscopeAngle = parseInt(mAngle.value);
+
+      const wLabel = document.getElementById('slitWidthLabel');
+      const hLabel = document.getElementById('slitHeightLabel');
+      const aLabel = document.getElementById('slitAngleLabel');
+      const iLabel = document.getElementById('illumAngleLabel');
+      const mLabel = document.getElementById('microscopeAngleLabel');
+      const hwAngle = document.getElementById('hardwareAngleDisplay');
+      const armSep = document.getElementById('armSeparationReadout');
+      const specTag = document.getElementById('specularMatchTag');
+
+      const relSeparation = Math.abs(simState.illumAngle - simState.microscopeAngle);
+
+      if (wLabel) wLabel.innerText = `${simState.slitWidth.toFixed(1)} mm`;
+      if (hLabel) hLabel.innerText = `${simState.slitHeight.toFixed(1)} mm`;
+      if (aLabel) aLabel.innerText = `${simState.slitAngle}°`;
+      if (iLabel) iLabel.innerText = `${simState.illumAngle > 0 ? '+' : ''}${simState.illumAngle}°`;
+      if (mLabel) mLabel.innerText = `${simState.microscopeAngle > 0 ? '+' : ''}${simState.microscopeAngle}°`;
+      if (hwAngle) hwAngle.innerText = `Illum: ${simState.illumAngle > 0 ? '+' : ''}${simState.illumAngle}° | Obs: ${simState.microscopeAngle > 0 ? '+' : ''}${simState.microscopeAngle}°`;
+      if (armSep) armSep.innerText = `Δ Separation: ${relSeparation}°`;
+
+      // Specular Reflection condition check (angle of incidence = angle of reflection)
+      const isSpecularAngleMatch = (Math.abs(simState.illumAngle + simState.microscopeAngle) <= 6 && Math.abs(simState.illumAngle) >= 15);
+      if (specTag) {
+        if (isSpecularAngleMatch) specTag.classList.remove('hidden');
+        else specTag.classList.add('hidden');
+      }
+
+      const s = simState.magScale;
+      const cx = simState.panX * s;
+      const cy = simState.panY * s;
+
+      const masterZoom = document.getElementById('masterOcularZoomGroup');
+      if (masterZoom) masterZoom.setAttribute('transform', `translate(${cx}, ${cy}) scale(${s})`);
+
+      const fundusZoom = document.getElementById('fundusMasterGroup');
+      if (fundusZoom) fundusZoom.setAttribute('transform', `translate(${cx}, ${cy}) scale(${s})`);
+
+      const slitGroup = document.getElementById('slitBeamTransformGroup');
+      if (!simState.lampPower) {
+        if (slitGroup) slitGroup.style.opacity = '0';
+        return;
+      } else {
+        if (slitGroup) slitGroup.style.opacity = '1';
+      }
+
+      // Parallax width of corneal section is governed by relative angle between illumination & observation
+      const parallax = Math.sin((relSeparation * Math.PI) / 180);
+      const stromaWidth = Math.max(2.0, simState.slitWidth * 7 * (parallax + 0.25));
+      const slitHalfHeight = (simState.slitHeight / 14) * 75;
+
+      if (slitGroup) slitGroup.setAttribute('transform', `rotate(${simState.slitAngle})`);
+
+      const epStrip = document.getElementById('cornealEpithelialStrip');
+      const stromaWedge = document.getElementById('cornealStromaWedge');
+      const endoStrip = document.getElementById('cornealEndotheliumStrip');
+      const tearFilm = document.getElementById('tearFilmLipidStrip');
+      const lensSlit = document.getElementById('lensSurfaceSlit');
+      const diffuseLight = document.getElementById('diffuseLightWash');
+      const stromaTexture = document.getElementById('stromaFineTexture');
+      const lensY = document.getElementById('lensYSuture');
+      const endoMosaic = document.getElementById('endothelialMosaicBox');
+
+      if (epStrip && stromaWedge && endoStrip) {
+        if (simState.magnification >= 16) {
+          if (tearFilm) {
+            tearFilm.setAttribute('opacity', '0.7');
+            tearFilm.setAttribute('d', `M -2.5 ${-slitHalfHeight} Q 11 0 -2.5 ${slitHalfHeight} L -1 ${slitHalfHeight} Q 12 0 -1 ${-slitHalfHeight} Z`);
+          }
+        } else {
+          if (tearFilm) tearFilm.setAttribute('opacity', '0');
+        }
+
+        epStrip.setAttribute('d', `M -1 ${-slitHalfHeight} Q 12 0 -1 ${slitHalfHeight} L 2 ${slitHalfHeight} Q 15 0 2 ${-slitHalfHeight} Z`);
+        stromaWedge.setAttribute('d', `M 2 ${-slitHalfHeight} Q 15 0 2 ${slitHalfHeight} L ${2 + stromaWidth} ${slitHalfHeight} Q ${15 + stromaWidth} 0 ${2 + stromaWidth} ${-slitHalfHeight} Z`);
+        endoStrip.setAttribute('d', `M ${2 + stromaWidth} ${-slitHalfHeight} Q ${15 + stromaWidth} 0 ${2 + stromaWidth} ${slitHalfHeight} L ${3.8 + stromaWidth} ${slitHalfHeight} Q ${16.8 + stromaWidth} 0 ${3.8 + stromaWidth} ${-slitHalfHeight} Z`);
+
+        const lensOffset = 20 + (16 * parallax);
+        if (lensSlit) {
+          lensSlit.setAttribute('d', `M ${lensOffset} ${-slitHalfHeight * 0.6} Q ${lensOffset + 8} 0 ${lensOffset} ${slitHalfHeight * 0.6} L ${lensOffset + 4} ${slitHalfHeight * 0.6} Q ${lensOffset + 12} 0 ${lensOffset + 4} ${-slitHalfHeight * 0.6} Z`);
+        }
+
+        if (simState.magnification >= 25) {
+          if (stromaTexture) stromaTexture.setAttribute('opacity', '0.7');
+          if (lensY) lensY.setAttribute('opacity', '0.8');
+        } else {
+          if (stromaTexture) stromaTexture.setAttribute('opacity', '0');
+          if (lensY) lensY.setAttribute('opacity', '0');
+        }
+
+        const activeTechElem = document.getElementById('techniqueSelect');
+        const activeTech = activeTechElem ? activeTechElem.value : 'opticalSection';
+
+        // Endothelial Specular reflection mosaic visible when i=r is satisfied at high magnification
+        if (endoMosaic) {
+          if ((activeTech === 'specular' || isSpecularAngleMatch) && simState.magnification >= 25) {
+            endoMosaic.setAttribute('opacity', (simState.magnification === 40 ? '0.95' : '0.65'));
+            endoMosaic.setAttribute('x', (2 + stromaWidth - 1).toFixed(1));
+          } else {
+            endoMosaic.setAttribute('opacity', '0');
+          }
+        }
+
+        if (diffuseLight) {
+          if (simState.slitWidth > 9 || simState.roomLightsOn || activeTech === 'diffuse') {
+            diffuseLight.setAttribute('opacity', simState.roomLightsOn ? '0.3' : '0.25');
+          } else {
+            diffuseLight.setAttribute('opacity', '0');
+          }
+        }
+      }
+
+      const pCells = document.getElementById('pathologyCellsFlare');
+      const activeTechElem2 = document.getElementById('techniqueSelect');
+      const activeTechKey = activeTechElem2 ? activeTechElem2.value : 'opticalSection';
+      if (pCells) pCells.setAttribute('opacity', activeTechKey === 'conicalBeam' ? '1' : '0');
+
+      const pRetro = document.getElementById('retroTransillumDefects');
+      if (pRetro) pRetro.setAttribute('opacity', (activeTechKey === 'retroIris' || activeTechKey === 'retroFundus') ? '0.9' : '0');
+    }
+
+    /* Mode 3: Gonioscopy Optics */
+    function slideGonioClock(val) {
+      soundFeedback('dial');
+      simState.gonioClock = parseInt(val);
+      updateGonioscopyOptics();
+    }
+
+    function toggleGonioLabels() {
+      soundFeedback('click');
+      const toggle = document.getElementById('gonioMasksToggle');
+      if (toggle) simState.gonioLabelsVisible = toggle.checked;
+      const labels = document.getElementById('gonioAnatomyLabels');
+      if (labels) labels.style.opacity = simState.gonioLabelsVisible ? '1' : '0';
+    }
+
+    function setShafferGrade(grade) {
+      soundFeedback('switch');
+      simState.shafferGrade = grade;
+
+      [0, 1, 2, 3, 4].forEach(g => {
+        const btn = document.getElementById(`btnShaffer${g}`);
+        if (btn) {
+          btn.className = (g === grade)
+            ? "p-1 rounded bg-secondary text-white text-[9px] font-black transition cursor-pointer"
+            : "p-1 rounded bg-slate-200 dark:bg-slate-700 text-[9px] font-black transition cursor-pointer";
+        }
+      });
+
+      updateGonioscopyOptics();
+    }
+
+    function updateGonioscopyOptics() {
+      const clock = simState.gonioClock;
+      const grade = simState.shafferGrade;
+
+      let posName = "Inferior Angle (Mirror at 12:00)";
+      let rotAngle = 0;
+
+      if (clock === 12) { posName = "12 o'clock (Inferior Angle)"; rotAngle = 0; }
+      else if (clock === 3) { posName = "3 o'clock (Nasal Angle)"; rotAngle = 90; }
+      else if (clock === 6) { posName = "6 o'clock (Superior Angle)"; rotAngle = 180; }
+      else if (clock === 9) { posName = "9 o'clock (Temporal Angle)"; rotAngle = 270; }
+      else {
+        posName = `${clock} o'clock Meridian`;
+        rotAngle = ((clock / 12) * 360) % 360;
+      }
+
+      const cLabel = document.getElementById('gonioClockLabel');
+      const cText = document.getElementById('gonioClockText');
+      const sceneRot = document.getElementById('gonioAngleScene');
+
+      if (cLabel) cLabel.innerText = posName;
+      if (cText) cText.textContent = posName;
+      if (sceneRot) sceneRot.setAttribute('transform', `rotate(${rotAngle})`);
+
+      const cbb = document.getElementById('gonioCbbBand');
+      const ss = document.getElementById('gonioSsBand');
+      const tmP = document.getElementById('gonioTmPigmented');
+      const tmN = document.getElementById('gonioTmNonPigmented');
+      const sl = document.getElementById('gonioSlBand');
+      const statusBadge = document.getElementById('hudSecondaryStatus');
+
+      if (!cbb || !ss || !tmP || !tmN || !sl || !statusBadge) return;
+
+      if (grade === 4) {
+        cbb.setAttribute('opacity', '1'); ss.setAttribute('opacity', '1');
+        tmP.setAttribute('opacity', '1'); tmN.setAttribute('opacity', '1');
+        sl.setAttribute('opacity', '1');
+        statusBadge.innerText = "Shaffer Gr. 4: Wide Open (35°-45°)";
+        statusBadge.className = "text-emerald-400 font-bold";
+      } else if (grade === 3) {
+        cbb.setAttribute('opacity', '0.2'); ss.setAttribute('opacity', '1');
+        tmP.setAttribute('opacity', '1'); tmN.setAttribute('opacity', '1');
+        sl.setAttribute('opacity', '1');
+        statusBadge.innerText = "Shaffer Gr. 3: Open (20°-35°)";
+        statusBadge.className = "text-emerald-400 font-bold";
+      } else if (grade === 2) {
+        cbb.setAttribute('opacity', '0'); ss.setAttribute('opacity', '0.1');
+        tmP.setAttribute('opacity', '0.8'); tmN.setAttribute('opacity', '0.9');
+        sl.setAttribute('opacity', '1');
+        statusBadge.innerText = "Shaffer Gr. 2: Narrow (20°)";
+        statusBadge.className = "text-amber-400 font-bold";
+      } else if (grade === 1) {
+        cbb.setAttribute('opacity', '0'); ss.setAttribute('opacity', '0');
+        tmP.setAttribute('opacity', '0'); tmN.setAttribute('opacity', '0.2');
+        sl.setAttribute('opacity', '0.9');
+        statusBadge.innerText = "Shaffer Gr. 1: Very Narrow (10°)";
+        statusBadge.className = "text-rose-400 font-bold";
+      } else if (grade === 0) {
+        cbb.setAttribute('opacity', '0'); ss.setAttribute('opacity', '0');
+        tmP.setAttribute('opacity', '0'); tmN.setAttribute('opacity', '0');
+        sl.setAttribute('opacity', '0');
+        statusBadge.innerText = "Shaffer Gr. 0: Closed (Irido-Corneal Contact)";
+        statusBadge.className = "text-rose-600 font-black animate-pulse";
+      }
+
+      const comm = document.getElementById('commentaryText');
+      if (comm) comm.innerText = `Gonioscopy at ${posName}: Shaffer Grade ${grade}. Inspecting angle recess to Schwalbe's line.`;
+    }
+
+    /* Mode 4: 90D Funduscopy Optics */
+    function panFundusTarget(target) {
+      soundFeedback('click');
+      const slider = document.getElementById('fundusSlitSlider');
+      if (target === 'disc') {
+        simState.panX = -20; simState.panY = 5;
+        if (slider) slider.value = 36;
+      } else {
+        simState.panX = 20; simState.panY = 0;
+        if (slider) slider.value = -25;
+      }
+      if (slider) slideFundusSlit(slider.value);
+      updateBeamOptics();
+    }
+
+    function slideFundusSlit(val) {
+      simState.fundusSlitX = parseFloat(val);
+      const slit = document.getElementById('fundusSlitBeam');
+      if (slit) slit.setAttribute('transform', `translate(${simState.fundusSlitX}, 0)`);
+      const comm = document.getElementById('commentaryText');
+      if (comm) comm.innerText = `90D Funduscopy: Slit beam positioned across ${simState.fundusSlitX > 10 ? 'Optic Disc (measuring cup depth)' : 'Macula lutea & fovea'}.`;
+    }
+
+    function updateFundusOptics() {
+      slideFundusSlit(simState.fundusSlitX);
+      const statusBadge = document.getElementById('hudSecondaryStatus');
+      if (statusBadge) {
+        statusBadge.innerText = "Fundus: Inverted 90D Aerial Image";
+        statusBadge.className = "text-rose-400 font-bold";
+      }
+    }
+
+    /* Magnification Turret Handler */
+    function setMagnification(mag, silent = false) {
+      if (!silent) soundFeedback('mag');
+      simState.magnification = mag;
+
+      let scale = 1.0; let fov = "32mm"; let desc = "Overview";
+      if (mag === 6.3) { scale = 1.0; fov = "32mm"; desc = "Wide Scleral Overview"; }
+      else if (mag === 10) { scale = 1.5; fov = "20mm"; desc = "Gross Cornea & Limbus"; }
+      else if (mag === 16) { scale = 2.4; fov = "13mm"; desc = "Standard Corneal Optical Section"; }
+      else if (mag === 25) { scale = 3.8; fov = "8mm"; desc = "Deep Stroma & Endothelium"; }
+      else if (mag === 40) { scale = 6.0; fov = "5mm"; desc = "High Cellular Resolution"; }
+
+      simState.magScale = scale;
+      const hMag = document.getElementById('hudMagReadout');
+      const hHw = document.getElementById('magHardwareReadout');
+      const tScale = document.getElementById('turretScaleText');
+      const mDesc = document.getElementById('magDescriptionText');
+
+      if (hMag) hMag.innerText = `${mag}x (FOV: ${fov})`;
+      if (hHw) hHw.innerText = `Turret: ${mag}x`;
+      if (tScale) tScale.innerText = `Scale: ${scale.toFixed(1)}x`;
+      if (mDesc) mDesc.innerText = desc;
+
+      const cellularBadge = document.getElementById('hudCellularBadge');
+      if (cellularBadge) {
+        if (mag >= 25) cellularBadge.classList.remove('hidden');
+        else cellularBadge.classList.add('hidden');
+      }
+
+      [6, 10, 16, 25, 40].forEach(m => {
+        const btn = document.getElementById(`btnMag${m}`);
+        if (btn) {
+          btn.className = (m === Math.round(mag))
+            ? "py-1 rounded bg-secondary text-white text-[9px] font-black transition cursor-pointer"
+            : "py-1 rounded bg-slate-200 dark:bg-slate-700 text-[9px] font-black hover:bg-secondary hover:text-white transition cursor-pointer";
+        }
+      });
+
+      updateBeamOptics();
+    }
+
+    /* Joystick & Elevation Controls */
+    function panJoystick(dx, dy, isSilent = false) {
+      if (!isSilent) soundFeedback('click');
+      simState.panX += dx;
+      simState.panY += dy;
+      if (simState.panX > 45) simState.panX = 45;
+      if (simState.panX < -45) simState.panX = -45;
+      if (simState.panY > 35) simState.panY = 35;
+      if (simState.panY < -35) simState.panY = -35;
+      
+      const jCoord = document.getElementById('joystickCoordText');
+      if (jCoord) jCoord.innerText = `X: ${(simState.panX / 5).toFixed(1)}mm | Y: ${(simState.panY / 5).toFixed(1)}mm | Z: Focus ${simState.zFocus.toFixed(1)}`;
+      updateBeamOptics();
+    }
+
+    function recenterJoystick() {
+      soundFeedback('success');
+      simState.panX = 0;
+      simState.panY = 0;
+      const jCoord = document.getElementById('joystickCoordText');
+      if (jCoord) jCoord.innerText = `X: 0.0mm | Y: 0.0mm | Z: Focus ${simState.zFocus.toFixed(1)}`;
+      updateBeamOptics();
+    }
+
+    function stepZFocus(amt) {
+      soundFeedback('dial');
+      const slider = document.getElementById('zFocusSlider');
+      if (!slider) return;
+      let val = parseFloat(slider.value) + amt;
+      if (val > 5) val = 5; if (val < -5) val = -5;
+      slider.value = val;
+      slideZFocus();
+    }
+
+    function slideZFocus() {
+      const slider = document.getElementById('zFocusSlider');
+      if (!slider) return;
+      simState.zFocus = parseFloat(slider.value);
+      const jCoord = document.getElementById('joystickCoordText');
+      if (jCoord) jCoord.innerText = `X: ${(simState.panX / 5).toFixed(1)}mm | Y: ${(simState.panY / 5).toFixed(1)}mm | Z: Focus ${simState.zFocus.toFixed(1)}`;
+      
+      const focusError = Math.abs(simState.zFocus);
+      const blurStd = document.getElementById('corneaBlurStd');
+      if (blurStd) blurStd.setAttribute('stdDeviation', (focusError * 0.8).toFixed(2));
+      const sharpText = document.getElementById('focusSharpnessText');
+      if (sharpText) {
+        if (focusError <= 0.5) {
+          sharpText.innerText = "Sharpness: 100% (In Focus)";
+          sharpText.className = "text-[8px] text-emerald-500 font-bold block text-center";
+        } else {
+          const pct = Math.max(20, Math.round(100 - focusError * 18));
+          sharpText.innerText = `Sharpness: ${pct}% (Defocused)`;
+          sharpText.className = "text-[8px] text-amber-500 font-bold block text-center";
+        }
+      }
+    }
+
+    /* Filters Turret */
+    function setFilter(filterType, silent = false) {
+      if (!silent) soundFeedback('filter');
+      simState.filter = filterType;
+
+      const hudFilter = document.getElementById('hudFilterReadout');
+      const matrix = document.getElementById('filterColorMatrix');
+      const eye = document.getElementById('biomicroscopeEyepiece');
+
+      ['white', 'cobalt', 'redfree', 'neutral'].forEach(f => {
+        const b = document.getElementById(`btnFilter-${f}`);
+        if (b) {
+          b.className = (f === filterType)
+            ? "py-1.5 rounded-lg border border-secondary text-secondary bg-sky-50 dark:bg-sky-950/40 text-[9px] font-black transition cursor-pointer"
+            : "py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[9px] font-black transition hover:bg-slate-100 cursor-pointer";
+        }
+      });
+
+      if (!hudFilter || !matrix || !eye) return;
+
+      if (filterType === 'cobalt') {
+        hudFilter.innerText = "Cobalt Blue (490nm)";
+        matrix.setAttribute('values', "0.1 0 0 0 0   0 0.4 0 0 0   0 0 1.6 0 0   0 0 0 1 0");
+        eye.style.background = "radial-gradient(circle at center, #021a40 0%, #030a1c 70%, #01040a 100%)";
+      } else if (filterType === 'redfree') {
+        hudFilter.innerText = "Red-Free (Green 540nm)";
+        matrix.setAttribute('values', "0 0 0 0 0   0 1.5 0 0 0   0 0 0.3 0 0   0 0 0 1 0");
+        eye.style.background = "radial-gradient(circle at center, #022618 0%, #03140e 70%, #010805 100%)";
+      } else if (filterType === 'neutral') {
+        hudFilter.innerText = "Diffuse ND Filter";
+        matrix.setAttribute('values', "0.7 0 0 0 0   0 0.7 0 0 0   0 0 0.7 0 0   0 0 0 1 0");
+        eye.style.background = "radial-gradient(circle at center, #171c26 0%, #080a0f 70%, #020305 100%)";
+      } else {
+        hudFilter.innerText = "White Light (Halogen)";
+        matrix.setAttribute('values', "1 0 0 0 0   0 1 0 0 0   0 0 1 0 0   0 0 0 1 0");
+        eye.style.background = "radial-gradient(circle at center, #171c26 0%, #080a0f 70%, #020305 100%)";
+      }
+    }
+
+    /* Assessment Mode */
+    function startAssessmentMode() {
+      const challenges = ['specular', 'conicalBeam', 'vanHerick', 'opticalSection'];
+      simState.assessmentTargetTech = challenges[Math.floor(Math.random() * challenges.length)];
+
+      const challengeTexts = {
+        specular: "Clinical Scenario: Evaluate a 68-year-old patient suspected of early Fuchs' Endothelial Dystrophy. Configure the slit lamp with Specular Reflection at high magnification (≥25x) to inspect the endothelial mosaic.",
+        conicalBeam: "Clinical Scenario: Evaluate a patient with acute anterior uveitis. Use the Conical Beam (Tyndall) technique with a 1mm pin-point beam at high magnification (≥25x) to grade aqueous cells and flare.",
+        vanHerick: "Clinical Scenario: Screen anterior chamber angle depth before pupil dilation. Position the slit lamp to perform the Van Herick Technique at the peripheral corneal limbus with a 60° illumination angle.",
+        opticalSection: "Clinical Scenario: Locate the exact stromal depth of a suspected metallic foreign body. Project an Optical Section with a thin knife-like beam (≤0.5mm) at 45° angle."
+      };
+
+      const cText = document.getElementById('assessmentChallengeText');
+      if (cText) cText.innerText = challengeTexts[simState.assessmentTargetTech];
+      const fb = document.getElementById('diagnosisFeedback');
+      if (fb) fb.classList.add('hidden');
+      setupTestMcqSuite();
+    }
+
+    function setupTestMcqSuite() {
+      simState.selectedQuestions = [...clinicalMcqPool].sort(() => 0.5 - Math.random());
+      const container = document.getElementById('testMcqSuite');
+      if (!container) return;
+      container.innerHTML = "";
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const div = document.createElement('div');
+        div.className = "bg-slate-50 dark:bg-slate-850 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs shadow-xs text-slate-900 dark:text-slate-200";
+        div.innerHTML = `
+          <p class="font-extrabold">${idx + 1}. ${q.question}</p>
+          <div class="grid grid-cols-1 gap-1.5 pt-1">
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="a" class="accent-secondary"> ${q.options.a}</label>
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="b" class="accent-secondary"> ${q.options.b}</label>
+            <label class="flex items-center gap-2 cursor-pointer font-bold"><input type="radio" name="mcq_${idx}" value="c" class="accent-secondary"> ${q.options.c}</label>
+          </div>
+          <p id="mcq_${idx}_feedback" class="text-[10px] font-bold hidden mt-1"></p>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function submitTestAssessment() {
+      const feedback = document.getElementById('diagnosisFeedback');
+      if (!feedback) return;
+      let unanswered = false;
+      const answers = [];
+
+      simState.selectedQuestions.forEach((q, idx) => {
+        const checked = document.querySelector(`input[name="mcq_${idx}"]:checked`);
+        if (!checked) unanswered = true;
+        else answers.push({ idx, selected: checked.value, correct: q.correct, explanation: q.explanation });
+      });
+
+      if (unanswered) {
+        soundFeedback('warning');
+        feedback.innerHTML = "<i class='fa-solid fa-triangle-exclamation mr-1'></i> Please answer all quiz questions before submitting.";
+        feedback.className = "text-[11px] font-extrabold text-red-600 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 block mt-2 px-3 py-2 rounded-lg animate-pulse";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      feedback.classList.remove('hidden');
+
+      const techElem = document.getElementById('techniqueSelect');
+      const activeTech = techElem ? techElem.value : '';
+      const mag = simState.magnification;
+      let passPractical = false;
+
+      if (simState.assessmentTargetTech === 'specular') {
+        passPractical = (activeTech === 'specular' && mag >= 25 && Math.abs(simState.illumAngle + simState.microscopeAngle) <= 8);
+      } else if (simState.assessmentTargetTech === 'conicalBeam') {
+        passPractical = (activeTech === 'conicalBeam' && mag >= 25);
+      } else if (simState.assessmentTargetTech === 'vanHerick') {
+        passPractical = (activeTech === 'vanHerick' && simState.illumAngle >= 50 && Math.abs(simState.microscopeAngle) <= 10);
+      } else if (simState.assessmentTargetTech === 'opticalSection') {
+        passPractical = (activeTech === 'opticalSection' && simState.slitWidth <= 0.6 && Math.abs(simState.illumAngle - simState.microscopeAngle) >= 35);
+      }
+
+      if (passPractical) {
+        simState.scores.practical = 50;
+        feedback.innerHTML = `<i class="fa-solid fa-check-circle mr-1"></i> Correct Instrument Setup! Illumination arm and biomicroscope angles configured accurately for the scenario (+50 pts).`;
+        feedback.className = "text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 block mt-2 px-3 py-2 rounded-lg";
+      } else {
+        simState.scores.practical = 0;
+        feedback.innerHTML = `<i class="fa-solid fa-xmark-circle mr-1"></i> Incorrect Setup. Target was: ${simState.assessmentTargetTech} with appropriate illumination and observation angles (+0 pts).`;
+        feedback.className = "text-[11px] font-bold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 block mt-2 px-3 py-2 rounded-lg";
+      }
+
+      let correctCount = 0;
+      answers.forEach(ans => {
+        const box = document.getElementById(`mcq_${ans.idx}_feedback`);
+        if (box) {
+          box.classList.remove('hidden');
+          if (ans.selected === ans.correct) {
+            box.innerText = `Correct! (+16.6 pts) — ${ans.explanation}`;
+            box.className = "text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block mt-1";
+            correctCount++;
+          } else {
+            box.innerText = `Incorrect. (Answer: ${ans.correct.toUpperCase()}) — ${ans.explanation}`;
+            box.className = "text-[10px] font-bold text-red-600 dark:text-red-400 block mt-1";
+          }
+        }
+      });
+
+      simState.scores.mcq = Math.round(correctCount * 16.66);
+      const totalScore = simState.scores.practical + simState.scores.mcq;
+      const scoreReadout = document.getElementById('assessmentScoreReadout');
+      if (scoreReadout) scoreReadout.innerText = `Score: ${totalScore}/100`;
+
+      if (totalScore >= 80) {
+        soundFeedback('success');
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completed.includes('SlitLamp')) {
+          completed.push('SlitLamp');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        }
+        syncCompletionBadge();
+      } else {
+        soundFeedback('warning');
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        completed = completed.filter(el => el !== 'SlitLamp');
+        localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        syncCompletionBadge();
+      }
+    }
+
+    function syncCompletionBadge() {
+      const completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (!badge) return;
+      if (completed.includes('SlitLamp')) {
+        badge.className = "px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 dark:bg-emerald-950/45 dark:border-emerald-900/60 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1 shadow-xs";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+
+    /* Eyepiece 2D Mouse & Touch Dragging */
+    function setupViewportDrag() {
+      const eyeViewport = document.getElementById('biomicroscopeEyepiece');
+      if (!eyeViewport) return;
+
+      eyeViewport.addEventListener('mousedown', (e) => {
+        simState.isDraggingViewport = true;
+        simState.dragStartX = e.clientX;
+        simState.dragStartY = e.clientY;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!simState.isDraggingViewport) return;
+        const dx = (e.clientX - simState.dragStartX) * 0.15;
+        const dy = (e.clientY - simState.dragStartY) * 0.15;
+        simState.dragStartX = e.clientX;
+        simState.dragStartY = e.clientY;
+        panJoystick(dx, dy, true);
+      });
+
+      window.addEventListener('mouseup', () => { simState.isDraggingViewport = false; });
+
+      eyeViewport.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          simState.isDraggingViewport = true;
+          simState.dragStartX = e.touches[0].clientX;
+          simState.dragStartY = e.touches[0].clientY;
+        }
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        if (!simState.isDraggingViewport || e.touches.length === 0) return;
+        const dx = (e.touches[0].clientX - simState.dragStartX) * 0.15;
+        const dy = (e.touches[0].clientY - simState.dragStartY) * 0.15;
+        simState.dragStartX = e.touches[0].clientX;
+        simState.dragStartY = e.touches[0].clientY;
+        panJoystick(dx, dy, true);
+      }, { passive: true });
+
+      window.addEventListener('touchend', () => { simState.isDraggingViewport = false; });
+    }
+
+    /* Environment & Toolbar Toggles */
+    function switchActiveView(viewMode) {
+      soundFeedback('click');
+      simState.activeView = viewMode;
+      const hwBox = document.getElementById('hardwareStageBox');
+      const eyeBox = document.getElementById('biomicroscopeEyepiece');
+      const btnSp = document.getElementById('btnViewSplit');
+      const btnOc = document.getElementById('btnViewOcular');
+      const btnHw = document.getElementById('btnViewHardware');
+
+      [btnSp, btnOc, btnHw].forEach(b => {
+        if (b) b.className = "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition cursor-pointer";
+      });
+
+      if (viewMode === 'ocular') {
+        if (hwBox) hwBox.classList.add('hidden');
+        if (eyeBox) {
+          eyeBox.classList.remove('hidden', 'md:col-span-1');
+          eyeBox.classList.add('col-span-full', 'min-h-[540px]');
+        }
+        if (btnOc) btnOc.className = "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-secondary text-white shadow-xs cursor-pointer";
+      } else if (viewMode === 'hardware') {
+        if (eyeBox) eyeBox.classList.add('hidden');
+        if (hwBox) {
+          hwBox.classList.remove('hidden', 'md:col-span-1');
+          hwBox.classList.add('col-span-full', 'min-h-[540px]');
+        }
+        if (btnHw) btnHw.className = "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-secondary text-white shadow-xs cursor-pointer";
+      } else {
+        if (hwBox) {
+          hwBox.classList.remove('hidden', 'col-span-full', 'min-h-[540px]');
+          hwBox.classList.add('min-h-[460px]');
+        }
+        if (eyeBox) {
+          eyeBox.classList.remove('hidden', 'col-span-full', 'min-h-[540px]');
+          eyeBox.classList.add('min-h-[460px]');
+        }
+        if (btnSp) btnSp.className = "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-secondary text-white shadow-xs cursor-pointer";
+      }
+    }
+
+    function toggleRoomLights() {
+      soundFeedback('switch');
+      simState.roomLightsOn = !simState.roomLightsOn;
+      const body = document.getElementById('bodyFrame');
+      const icon = document.getElementById('roomLightsIcon');
+      const text = document.getElementById('roomLightsText');
+
+      if (simState.roomLightsOn) {
+        if (body) body.classList.add('room-lights-on');
+        if (icon) icon.className = "fa-solid fa-sun text-amber-500";
+        if (text) text.innerText = "Clinic Lights (On)";
+      } else {
+        if (body) body.classList.remove('room-lights-on');
+        if (icon) icon.className = "fa-solid fa-moon text-amber-400";
+        if (text) text.innerText = "Darkroom (Off)";
+      }
+      updateBeamOptics();
+    }
+
+    function toggleLampPower() {
+      soundFeedback('click');
+      simState.lampPower = !simState.lampPower;
+      const icon = document.getElementById('lampPowerIcon');
+      const text = document.getElementById('lampPowerText');
+      const statText = document.getElementById('lampStatusText');
+      const lampPing = document.getElementById('lampPing');
+      const lampDot = document.getElementById('lampDot');
+
+      if (simState.lampPower) {
+        if (icon) icon.className = "fa-solid fa-power-off text-emerald-500";
+        if (text) text.innerText = "Lamp: ON";
+        if (statText) statText.innerText = "Lamp On";
+        if (lampPing) lampPing.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+        if (lampDot) lampDot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
+        toggleSlitLampHum(true);
+      } else {
+        if (icon) icon.className = "fa-solid fa-power-off text-rose-500";
+        if (text) text.innerText = "Lamp: OFF";
+        if (statText) statText.innerText = "Lamp Off";
+        if (lampPing) lampPing.className = "hidden";
+        if (lampDot) lampDot.className = "relative inline-flex rounded-full h-2 w-2 bg-slate-500";
+        toggleSlitLampHum(false);
+      }
+      updateBeamOptics();
+    }
+
+    function resetSimulator() {
+      soundFeedback('success');
+      simState.panX = 0;
+      simState.panY = 0;
+      simState.zFocus = 0;
+      simState.microscopeAngle = 0;
+      simState.illumAngle = 45;
+      const zSlider = document.getElementById('zFocusSlider');
+      const mSlider = document.getElementById('microscopeAngleSlider');
+      const iSlider = document.getElementById('illumAngleSlider');
+      if (zSlider) zSlider.value = 0;
+      if (mSlider) mSlider.value = 0;
+      if (iSlider) iSlider.value = 45;
+      slideZFocus();
+      onTechniqueDropdownChange('opticalSection');
+      reset3DCamera();
+    }
+
+    function openMenuModal(id) { soundFeedback('click'); const m = document.getElementById(`${id}Modal`); if (m) m.classList.remove('hidden'); }
+    function closeMenuModal(id) { soundFeedback('click'); const m = document.getElementById(`${id}Modal`); if (m) m.classList.add('hidden'); }
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+      soundFeedback('switch');
+    }
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const icon = document.getElementById('muteIcon');
+      if (simState.soundMuted) {
+        if (icon) icon.className = "fa-solid fa-volume-xmark text-slate-400";
+        toggleSlitLampHum(false);
+      } else {
+        if (icon) icon.className = "fa-solid fa-volume-high text-teal-600";
+        toggleSlitLampHum(true);
+        soundFeedback('click');
+      }
+    }
+
+    /* Initialize Simulator on DOM Ready */
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      initThreeJsSlitLamp();
+      setupViewportDrag();
+      syncCompletionBadge();
+      onSimulatorModuleChange('techniques');
+    });
+  </script>
+</body>
+</html>

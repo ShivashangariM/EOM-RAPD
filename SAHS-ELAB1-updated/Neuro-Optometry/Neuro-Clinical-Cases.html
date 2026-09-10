@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | 3D Neuro-Optometric Clinical Cases Simulator</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Three.js (WebGL 3D Engine) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            clinicalSlate: '#0f172a', /* Professional Slate Text */
+            clinicalBlue: '#0284c7',  /* Primary medical sky blue */
+            emeraldAccent: '#10b981', /* Success / Healthy indicator */
+            crimsonAccent: '#ef4444', /* Warning / Defect mapping */
+            clinicalBg: '#f8fafc',    /* Ultra clean slate background */
+            borderGray: '#e2e8f0'     /* Slate borders */
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #0284c7;
+    }
+
+    .shadow-medical {
+      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 8px -1px rgba(15, 23, 42, 0.02);
+    }
+
+    .clinical-transition {
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  </style>
+</head>
+<body class="bg-clinicalBg text-slate-800 font-sans min-h-screen flex flex-col overflow-x-hidden">
+
+  <script>
+    let audioCtx = null;
+    
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.15, vol = 0.05) {
+      if (simState.soundMuted) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.warn("AudioContext blocked or unsupported.");
+      }
+    }
+
+    function soundFeedback(profile) {
+      switch (profile) {
+        case 'click':
+          playAudioTone(800, 'sine', 0.08, 0.03);
+          break;
+        case 'tick':
+          playAudioTone(1100, 'triangle', 0.04, 0.01);
+          break;
+        case 'warning':
+          playAudioTone(180, 'sawtooth', 0.3, 0.04);
+          break;
+        case 'success':
+          playAudioTone(580, 'sine', 0.1, 0.04);
+          setTimeout(() => playAudioTone(720, 'sine', 0.15, 0.04), 80);
+          break;
+        case 'blip':
+          playAudioTone(460, 'sine', 0.06, 0.02);
+          break;
+        case 'switch':
+          playAudioTone(320, 'triangle', 0.12, 0.03);
+          break;
+      }
+    }
+  </script>
+
+  <header class="w-full fixed top-0 left-0 z-50 bg-white border-b border-slate-200 shadow-xs">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-clinicalBlue border border-slate-200">
+          <i class="fa-solid fa-brain text-md"></i>
+        </div>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 flex items-center gap-1.5">
+            SAHS-E-LAB | <span class="text-clinicalBlue">Clinical Cases Simulator</span>
+            <span class="bg-blue-50 text-clinicalBlue text-[9px] font-bold px-1.5 py-0.5 rounded border border-blue-100">3D Pupil &amp; EOM</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 uppercase tracking-widest font-extrabold">Medical Education Interactive Suite</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="openMenuModal('about')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-100 transition flex items-center gap-1 cursor-pointer">
+          <i class="fa-solid fa-circle-info text-clinicalBlue"></i> Syllabus
+        </button>
+        <button onclick="toggleMute()" id="muteBtn" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-100 transition flex items-center gap-1 cursor-pointer">
+          <i id="muteIcon" class="fa-solid fa-volume-high text-emerald-600"></i> <span id="muteText">Mute</span>
+        </button>
+        <span class="px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-bold flex items-center gap-1" id="completionStatusBadge">
+          <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete
+        </span>
+      </div>
+    </nav>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-10 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-5" id="workspaceContainer">
+    
+    <!-- LEFT COLUMN: 3D Viewport & Interactive Real-Time Explanation (7 Columns) -->
+    <section class="lg:col-span-7 space-y-4 pt-4">
+      
+      <!-- Three.js Canvas Container -->
+      <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-medical space-y-3 relative">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+          <div>
+            <h2 class="text-[11px] font-black uppercase text-slate-900 tracking-wider flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-notch text-clinicalBlue animate-spin-slow"></i> Real-time 3D Ophthalmic Viewport
+            </h2>
+            <p class="text-[10px] text-slate-500">Rotate view angles freely by clicking and dragging directly inside the window.</p>
+          </div>
+          <span id="ambientLightBadge" class="text-[9px] text-amber-600 px-2 py-0.5 bg-amber-50 border border-amber-100 rounded font-bold">Ambient: Room light</span>
+        </div>
+
+        <div class="bg-slate-950 rounded-xl relative overflow-hidden h-[280px] md:h-[320px] border border-slate-800 flex items-center justify-center" id="threeCanvasContainer">
+          <!-- 2D CSS flashlight beam coordinates -->
+          <div id="flashlightBeam" class="absolute pointer-events-none hidden bg-[radial-gradient(circle,rgba(253,224,71,0.45)_0%,rgba(253,224,71,0)_70%)] w-48 h-48 rounded-full z-10 select-none top-0 left-0"></div>
+        </div>
+      </div>
+
+      <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-medical space-y-2">
+        <h3 class="text-[11px] uppercase font-black text-slate-500 tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-magnifying-glass-chart text-clinicalBlue"></i> What is happening in the 3D Model right now?
+        </h3>
+        <div id="liveAnatomicalHUD" class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+          <!-- Left Eye OS specs -->
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-2.5">
+            <div class="w-1.5 h-1.5 rounded-full bg-emeraldAccent mt-1.5"></div>
+            <div class="space-y-0.5 text-xs">
+              <span class="font-extrabold text-slate-900 block">Left Eye (OS) Status</span>
+              <p id="os3DSpecs" class="text-slate-500 text-[11px] leading-relaxed">Position centered. Pupil size normal (3.5mm).</p>
+            </div>
+          </div>
+          <!-- Right Eye OD specs -->
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-2.5">
+            <div class="w-1.5 h-1.5 rounded-full bg-crimsonAccent mt-1.5"></div>
+            <div class="space-y-0.5 text-xs">
+              <span class="font-extrabold text-slate-900 block">Right Eye (OD) Status</span>
+              <p id="od3DSpecs" class="text-slate-500 text-[11px] leading-relaxed">Position centered. Pupil size normal (3.5mm).</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <section class="lg:col-span-5 space-y-4 pt-4">
+      
+      <!-- Patient selector panel -->
+      <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-medical space-y-3">
+        <div>
+          <h3 class="text-[11px] uppercase font-black text-slate-400 tracking-wider">Clinical Intake Desk</h3>
+          <p class="text-xs text-slate-500 font-bold">Select a clinical case from the dropdown below to begin.</p>
+        </div>
+
+        <div>
+          <select id="caseSelect" onchange="loadSelectedCase()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-extrabold focus:outline-none focus:border-clinicalBlue shadow-xs">
+            <option value="case_ino">Patient A • Internuclear Ophthalmoplegia (INO)</option>
+            <option value="case_mg">Patient B • Myasthenia Gravis (Fatigable Ptosis)</option>
+            <option value="case_horner">Patient C • Horner's Syndrome (Anisocoria + Ptosis)</option>
+            <option value="case_ted">Patient D • Thyroid Eye Disease (Mechanical Motility Limit)</option>
+            <option value="case_mgp">Patient E • Marcus Gunn Pupil (RAPD Swing Test)</option>
+            <option value="case_cn3">Patient F • Oculomotor (CN III) Palsy (Down-&-Out + Blown Pupil)</option>
+            <option value="case_cn4">Patient G • Trochlear (CN IV) Palsy (Torsional Hyperdeviation)</option>
+            <option value="case_cn6">Patient H • Abducens (CN VI) Palsy (Inward Esotropia)</option>
+          </select>
+        </div>
+
+        <!-- Case History narrative -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] leading-relaxed space-y-1">
+          <span class="font-extrabold text-clinicalBlue uppercase text-[9px] tracking-wider block flex items-center gap-1">
+            <i class="fa-solid fa-clipboard-user"></i> Intake File History
+          </span>
+          <p id="patientNarrative" class="text-slate-600 italic font-semibold"></p>
+        </div>
+      </div>
+
+      <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-medical space-y-3">
+        <h3 class="text-[11px] font-black uppercase text-slate-400 tracking-wider flex items-center justify-between">
+          <span>Bedside Examination Bench</span>
+          <span class="text-[9px] font-mono text-clinicalBlue px-1.5 py-0.5 bg-blue-50 border border-blue-100 rounded uppercase font-extrabold">Custom Tools Loaded</span>
+        </h3>
+
+        <!-- Gaze joystick: Only visible for cranial nerve palsies & motility checks -->
+        <div id="benchJoystick" class="space-y-2 hidden">
+          <span class="text-[10px] font-black text-clinicalBlue uppercase tracking-wider block"><i class="fa-solid fa-arrows-up-down-left-right"></i> Extraocular Motility Joystick</span>
+          <p class="text-[10px] text-slate-500 leading-normal">Command voluntary gaze tracking movements to check muscle under-actions.</p>
+          <div class="grid grid-cols-3 gap-1 max-w-[120px] mx-auto pt-1">
+            <button onclick="setClinicalGaze(-1, 1)" class="gaze-btn aspect-square bg-slate-50 hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-up-left"></i></button>
+            <button onclick="setClinicalGaze(0, 1)" class="gaze-btn aspect-square bg-slate-50 hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-up"></i></button>
+            <button onclick="setClinicalGaze(1, 1)" class="gaze-btn aspect-square bg-slate-50 hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-up-right"></i></button>
+            
+            <button onclick="setClinicalGaze(-1, 0)" class="gaze-btn aspect-square bg-slate-50 hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-left"></i></button>
+            <button onclick="setClinicalGaze(0, 0)" class="gaze-btn aspect-square bg-clinicalBlue text-white rounded-lg text-xs font-black transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-circle text-[8px]"></i></button>
+            <button onclick="setClinicalGaze(1, 0)" class="gaze-btn aspect-square bg-slate-50 hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-right"></i></button>
+            
+            <button onclick="setClinicalGaze(-1, -1)" class="gaze-btn aspect-square bg-slate-50 hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-down-left"></i></button>
+            <button onclick="setClinicalGaze(0, -1)" class="gaze-btn aspect-square bg-slate-50 hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-down"></i></button>
+            <button onclick="setClinicalGaze(1, -1)" class="gaze-btn aspect-square bg-slate-50 hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer"><i class="fa-solid fa-arrow-down-right"></i></button>
+          </div>
+          <div class="text-center">
+            <span id="gazeLabel" class="text-[9px] font-mono font-bold text-slate-500">Gaze: Primary Center (0,0)</span>
+          </div>
+        </div>
+
+        <!-- Flashlight controls: Only visible for Horner's, Marcus Gunn, CN III, and reflexes -->
+        <div id="benchFlashlight" class="space-y-2 hidden">
+          <span class="text-[10px] font-black text-amber-600 uppercase tracking-wider block"><i class="fa-solid fa-flashlight"></i> Swinging Flashlight Tester</span>
+          <p class="text-[10px] text-slate-500 leading-normal">Test direct and consensual pupil reflexes by directing light beams on OS or OD.</p>
+          <div class="flex justify-center gap-2 pt-1">
+            <button id="flashlightLeft" onclick="swingFlashlight('OS')" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black bg-white text-slate-700 transition shadow-xs flex items-center gap-1 cursor-pointer">
+              Light Left (OS)
+            </button>
+            <button id="flashlightOff" onclick="swingFlashlight('OFF')" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black bg-slate-900 text-white transition shadow-xs flex items-center gap-1 cursor-pointer">
+              Ambient Dim
+            </button>
+            <button id="flashlightRight" onclick="swingFlashlight('OD')" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black bg-white text-slate-700 transition shadow-xs flex items-center gap-1 cursor-pointer">
+              Light Right (OD)
+            </button>
+          </div>
+        </div>
+
+        <!-- Fatigue / Ice Pack tests: Only visible for Myasthenia Gravis -->
+        <div id="benchFatigue" class="space-y-2 hidden">
+          <span class="text-[10px] font-black text-purple-600 uppercase tracking-wider block"><i class="fa-solid fa-vial"></i> Neuromuscular Junction Verification</span>
+          <p class="text-[10px] text-slate-500 leading-normal">Provoke receptor fatigue using visual elevation stress tests, or apply localized cold blocks.</p>
+          <div class="space-y-1.5 pt-1">
+            <button onclick="runEyelidFatigueTest()" class="w-full py-1.5 bg-white border border-slate-200 text-slate-700 text-[11px] font-black rounded-lg transition hover:bg-slate-50 flex items-center justify-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-hourglass-half text-amber-500"></i> Lid Fatigue Challenge (30s)
+            </button>
+            <button onclick="applyIcePackRecovery()" class="w-full py-1.5 bg-sky-50 text-clinicalBlue border border-sky-100 text-[11px] font-black rounded-lg transition hover:bg-sky-100 flex items-center justify-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-snowflake text-sky-500 animate-pulse"></i> Apply Ice Pack Recovery Test
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Live Clinical syllabus and dynamic tutorial helper -->
+      <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-medical space-y-2">
+        <h3 class="text-[11px] uppercase font-black text-slate-400 tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-graduation-cap text-clinicalBlue"></i> Academic Sign Interpreter
+        </h3>
+        <div id="dynamicTutorBox" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2 leading-relaxed">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <div id="diagnosticBoard" class="bg-white border border-slate-200 p-4 rounded-2xl space-y-3 shadow-medical">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+          <div>
+            <h3 class="text-[11px] sm:text-xs font-black text-slate-900 uppercase tracking-wider">Evaluation Desk</h3>
+            <p class="text-[10px] text-slate-500">Complete the exam requirements below to log score values.</p>
+          </div>
+          <span id="assessmentScoreReadout" class="text-[10px] font-black bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full text-slate-700">Unsubmitted</span>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-[9px] uppercase font-black text-slate-400 tracking-wider">Select Suspected Pathology</label>
+          <select id="testDiagnosisSelect" class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-extrabold focus:outline-none focus:border-clinicalBlue">
+            <option value="">-- Choose Diagnosis --</option>
+            <option value="ino">Internuclear Ophthalmoplegia (MLF Lesion)</option>
+            <option value="mg">Myasthenia Gravis (Acetylcholine Receptor Defect)</option>
+            <option value="horner">Horner's Syndrome (Ocular Sympathetic Pathway Lesion)</option>
+            <option value="ted">Thyroid Eye Disease (Restrictive Extraocular Myopathy)</option>
+            <option value="mgp">Marcus Gunn Pupil (Relative Afferent Pupillary Defect)</option>
+            <option value="cn3">Third Nerve (Oculomotor) Palsy</option>
+            <option value="cn4">Fourth Nerve (Trochlear) Palsy</option>
+            <option value="cn6">Sixth Nerve (Abducens) Palsy</option>
+          </select>
+          <p id="diagnosisFeedback" class="text-[10px] font-bold hidden"></p>
+        </div>
+
+        <!-- Symmetrical Pathway MCQ Quiz -->
+        <div class="space-y-2 pt-2 border-t border-slate-100">
+          <span class="text-[9px] uppercase font-black text-slate-400 tracking-wider block">Pathway Assessment MCQ</span>
+          <div id="testMcqSuite"></div>
+        </div>
+
+        <button onclick="submitOcularAssessment()" class="w-full py-2 bg-clinicalBlue text-white font-black rounded-xl text-xs transition shadow-md hover:bg-sky-700 cursor-pointer">
+          Submit Graded Verdict
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    const simState = {
+      activeCase: 'case_ino',
+      soundMuted: false,
+      gazeX: 0,
+      gazeY: 0,
+      lightState: 'OFF', // 'OS', 'OD', 'OFF'
+      eyelidFatigueOD: 0, // Upper Lid rotation displacement modifier
+      eyelidFatigueOS: 0,
+      isEyelidFatigued: false,
+      scores: {
+        diagnosisScore: 0,
+        mcqScore: 0
+      }
+    };
+
+    const caseDatabase = {
+      case_ino: {
+        id: "case_ino",
+        narrative: "A 29-year-old female presents with sudden onset horizontal double vision when looking to the right. History is positive for relapsing-remitting Multiple Sclerosis.",
+        correctDiagnosis: "ino",
+        mcq: {
+          question: "Anatomically, what physiological lesion blocks crossing signals to the Left Oculomotor Nucleus during rightward gaze?",
+          options: {
+            a: "Lesion of the Left Medial Longitudinal Fasciculus (MLF) pathway.",
+            b: "Bilateral paresis of the abducens nerve division.",
+            c: "Spasm of the contralateral Oculomotor rootlets."
+          },
+          correct: "a",
+          explanation: "In Left INO, damage to the Left MLF blocks signals traveling from the contralateral Right Abducens nucleus to the Left Oculomotor nucleus during rightward gaze, failing left eye adduction. Abducting nystagmus in the right eye is compensatory."
+        }
+      },
+      case_mg: {
+        id: "case_mg",
+        narrative: "A 44-year-old male presents with variable drooping eyelids that worsen towards evening. Eye movements appear fatigued after repeating vertical sweeps.",
+        correctDiagnosis: "mg",
+        mcq: {
+          question: "How does the Ice Pack Test elicit temporary clinical ptosis resolution in Myasthenia Gravis?",
+          options: {
+            a: "Local cooling decreases acetylcholinesterase enzyme activity, prolonging neurotransmitter residence at receptors.",
+            b: "Cold stimulates sympathetic Muller's muscle contraction via localized thermal shock.",
+            c: "The ice triggers secondary voluntary motor path recruitment bypasses."
+          },
+          correct: "a",
+          explanation: "In Myasthenia Gravis, cold temperatures inhibit acetylcholinesterase, leaving acetylcholine in the motor endplate cleft longer to bind with remaining healthy receptors, yielding temporary ptosis recovery."
+        }
+      },
+      case_horner: {
+        id: "case_horner",
+        narrative: "A 53-year-old smoker presents with right eye mild droop and pupil inequality. Clinical tests show the right pupil fails to dilate in dim light.",
+        correctDiagnosis: "horner",
+        mcq: {
+          question: "In Horner's syndrome, why does the anisocoria worsen in darkness compared to bright illumination?",
+          options: {
+            a: "The healthy pupil dilates fully in dim light, while the sympathetic-deficient pupil fails to dilate, maximizing visual difference.",
+            b: "The paretic eye constricts excessively in darkness due to parasympathetic hyper-tonus.",
+            c: "The sympathetic fibers are only active during bright light sweeps."
+          },
+          correct: "a",
+          explanation: "In darkness, normal pupils dilate (sympathetic). A Horner's pupil has lost sympathetic tone, failing to dilate. This maximizes pupillary inequality under dim lighting."
+        }
+      },
+      case_ted: {
+        id: "case_ted",
+        narrative: "A 39-year-old female reports vertically separated double vision, particularly on upward gaze. Observe her right eye staring lid retraction and slight proptosis.",
+        correctDiagnosis: "ted",
+        mcq: {
+          question: "What mechanic explains vertical upward gaze limitation in active Thyroid Eye Disease?",
+          options: {
+            a: "Infiltration and fibrosis of the Inferior Rectus muscle mechanically restricts elevation.",
+            b: "Primary paralysis of the Superior Rectus motor branch.",
+            c: "Orbital fat blocks oculomotor pathways directly."
+          },
+          correct: "a",
+          explanation: "Autoimmune glycoaminoglycan deposit yields severe hypertrophy and fibrosis of the Inferior Rectus. It cannot relax/stretch, mechanically holding the eye downwards and restricting upward gaze."
+        }
+      },
+      case_mgp: {
+        id: "case_mgp",
+        narrative: "A 31-year-old male with historical optic neuritis in the left eye is scheduled for diagnostic pupillary testing to verify potential afferent pathway defects.",
+        correctDiagnosis: "mgp",
+        mcq: {
+          question: "What paradoxical pupillary response occurs during the swinging flashlight test when shifting the light onto the diseased left eye?",
+          options: {
+            a: "Both pupils dilate because the brain perceives a decrease in overall light stimulation.",
+            b: "The left pupil dilates while the right pupil constricts.",
+            c: "Both pupils constrict excessively because of optic tract hyper-reactivity."
+          },
+          correct: "a",
+          explanation: "A Relative Afferent Pupillary Defect (RAPD) means the diseased Left optic nerve generates a weaker signal than normal. Shifting light onto it causes the pretectal nucleus to sense less net light, yielding paradoxical dilation."
+        }
+      },
+      case_cn3: {
+        id: "case_cn3",
+        narrative: "A 60-year-old patient with an unruptured posterior communicating artery aneurysm presents with right eye completely closed, a fully blown pupil, and a downward-outward resting eye position.",
+        correctDiagnosis: "cn3",
+        mcq: {
+          question: "Why does an Oculomotor (CN III) Palsy present with a fixed, dilated pupil and complete ptosis?",
+          options: {
+            a: "CN III carries parasympathetic constrictor fibers and innervates the Levator Palpebrae Superioris muscle.",
+            b: "Sympathetic pathways to the iris dilator are compressed selectively.",
+            c: "The optic nerve is completely transected by the aneurysm."
+          },
+          correct: "a",
+          explanation: "CN III carries motor signals to the LPS (eyelid lifter) and parasympathetic fibers to the pupillary sphincter. Damage fails both, producing severe ptosis and a fixed, dilated (blown) pupil."
+        }
+      },
+      case_cn4: {
+        id: "case_cn4",
+        narrative: "A 19-year-old student reports vertical double vision that worsens when looking down-and-in. She has a compensatory leftward head tilt.",
+        correctDiagnosis: "cn4",
+        mcq: {
+          question: "The Superior Oblique muscle is innervated by CN IV. What primary action of this muscle is compromised in CN IV palsy?",
+          options: {
+            a: "Depression on adduction, intorsion, and abduction.",
+            b: "Elevation on abduction, extorsion, and adduction.",
+            c: "Isolated abduction on horizontal sweeps."
+          },
+          correct: "a",
+          explanation: "The Superior Oblique muscle depresses the eye when adducted (nasal gaze), intorts, and abducts. In Trochlear (CN IV) palsy, these actions are compromised, leading to hypertropia and torsional diplopia."
+        }
+      },
+      case_cn6: {
+        id: "case_cn6",
+        narrative: "A 55-year-old diabetic patient presents with sudden horizontal diplopia. At rest, the right eye is turned inwards (esotropia) and fails to move outwards.",
+        correctDiagnosis: "cn6",
+        mcq: {
+          question: "Which extraocular muscle is paralyzed in an Abducens (CN VI) nerve palsy?",
+          options: {
+            a: "The Lateral Rectus muscle.",
+            b: "The Medial Rectus muscle.",
+            c: "The Superior Oblique muscle."
+          },
+          correct: "a",
+          explanation: "CN VI (Abducens) solely innervates the Lateral Rectus muscle, which abducts the eye. Paralysis prevents the eye from abducting, leading to unopposed medial rectus pull (esotropia)."
+        }
+      }
+    };
+  </script>
+
+  <script>
+    let scene, camera, renderer, clock;
+    let eyeOS, eyeOD; // Left & Right eyeball mesh structures
+    let upperLidOS, lowerLidOS, upperLidOD, lowerLidOD; // 3D Eyelids rotating shells
+    let headBase, orbitalPlate; // Face structures
+    let oscNystagmusTime = 0;
+
+    function init3DEnvironment() {
+      const container = document.getElementById('threeCanvasContainer');
+      clock = new THREE.Clock();
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0a0f1d); // Deep slate space background
+
+      camera = new THREE.PerspectiveCamera(38, container.clientWidth / container.clientHeight, 0.1, 100);
+      camera.position.set(0, 0, 15);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.shadowMap.enabled = true;
+      container.appendChild(renderer.domElement);
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+      scene.add(ambientLight);
+
+      const mainLight = new THREE.DirectionalLight(0xffffff, 0.85);
+      mainLight.position.set(5, 5, 10);
+      scene.add(mainLight);
+
+      // Light beam simulator
+      const lightSpot = new THREE.SpotLight(0xfef08a, 4.0, 30, Math.PI / 12, 0.5, 1);
+      lightSpot.position.set(0, 0, 14);
+      lightSpot.name = "flashlightSpot";
+      scene.add(lightSpot);
+      scene.add(lightSpot.target); // Symmetrically add target mesh helper for pointing straight ahead
+      lightSpot.visible = false;
+
+      // Construct Patient 3D Orbital sockets and components
+      buildOphthalmicPatientMask();
+
+      // Window resize adaptation
+      window.addEventListener('resize', adaptViewportSize);
+
+      // Rotational orbit mouse controls
+      setupOrbitController(container);
+
+      // Launch WebGL loop
+      animateWebGLFrame();
+    }
+
+    function generateProceduralIrisTexture(colorHex) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,256,256);
+
+      const grad = ctx.createRadialGradient(128, 128, 10, 128, 128, 120);
+      grad.addColorStop(0, '#111827');
+      grad.addColorStop(0.2, colorHex);
+      grad.addColorStop(0.85, colorHex);
+      grad.addColorStop(1, '#090d16');
+      
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(128, 128, 120, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.2;
+      ctx.globalAlpha = 0.15;
+      for (let i = 0; i < 360; i += 4) {
+        const rad = (i * Math.PI) / 180;
+        const xStart = 128 + Math.cos(rad) * 35;
+        const yStart = 128 + Math.sin(rad) * 35;
+        const xEnd = 128 + Math.cos(rad) * (100 + Math.random() * 20);
+        const yEnd = 128 + Math.sin(rad) * (100 + Math.random() * 20);
+
+        ctx.beginPath();
+        ctx.moveTo(xStart, yStart);
+        ctx.lineTo(xEnd, yEnd);
+        ctx.stroke();
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      return texture;
+    }
+
+    // Procedural Sclera micro-capillary capillary texturing
+    function generateScleraCapillaryTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0,0,512,256);
+
+      ctx.strokeStyle = '#ef4444';
+      ctx.globalAlpha = 0.28;
+      ctx.lineWidth = 0.8;
+
+      for (let j = 0; j < 18; j++) {
+        let x = Math.random() * 512;
+        let y = Math.random() * 256;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        for (let s = 0; s < 5; s++) {
+          x += (Math.random() - 0.5) * 35;
+          y += (Math.random() - 0.5) * 20;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      return texture;
+    }
+  </script>
+
+  <script>
+    function buildOphthalmicPatientMask() {
+      const skinMaterial = new THREE.MeshStandardMaterial({
+        color: 0xe8c39e,
+        roughness: 0.65,
+        metalness: 0.05
+      });
+
+      const socketBackingMaterial = new THREE.MeshBasicMaterial({
+        color: 0x020617
+      });
+
+      const scleraTexture = generateScleraCapillaryTexture();
+      const scleraMaterial = new THREE.MeshStandardMaterial({
+        map: scleraTexture,
+        roughness: 0.12,
+        metalness: 0.05
+      });
+
+      const corneaMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.25,
+        roughness: 0.02,
+        metalness: 0.8
+      });
+
+      // Build Face plate
+      const plateGeo = new THREE.BoxGeometry(14, 8, 0.4);
+      orbitalPlate = new THREE.Mesh(plateGeo, skinMaterial);
+      orbitalPlate.position.set(0, 0, -0.6);
+      scene.add(orbitalPlate);
+
+      // Create eyeball groups OS (Left) & OD (Right)
+      eyeOS = new THREE.Group();
+      eyeOS.position.set(-2.5, 0, 0);
+      scene.add(eyeOS);
+
+      eyeOD = new THREE.Group();
+      eyeOD.position.set(2.5, 0, 0);
+      scene.add(eyeOD);
+
+      const eyeballGeo = new THREE.SphereGeometry(1.6, 32, 32);
+      
+      const osSclera = new THREE.Mesh(eyeballGeo, scleraMaterial);
+      osSclera.rotation.y = Math.PI / 2;
+      eyeOS.add(osSclera);
+
+      const odSclera = new THREE.Mesh(eyeballGeo, scleraMaterial);
+      odSclera.rotation.y = -Math.PI / 2;
+      eyeOD.add(odSclera);
+
+      // Iris disc groups nested within eyeballs
+      const irisOSGeo = new THREE.RingGeometry(0.01, 0.82, 32);
+      const osIrisTex = generateProceduralIrisTexture('#2563eb'); // OS Blue
+      const irisOSMat = new THREE.MeshStandardMaterial({ map: osIrisTex, roughness: 0.2 });
+      const irisOS = new THREE.Mesh(irisOSGeo, irisOSMat);
+      irisOS.position.set(0, 0, 1.58);
+      eyeOS.add(irisOS);
+
+      const irisODGeo = new THREE.RingGeometry(0.01, 0.82, 32);
+      const odIrisTex = generateProceduralIrisTexture('#2563eb'); // OD Blue
+      const irisODMat = new THREE.MeshStandardMaterial({ map: odIrisTex, roughness: 0.2 });
+      const irisOD = new THREE.Mesh(irisODGeo, irisODMat);
+      irisOD.position.set(0, 0, 1.58);
+      eyeOD.add(irisOD);
+
+      // Pupils flat black circular disks
+      const pupilOSGeo = new THREE.CircleGeometry(0.35, 32);
+      const pupilOSMat = new THREE.MeshBasicMaterial({ color: 0x020617 });
+      const pupilOS = new THREE.Mesh(pupilOSGeo, pupilOSMat);
+      pupilOS.name = "pupilOS";
+      pupilOS.position.set(0, 0, 1.595);
+      eyeOS.add(pupilOS);
+
+      const pupilODGeo = new THREE.CircleGeometry(0.35, 32);
+      const pupilODMat = new THREE.MeshBasicMaterial({ color: 0x020617 });
+      const pupilOD = new THREE.Mesh(pupilODGeo, pupilODMat);
+      pupilOD.name = "pupilOD";
+      pupilOD.position.set(0, 0, 1.595);
+      eyeOD.add(pupilOD);
+
+      // Specular corneas covering the irises
+      const corneaGeo = new THREE.SphereGeometry(1.02, 32, 16, 0, Math.PI*2, 0, Math.PI/2.4);
+      
+      const corneaOS = new THREE.Mesh(corneaGeo, corneaMaterial);
+      corneaOS.position.set(0, 0, 1.25);
+      corneaOS.rotation.x = Math.PI / 2;
+      eyeOS.add(corneaOS);
+
+      const corneaOD = new THREE.Mesh(corneaGeo, corneaMaterial);
+      corneaOD.position.set(0, 0, 1.25);
+      corneaOD.rotation.x = Math.PI / 2;
+      eyeOD.add(corneaOD);
+
+      // Eyelid Shell mechanics
+      const lidGeoUpper = new THREE.SphereGeometry(1.72, 32, 16, 0, Math.PI*2, 0, Math.PI / 2);
+      const lidGeoLower = new THREE.SphereGeometry(1.72, 32, 16, 0, Math.PI*2, Math.PI / 2, Math.PI / 2);
+
+      // Left Eye Eyelids
+      upperLidOS = new THREE.Mesh(lidGeoUpper, skinMaterial);
+      upperLidOS.position.set(-2.5, 0, 0);
+      upperLidOS.rotation.x = -Math.PI / 2.3;
+      scene.add(upperLidOS);
+
+      lowerLidOS = new THREE.Mesh(lidGeoLower, skinMaterial);
+      lowerLidOS.position.set(-2.5, 0, 0);
+      lowerLidOS.rotation.x = Math.PI / 2.5;
+      scene.add(lowerLidOS);
+
+      // Right Eye Eyelids
+      upperLidOD = new THREE.Mesh(lidGeoUpper, skinMaterial);
+      upperLidOD.position.set(2.5, 0, 0);
+      upperLidOD.rotation.x = -Math.PI / 2.3;
+      scene.add(upperLidOD);
+
+      lowerLidOD = new THREE.Mesh(lidGeoLower, skinMaterial);
+      lowerLidOD.position.set(2.5, 0, 0);
+      lowerLidOD.rotation.x = Math.PI / 2.5;
+      scene.add(lowerLidOD);
+
+      // Shadow boxes under face plate
+      const boxOD = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 1), socketBackingMaterial);
+      boxOD.position.set(2.5, 0, -1.2);
+      scene.add(boxOD);
+
+      const boxOS = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 1), socketBackingMaterial);
+      boxOS.position.set(-2.5, 0, -1.2);
+      scene.add(boxOS);
+    }
+
+    function adaptViewportSize() {
+      const container = document.getElementById('threeCanvasContainer');
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    }
+  </script>
+
+  <!-- MOUSE DRAG INTERACTIONS (3D Orbit) -->
+  <script>
+    let mouseIsDown = false;
+    let prevMouseX = 0, prevMouseY = 0;
+    let cameraRotX = 0, cameraRotY = 0;
+
+    function setupOrbitController(container) {
+      container.addEventListener('mousedown', (e) => {
+        mouseIsDown = true;
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!mouseIsDown) return;
+        const deltaX = e.clientX - prevMouseX;
+        const deltaY = e.clientY - prevMouseY;
+
+        cameraRotX -= deltaX * 0.003;
+        cameraRotY = Math.max(-0.25, Math.min(0.25, cameraRotY + deltaY * 0.003));
+
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+      });
+
+      window.addEventListener('mouseup', () => {
+        mouseIsDown = false;
+      });
+    }
+  </script>
+
+  <script>
+    function animateWebGLFrame() {
+      requestAnimationFrame(animateWebGLFrame);
+
+      const delta = clock.getDelta();
+      oscNystagmusTime += delta;
+
+      const camRadius = 15;
+      camera.position.x = camRadius * Math.sin(cameraRotX) * Math.cos(cameraRotY);
+      camera.position.z = camRadius * Math.cos(cameraRotX) * Math.cos(cameraRotY);
+      camera.position.y = camRadius * Math.sin(cameraRotY);
+      camera.lookAt(0, 0, -0.6);
+
+      runStateMaturation();
+      updateFlashlightBeamPosition(); // Continuously translate eye coordinates into absolute screen space positions
+
+      renderer.render(scene, camera);
+    }
+
+    function runStateMaturation() {
+      const path = simState.activeCase;
+      const light = simState.lightState;
+      const gx = simState.gazeX;
+      const gy = simState.gazeY;
+
+      // 1. DYNAMIC PUPILLARY DIAMETERS (Scale disk meshes OD & OS)
+      let rOS = 0.38; // Normal radius base
+      let rOD = 0.38;
+
+      if (path === 'case_horner') {
+        if (light === 'OFF') {
+          rOS = 0.58; // OS dilates beautifully in dark
+          rOD = 0.22; // OD fails to dilate (Miosis)
+        } else if (light === 'OS' || light === 'OD') {
+          rOS = 0.16; // normal constrict
+          rOD = 0.16;
+        } else {
+          rOS = 0.38;
+          rOD = 0.22; // miotic resting
+        }
+      }
+      else if (path === 'case_mgp') {
+        if (light === 'OFF') {
+          rOS = 0.58;
+          rOD = 0.58;
+        } else if (light === 'OD') {
+          rOS = 0.16; 
+          rOD = 0.16;
+        } else if (light === 'OS') {
+          rOS = 0.42; // Paradoxical dilation OS optic nerve damage
+          rOD = 0.42;
+        } else {
+          rOS = 0.38;
+          rOD = 0.38;
+        }
+      }
+      else if (path === 'case_cn3') {
+        rOD = 0.72; // Dilated & fixed blown pupil
+        if (light === 'OFF') {
+          rOS = 0.58;
+        } else if (light === 'OS') {
+          rOS = 0.16;
+        } else if (light === 'OD') {
+          rOS = 0.16;
+        } else {
+          rOS = 0.38;
+        }
+      }
+      else {
+        if (light === 'OFF') {
+          rOS = 0.58;
+          rOD = 0.58;
+        } else if (light === 'OS' || light === 'OD') {
+          rOS = 0.16;
+          rOD = 0.16;
+        } else {
+          rOS = 0.38;
+          rOD = 0.38;
+        }
+      }
+
+      // Apply pupillary scale transformations
+      const pupilOSMesh = eyeOS.getObjectByName("pupilOS");
+      const pupilODMesh = eyeOD.getObjectByName("pupilOD");
+      if (pupilOSMesh) pupilOSMesh.scale.set(rOS / 0.35, rOS / 0.35, 1);
+      if (pupilODMesh) pupilODMesh.scale.set(rOD / 0.35, rOD / 0.35, 1);
+
+
+      // 2. EXTRAOCULAR SACCADES (Abduction / Adduction Rotations)
+      let targetRotY_OS = gx * 0.45;
+      let targetRotX_OS = -gy * 0.32;
+      let targetRotY_OD = gx * 0.45;
+      let targetRotX_OD = -gy * 0.32;
+      let targetRotZ_OD = 0; // excyclotorsion
+
+      eyeOS.position.set(-2.5, 0, 0);
+      eyeOD.position.set(2.5, 0, 0);
+
+      if (path === 'case_ino') {
+        if (gx === 1) {
+          targetRotY_OS = 0; // OS fails to cross midline (stays centered)
+          targetRotY_OD = 0.45 + Math.sin(oscNystagmusTime * 45) * 0.04; // abducens shake OD
+        }
+      }
+      else if (path === 'case_ted') {
+        eyeOD.position.set(2.5, 0, 0.4); // Proptosis push
+        if (gy === 1) {
+          targetRotX_OD = 0; // OD failing upward elevation
+        }
+      }
+      else if (path === 'case_cn3') {
+        targetRotY_OD = 0.45;   // Outward temporal (abduction)
+        targetRotX_OD = 0.25;   // Downward (depression)
+      }
+      else if (path === 'case_cn4') {
+        targetRotZ_OD = 0.22; // baseline extorsion
+        if (gx === -1 && gy === -1) {
+          targetRotX_OD = 0.05; // Fails to depress (floats elevated)
+          targetRotZ_OD = 0.35; // increased excyclotorsion
+        } else {
+          targetRotX_OD = -gy * 0.32 - 0.12; // slight hypertropia offset
+        }
+      }
+      else if (path === 'case_cn6') {
+        targetRotY_OD = -0.3; // resting esotropia
+        if (gx === 1) {
+          targetRotY_OD = 0; // OD fails to abduct past midline
+        }
+      }
+
+      // Smoothly interpolate positions
+      eyeOS.rotation.y += (targetRotY_OS - eyeOS.rotation.y) * 0.16;
+      eyeOS.rotation.x += (targetRotX_OS - eyeOS.rotation.x) * 0.16;
+
+      eyeOD.rotation.y += (targetRotY_OD - eyeOD.rotation.y) * 0.16;
+      eyeOD.rotation.x += (targetRotX_OD - eyeOD.rotation.x) * 0.16;
+      eyeOD.rotation.z += (targetRotZ_OD - eyeOD.rotation.z) * 0.16;
+
+
+      // 3. 3D CURVEOUS EYELIDS PTOSIS (Rotation around eyeballs)
+      let upperOSAngle = -Math.PI / 2.3; // Baseline
+      let upperODAngle = -Math.PI / 2.3;
+      let lowerODAngle = Math.PI / 2.5;
+
+      if (path === 'case_horner') {
+        upperODAngle = -Math.PI / 2.7; // Mild droop
+        lowerODAngle = Math.PI / 2.75; // elevated lower lid (upside down)
+      }
+      else if (path === 'case_mg') {
+        const basePtosisOffset = 0.15;
+        const activeFatigue = simState.eyelidFatigueOD * 0.012;
+        upperODAngle = -Math.PI / 2.5 + basePtosisOffset + activeFatigue;
+      }
+      else if (path === 'case_ted') {
+        upperODAngle = -Math.PI / 2.15; // wide stare
+      }
+      else if (path === 'case_cn3') {
+        upperODAngle = -Math.PI / 3.4; // severe ptosis (lid closed)
+      }
+
+      // Interpolate eyelid rotations
+      upperLidOS.rotation.x += (upperOSAngle - upperLidOS.rotation.x) * 0.16;
+      upperLidOD.rotation.x += (upperODAngle - upperLidOD.rotation.x) * 0.16;
+      lowerLidOD.rotation.x += (lowerODAngle - lowerLidOD.rotation.x) * 0.16;
+
+      // Update real-time HUD values for beginners
+      updateLiveAnatomicalSpecs(rOS, rOD, upperOSAngle, upperODAngle);
+    }
+  </script>
+
+  <script>
+    function updateLiveAnatomicalSpecs(rOS, rOD, upperOS, upperOD) {
+      const osSpecs = document.getElementById('os3DSpecs');
+      const odSpecs = document.getElementById('od3DSpecs');
+      
+      const osPupilMm = (rOS * 10).toFixed(1);
+      const odPupilMm = (rOD * 10).toFixed(1);
+      
+      let osPositionText = "Centered";
+      if (simState.gazeY === 1) osPositionText = "Elevated (Looking Up)";
+      else if (simState.gazeY === -1) osPositionText = "Depressed (Looking Down)";
+      else if (simState.gazeX === 1) {
+        osPositionText = (simState.activeCase === 'case_ino') ? "Centered (Stuck Adduction Defect)" : "Adducted (Looking Right)";
+      }
+      else if (simState.gazeX === -1) osPositionText = "Abducted (Looking Left)";
+
+      let odPositionText = "Centered";
+      if (simState.activeCase === 'case_cn3') odPositionText = "Exotropic & Hypotropic ('Down-and-Out' Rest)";
+      else if (simState.activeCase === 'case_cn6') {
+        odPositionText = (simState.gazeX === 1) ? "Midline (Stuck Abduction Defect)" : "Esotropic (Turned Inward)";
+      }
+      else if (simState.gazeY === 1) {
+        odPositionText = (simState.activeCase === 'case_ted') ? "Centered (Mechanical Elevation Limit)" : "Elevated (Looking Up)";
+      }
+      else if (simState.gazeY === -1) odPositionText = "Depressed (Looking Down)";
+      else if (simState.gazeX === 1) {
+        odPositionText = (simState.activeCase === 'case_ino') ? "Abducted (Shaking Nystagmus!)" : "Abducted (Looking Right)";
+      }
+      else if (simState.gazeX === -1) odPositionText = "Adducted (Looking Left)";
+
+      let osLidStatus = "Normal position";
+      let odLidStatus = "Normal position";
+
+      if (simState.activeCase === 'case_cn3') odLidStatus = "Severely Drooped (Complete Ptosis)";
+      else if (simState.activeCase === 'case_horner') odLidStatus = "Mild Droop (Sympathetic Ptosis)";
+      else if (simState.activeCase === 'case_ted') odLidStatus = "Retracted (Thyroid Stare)";
+      else if (simState.activeCase === 'case_mg') {
+        odLidStatus = simState.isEyelidFatigued ? "Sunk fully closed (Neuromuscular fatigue)" : "Slight droop";
+        if (simState.eyelidFatigueOD < 0) odLidStatus = "Recovered (Lid elevated after Ice Pack)";
+      }
+
+      osSpecs.innerHTML = `
+        <strong>Position:</strong> ${osPositionText}<br/>
+        <strong>Pupil:</strong> ${osPupilMm}mm (${simState.lightState === 'OS' ? 'Constricted' : simState.lightState === 'OFF' ? 'Dilated' : 'Resting'})<br/>
+        <strong>Eyelid:</strong> ${osLidStatus}
+      `;
+
+      odSpecs.innerHTML = `
+        <strong>Position:</strong> ${odPositionText}<br/>
+        <strong>Pupil:</strong> ${odPupilMm}mm (${simState.activeCase === 'case_cn3' ? 'Blown/Locked' : simState.lightState === 'OD' ? 'Constricted' : simState.lightState === 'OFF' ? 'Dilated' : 'Resting'})<br/>
+        <strong>Eyelid:</strong> ${odLidStatus}
+      `;
+    }
+  </script>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      init3DEnvironment();
+      loadSelectedCase();
+      syncCompletionBadge();
+    });
+
+    function loadSelectedCase() {
+      const selected = document.getElementById('caseSelect').value;
+      simState.activeCase = selected;
+
+      // Reset dynamic states
+      simState.gazeX = 0;
+      simState.gazeY = 0;
+      simState.lightState = 'OFF';
+      simState.eyelidFatigueOD = 0;
+      simState.eyelidFatigueOS = 0;
+      simState.isEyelidFatigued = false;
+
+      document.getElementById('testDiagnosisSelect').value = "";
+      document.getElementById('diagnosisFeedback').classList.add('hidden');
+
+      const activeCaseObj = caseDatabase[selected];
+      document.getElementById('patientNarrative').innerText = `"${activeCaseObj.narrative}"`;
+
+      const card = document.getElementById('finalScoreCard');
+      if (card) card.classList.add('hidden');
+
+      setClinicalGaze(0, 0);
+      setupDynamicMcqOption(activeCaseObj);
+      swingFlashlight('OFF'); // Reset light
+      updateTutorGuidelines();
+      setupInteractiveTestBench(selected);
+    }
+
+    // Displays ONLY the tools needed for the active clinical scenario to prevent beginner confusion
+    function setupInteractiveTestBench(caseId) {
+      const joystick = document.getElementById('benchJoystick');
+      const flashlight = document.getElementById('benchFlashlight');
+      const fatigue = document.getElementById('benchFatigue');
+
+      // Hide all by default
+      joystick.classList.add('hidden');
+      flashlight.classList.add('hidden');
+      fatigue.classList.add('hidden');
+
+      if (caseId === 'case_ino' || caseId === 'case_ted' || caseId === 'case_cn4' || caseId === 'case_cn6') {
+        // Pure Motility defects need only Gaze controllers
+        joystick.classList.remove('hidden');
+      } else if (caseId === 'case_mg') {
+        // Myasthenia needs EOM sweep tracking and Fatigability challenges
+        joystick.classList.remove('hidden');
+        fatigue.classList.remove('hidden');
+      } else if (caseId === 'case_horner' || caseId === 'case_mgp') {
+        // Pupil defects need only the flashlight suite
+        flashlight.classList.remove('hidden');
+      } else if (caseId === 'case_cn3') {
+        // Complete CN III needs Gaze tracking AND pupil response testing
+        joystick.classList.remove('hidden');
+        flashlight.classList.remove('hidden');
+      }
+    }
+
+    function setupDynamicMcqOption(caseObj) {
+      const container = document.getElementById('testMcqSuite');
+      container.innerHTML = "";
+
+      const div = document.createElement('div');
+      div.className = "bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2 text-xs text-slate-700 shadow-sm";
+      div.innerHTML = `
+        <p class="font-extrabold text-slate-900">Physiology Question: ${caseObj.mcq.question}</p>
+        <div class="grid grid-cols-1 gap-1.5 pt-1">
+          <label class="flex items-start gap-2.5 cursor-pointer p-2 rounded bg-white hover:bg-slate-100 border border-slate-200 font-bold transition">
+            <input type="radio" name="mcq_option" value="a" class="accent-clinicalBlue mt-0.5">
+            <span>${caseObj.mcq.options.a}</span>
+          </label>
+          <label class="flex items-start gap-2.5 cursor-pointer p-2 rounded bg-white hover:bg-slate-100 border border-slate-200 font-bold transition">
+            <input type="radio" name="mcq_option" value="b" class="accent-clinicalBlue mt-0.5">
+            <span>${caseObj.mcq.options.b}</span>
+          </label>
+          <label class="flex items-start gap-2.5 cursor-pointer p-2 rounded bg-white hover:bg-slate-100 border border-slate-200 font-bold transition">
+            <input type="radio" name="mcq_option" value="c" class="accent-clinicalBlue mt-0.5">
+            <span>${caseObj.mcq.options.c}</span>
+          </label>
+        </div>
+        <p id="mcq_feedback" class="text-[10px] font-bold hidden mt-2"></p>
+      `;
+      container.appendChild(div);
+    }
+
+    // Set clinical joystick directional gazes
+    function setClinicalGaze(x, y) {
+      soundFeedback('tick');
+      simState.gazeX = x;
+      simState.gazeY = y;
+
+      let label = "Primary Center";
+      if (x === -1 && y === 1) label = "Up-Left";
+      else if (x === 0 && y === 1) label = "Up-Mid";
+      else if (x === 1 && y === 1) label = "Up-Right";
+      else if (x === -1 && y === 0) label = "Left";
+      else if (x === 1 && y === 0) label = "Right";
+      else if (x === -1 && y === -1) label = "Down-Left";
+      else if (x === 0 && y === -1) label = "Down-Mid";
+      else if (x === 1 && y === -1) label = "Down-Right";
+
+      document.getElementById('gazeLabel').innerText = `Gaze: ${label} (${x*15}°, ${y*15}°)`;
+
+      const buttons = document.querySelectorAll('.gaze-btn');
+      buttons.forEach(btn => {
+        btn.className = "gaze-btn aspect-square bg-slate-50 hover:bg-sky-50 border border-slate-200 rounded-lg text-slate-400 text-xs font-bold transition flex items-center justify-center cursor-pointer";
+      });
+
+      const lookupIdx = (x + 1) + (1 - y) * 3;
+      const activeBtn = buttons[lookupIdx];
+      if (activeBtn) {
+        activeBtn.className = "gaze-btn aspect-square bg-clinicalBlue text-white rounded-lg text-xs font-black transition flex items-center justify-center cursor-pointer";
+      }
+
+      updateTutorGuidelines();
+    }
+
+    // Swing virtual flashlight spotlights
+    function swingFlashlight(target) {
+      soundFeedback('click');
+      simState.lightState = target;
+
+      const spot = scene.getObjectByName("flashlightSpot");
+      const beamOverlay = document.getElementById('flashlightBeam');
+      const badge = document.getElementById('ambientLightBadge');
+
+      if (target === 'OFF') {
+        badge.innerText = "Room light: Dim/Darkened";
+        badge.className = "text-[9px] text-indigo-600 px-2 py-0.5 bg-indigo-50 border border-indigo-100 rounded font-bold animate-pulse";
+        if (spot) spot.visible = false;
+        beamOverlay.classList.add('hidden');
+      } else {
+        badge.innerText = `Light on: ${target === 'OS' ? 'Left Eye' : 'Right Eye'}`;
+        badge.className = "text-[9px] text-amber-600 px-2 py-0.5 bg-amber-50 border border-amber-100 rounded font-bold";
+        
+        if (spot) {
+          spot.visible = true;
+          const targetX = target === 'OS' ? -2.5 : 2.5;
+          spot.position.set(targetX, 0, 14);
+          spot.target.position.set(targetX, 0, 0); // Point directly straight at the designated eye target mesh
+        }
+
+        beamOverlay.classList.remove('hidden');
+        updateFlashlightBeamPosition(); // Align the 2D overlay immediately
+      }
+
+      // Symmetrically style buttons highlights
+      document.getElementById('flashlightLeft').className = `px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black ${target==='OS' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-white text-slate-700'} hover:bg-slate-50 transition shadow-xs cursor-pointer flex items-center gap-1`;
+      document.getElementById('flashlightOff').className = `px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black ${target==='OFF' ? 'bg-slate-900 text-white' : 'bg-slate-700 text-slate-100'} hover:bg-slate-800 transition shadow-xs cursor-pointer flex items-center gap-1`;
+      document.getElementById('flashlightRight').className = `px-3 py-1.5 rounded-lg border border-slate-200 text-[10px] font-black ${target==='OD' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-white text-slate-700'} hover:bg-slate-50 transition shadow-xs cursor-pointer flex items-center gap-1`;
+
+      updateTutorGuidelines();
+    }
+
+    // Dynamically project 3D eye coordinates to 2D screen pixels for pinpoint absolute flashlight overlay positioning
+    function updateFlashlightBeamPosition() {
+      const beamOverlay = document.getElementById('flashlightBeam');
+      if (!beamOverlay || simState.lightState === 'OFF' || beamOverlay.classList.contains('hidden')) return;
+
+      const targetX = (simState.lightState === 'OS') ? -2.5 : 2.5;
+      const vector = new THREE.Vector3(targetX, 0, 1.6); // Surface of the 3D eyeball
+      vector.project(camera);
+
+      const container = document.getElementById('threeCanvasContainer');
+      const widthHalf = container.clientWidth / 2;
+      const heightHalf = container.clientHeight / 2;
+
+      const x = (vector.x * widthHalf) + widthHalf;
+      const y = -(vector.y * heightHalf) + heightHalf;
+
+      beamOverlay.style.left = `${x}px`;
+      beamOverlay.style.top = `${y}px`;
+      beamOverlay.style.transform = 'translate(-50%, -50%)';
+    }
+
+    // Fatigue clinical upper eyelids in Myasthenia challenge
+    function runEyelidFatigueTest() {
+      if (simState.activeCase !== 'case_mg') {
+        soundFeedback('warning');
+        return;
+      }
+      soundFeedback('switch');
+      simState.isEyelidFatigued = true;
+      simState.eyelidFatigueOD = 28; // Droops completely closed
+      updateTutorGuidelines();
+    }
+
+    // Cold acetylcholine recovery stimulation
+    function applyIcePackRecovery() {
+      if (simState.activeCase !== 'case_mg') {
+        soundFeedback('warning');
+        return;
+      }
+      soundFeedback('success');
+      simState.isEyelidFatigued = false;
+      simState.eyelidFatigueOD = -12; // Eyelid elevates past original droop limit
+      updateTutorGuidelines();
+    }
+  </script>
+
+  <script>
+    function updateTutorGuidelines() {
+      const tutor = document.getElementById('dynamicTutorBox');
+      const caseId = simState.activeCase;
+
+      if (caseId === 'case_ino') {
+        tutor.innerHTML = `
+          <div class="space-y-2">
+            <span class="font-extrabold text-slate-900 text-xs block">Patient A • Internuclear Ophthalmoplegia</span>
+            <p class="text-slate-600 text-[11px] leading-relaxed">
+              <strong>Clinical Sign:</strong> Command a voluntary gaze to the <strong>Right</strong>. Watch the Left Eye (OS) fail to adduct past the midline, while the Right Eye (OD) abducts and displays abducting nystagmus (tremor).
+            </p>
+            <p class="text-slate-500 text-[11px]">
+              <strong>Anatomical Wire:</strong> Caused by damage to the Medial Longitudinal Fasciculus (MLF), standard in Multiple Sclerosis.
+            </p>
+          </div>
+        `;
+      }
+      else if (caseId === 'case_mg') {
+        tutor.innerHTML = `
+          <div class="space-y-2">
+            <span class="font-extrabold text-slate-900 text-xs block">Patient B • Myasthenia Gravis</span>
+            <p class="text-slate-600 text-[11px] leading-relaxed">
+              <strong>Clinical Sign:</strong> Click <strong>Lid Fatigue Challenge</strong> to simulate ocular fatigue. Eyelid OD will droop closed. Apply the <strong>Ice Pack test</strong> to temporarily resolve the blocks and raise the lid.
+            </p>
+            <p class="text-slate-500 text-[11px]">
+              <strong>Anatomical Wire:</strong> Autoantibodies target acetylcholine receptors at the neuromuscular junction. Cold temporarily slows acetylcholinesterase, keeping signaling alive.
+            </p>
+          </div>
+        `;
+      }
+      else if (caseId === 'case_horner') {
+        tutor.innerHTML = `
+          <div class="space-y-2">
+            <span class="font-extrabold text-slate-900 text-xs block">Patient C • Horner's Syndrome</span>
+            <p class="text-slate-600 text-[11px] leading-relaxed">
+              <strong>Clinical Sign:</strong> Observe the small Right Pupil (Miosis). Click <strong>Ambient Dim</strong> to darken the room. Because dilation is sympathetic, only Left Eye dilates, making the inequality (anisocoria) highly severe.
+            </p>
+            <p class="text-slate-500 text-[11px]">
+              <strong>Anatomical Wire:</strong> Interruption of the sympathetic pathway to the pupillary dilator and Muller's muscle.
+            </p>
+          </div>
+        `;
+      }
+      else if (caseId === 'case_ted') {
+        tutor.innerHTML = `
+          <div class="space-y-2">
+            <span class="font-extrabold text-slate-900 text-xs block">Patient D • Thyroid Eye Disease</span>
+            <p class="text-slate-600 text-[11px] leading-relaxed">
+              <strong>Clinical Sign:</strong> Observe Right Eye (OD) bulging forward (proptosis) and high lid retraction. Try looking <strong>Up</strong> on the joystick; OD is anchored downward and fails to elevate.
+            </p>
+            <p class="text-slate-500 text-[11px]">
+              <strong>Anatomical Wire:</strong> Thyroid-related autoimmune swelling and fibrosis of the Inferior Rectus muscle prevent it from stretching or relaxing.
+            </p>
+          </div>
+        `;
+      }
+      else if (caseId === 'case_mgp') {
+        tutor.innerHTML = `
+          <div class="space-y-2">
+            <span class="font-extrabold text-slate-900 text-xs block">Patient E • Marcus Gunn Pupil</span>
+            <p class="text-slate-600 text-[11px] leading-relaxed">
+              <strong>Clinical Sign:</strong> Shine light on Right Eye (OD) - both constrict. Quickly swing flashlight to Left Eye (OS) - both paradoxically dilate because the diseased optic nerve senses less net light.
+            </p>
+            <p class="text-slate-500 text-[11px]">
+              <strong>Anatomical Wire:</strong> Sensory afferent pathway defect (CN II injury) typically from optic neuritis.
+            </p>
+          </div>
+        `;
+      }
+      else if (caseId === 'case_cn3') {
+        tutor.innerHTML = `
+          <div class="space-y-2">
+            <span class="font-extrabold text-slate-900 text-xs block">Patient F • CN III Palsy</span>
+            <p class="text-slate-600 text-[11px] leading-relaxed">
+              <strong>Clinical Sign:</strong> Observe the Right Eye resting "Down-and-Out", the completely shut right eyelid (Complete Ptosis), and the fully blown, non-reactive right pupil.
+            </p>
+            <p class="text-slate-500 text-[11px]">
+              <strong>Anatomical Wire:</strong> Direct compression or ischemia of the Oculomotor Nerve, failing MR, SR, IR, IO, and the parasympathetic pupillary fibers.
+            </p>
+          </div>
+        `;
+      }
+      else if (caseId === 'case_cn4') {
+        tutor.innerHTML = `
+          <div class="space-y-2">
+            <span class="font-extrabold text-slate-900 text-xs block">Patient G • CN IV Palsy</span>
+            <p class="text-slate-600 text-[11px] leading-relaxed">
+              <strong>Clinical Sign:</strong> Right Eye rests drifted upward (hypertropia) with an outward torsional twist. This is highly visible when requesting the patient look <strong>Down and Left</strong> on the joystick.
+            </p>
+            <p class="text-slate-500 text-[11px]">
+              <strong>Anatomical Wire:</strong> Innervation loss to the Superior Oblique, which depresses and intorts.
+            </p>
+          </div>
+        `;
+      }
+      else if (caseId === 'case_cn6') {
+        tutor.innerHTML = `
+          <div class="space-y-2">
+            <span class="font-extrabold text-slate-900 text-xs block">Patient H • CN VI Palsy</span>
+            <p class="text-slate-600 text-[11px] leading-relaxed">
+              <strong>Clinical Sign:</strong> Right Eye sits turned inward at rest (esotropia). Click the <strong>Right</strong> joystick arrow; OD is completely unable to cross the midline and abduct.
+            </p>
+            <p class="text-slate-500 text-[11px]">
+              <strong>Anatomical Wire:</strong> Paralyzed Lateral Rectus muscle due to Abducens Nerve damage.
+            </p>
+          </div>
+        `;
+      }
+    }
+  </script>
+
+  <script>
+    function submitOcularAssessment() {
+      const selectedDiag = document.getElementById('testDiagnosisSelect').value;
+      const checkedOption = document.querySelector('input[name="mcq_option"]:checked');
+
+      if (!selectedDiag || !checkedOption) {
+        soundFeedback('warning');
+        const feedback = document.getElementById('diagnosisFeedback');
+        feedback.innerText = "Please complete both the clinical diagnosis select and physiology pathway question.";
+        feedback.className = "text-[10px] font-extrabold text-rose-500 block mt-1 animate-pulse";
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      const feedback = document.getElementById('diagnosisFeedback');
+      feedback.classList.remove('hidden');
+
+      const caseObj = caseDatabase[simState.activeCase];
+
+      if (selectedDiag === caseObj.correctDiagnosis) {
+        feedback.innerText = "Correct Ophthalmic Diagnosis! (+50 pts)";
+        feedback.className = "text-[10px] font-bold text-emerald-600 block mt-1";
+        simState.scores.diagnosisScore = 50;
+      } else {
+        const correctLabel = document.querySelector(`#testDiagnosisSelect option[value="${caseObj.correctDiagnosis}"]`).innerText;
+        feedback.innerText = `Incorrect. Clinical profile indicates: ${correctLabel}. (+0 pts)`;
+        feedback.className = "text-[10px] font-bold text-rose-500 block mt-1";
+        simState.scores.diagnosisScore = 0;
+      }
+
+      const mcqBox = document.getElementById('mcq_feedback');
+      mcqBox.classList.remove('hidden');
+
+      if (checkedOption.value === caseObj.mcq.correct) {
+        mcqBox.innerText = `Correct Option! (+50 pts) — ${caseObj.mcq.explanation}`;
+        mcqBox.className = "text-[10px] font-bold text-emerald-600 block mt-1 leading-relaxed bg-emerald-50 p-2 rounded border border-emerald-100";
+        simState.scores.mcqScore = 50;
+      } else {
+        mcqBox.innerText = `Incorrect Option. Correct: ${caseObj.mcq.correct.toUpperCase()} — ${caseObj.mcq.explanation}`;
+        mcqBox.className = "text-[10px] font-bold text-rose-600 block mt-1 leading-relaxed bg-rose-50 p-2 rounded border border-rose-100";
+        simState.scores.mcqScore = 0;
+      }
+
+      const totalScore = simState.scores.diagnosisScore + simState.scores.mcqScore;
+      document.getElementById('assessmentScoreReadout').innerText = `Score: ${totalScore}/100`;
+
+      let card = document.getElementById('finalScoreCard');
+      if (!card) {
+        const parent = document.getElementById('workspaceContainer');
+        card = document.createElement('div');
+        card.id = "finalScoreCard";
+        parent.appendChild(card);
+      }
+
+      card.className = "lg:col-span-12 p-5 rounded-2xl text-center space-y-2 mt-2";
+
+      if (totalScore >= 100) {
+        soundFeedback('success');
+        card.className += " bg-emerald-50 border border-emerald-300 text-emerald-800 shadow-sm";
+        card.innerHTML = `
+          <p class="text-sm font-black uppercase tracking-wider"><i class="fa-solid fa-trophy text-emerald-500"></i> Clinical Case Mastery Achieved (100%)</p>
+          <p class="text-[11px] text-slate-700">You successfully mapped the neuro-optometric deviations and analyzed reflexes.</p>
+        `;
+
+        let completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+        if (!completed.includes('NeuroCases')) {
+          completed.push('NeuroCases');
+          localStorage.setItem('sahselab_completed_sims', JSON.stringify(completed));
+        }
+        syncCompletionBadge();
+      } else {
+        soundFeedback('warning');
+        card.className += " bg-rose-50 border border-rose-300 text-rose-800 shadow-sm";
+        card.innerHTML = `
+          <p class="text-sm font-black uppercase tracking-wider"><i class="fa-solid fa-circle-xmark text-rose-500"></i> Diagnosis Requirements Unmet (${totalScore}%)</p>
+          <p class="text-[11px] text-slate-700">Review the clinical findings of the 3D model, alter gaze or light, and submit again.</p>
+        `;
+      }
+    }
+
+    function syncCompletionBadge() {
+      const completed = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+      const badge = document.getElementById('completionStatusBadge');
+      if (completed.includes('NeuroCases')) {
+        badge.className = "px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 font-bold flex items-center gap-1 shadow-xs text-[10px]";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500"></i> Completed`;
+      } else {
+        badge.className = "px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-500 font-bold flex items-center gap-1 shadow-xs text-[10px]";
+        badge.innerHTML = `<i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Incomplete`;
+      }
+    }
+
+    function openMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.remove('hidden');
+    }
+
+    function closeMenuModal(modalId) {
+      soundFeedback('click');
+      document.getElementById(`${modalId}Modal`).classList.add('hidden');
+    }
+
+    function toggleMute() {
+      simState.soundMuted = !simState.soundMuted;
+      const icon = document.getElementById('muteIcon');
+      const text = document.getElementById('muteText');
+
+      if (simState.soundMuted) {
+        icon.className = "fa-solid fa-volume-xmark text-slate-400";
+        text.innerText = "Unmute";
+      } else {
+        icon.className = "fa-solid fa-volume-high text-emerald-600";
+        text.innerText = "Mute";
+        soundFeedback('blip');
+      }
+    }
+  </script>
+
+  <!-- Clinical Syllabus Modal -->
+  <div id="aboutModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-black text-slate-900 uppercase tracking-wider">Clinical Cases Syllabus Guide</h3>
+        <button onclick="closeMenuModal('about')" class="text-slate-400 hover:text-slate-600 cursor-pointer text-xs"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed font-semibold">
+        Neuro-optometric case examinations analyze visual pathways connecting retina phototransducers to downstream brainstem nuclei.
+      </p>
+      <div class="space-y-2 text-xs text-slate-500 leading-relaxed">
+        <p>• <strong>Oculomotor CN III Nerve:</strong> Controls internal iris sphincters (constriction) and vertical/adduction motors. Compression yields fixed dilation, complete ptosis, and divergent "down-and-out" deviation.</p>
+        <p>• <strong>Abducens CN VI Nerve:</strong> Directly innervates the Lateral Rectus. Paralysis yields esotropia (inward turn) and horizontal lateral sweep failure.</p>
+        <p>• <strong>Neuromuscular Junctions (Myasthenia):</strong> Dynamic post-synaptic autoantibodies produce fatigable eyelid droops. Reversible through localized cooling (Ice Pack test).</p>
+      </div>
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3">
+        <i class="fa-brands fa-youtube text-red-500 text-xl animate-pulse"></i>
+        <div class="text-[10px] leading-relaxed">
+          <p class="font-extrabold text-slate-900">Academic EyeWiki Guideline</p>
+          <a href="https://eyewiki.org/Main_Page" target="_blank" class="text-clinicalBlue hover:underline font-bold">Visit EyeWiki Clinical guidelines portal</a>
+        </div>
+      </div>
+      <button onclick="closeMenuModal('about')" class="w-full py-2 bg-clinicalBlue text-white font-bold rounded-xl text-xs hover:bg-sky-700 transition cursor-pointer">
+        Dismiss Syllabus
+      </button>
+    </div>
+  </div>
+
+</body>
+</html>

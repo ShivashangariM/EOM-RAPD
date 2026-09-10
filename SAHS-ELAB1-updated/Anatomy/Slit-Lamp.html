@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAHS-E-LAB | Slit Lamp Examination Simulator</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="../assets/sahs-engine.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#0f172a',
+            secondary: '#0284c7',
+            accent: '#0d9488',
+            lightbg: '#f8fafc',
+            panelbg: 'rgba(255, 255, 255, 0.95)'
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    .dark ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    ::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+    .tech-btn.active { border-color: #0284c7 !important; background: rgba(2,132,199,0.08) !important; color: #0284c7 !important; }
+    .dark .tech-btn.active { background: rgba(2,132,199,0.18) !important; }
+  </style>
+</head>
+<body class="bg-[#f8fafc] dark:bg-[#090d16] text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500" id="bodyFrame">
+
+  <script>
+    let audioCtx = null;
+    const hubState = { soundMuted: false };
+    function playAudioTone(freq = 440, type = 'sine', duration = 0.12, vol = 0.05) {
+      if (hubState.soundMuted) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+      } catch (e) { console.warn("Audio Context blocked or unsupported."); }
+    }
+  </script>
+
+  <!-- HEADER -->
+  <header class="w-full fixed top-0 left-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-500" id="mainHeader">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="./Anatomy.html" onclick="playAudioTone(400, 'sine')" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition shadow-xs">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <div>
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
+            SAHS-E-LAB | <span class="text-secondary">Slit Lamp Examination Lab</span>
+          </h1>
+          <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">Illumination Technique &amp; Anterior Segment Simulator</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2">
+          <button onclick="openMenuModal('about')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+          </button>
+          <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600 animate-pulse"></i> <span id="muteText">Mute</span>
+          </button>
+          <button onclick="openMenuModal('reference')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-book-bookmark text-amber-500"></i> Reference
+          </button>
+          <button onclick="toggleDarkMode()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer">
+            <i class="fa-solid fa-circle-half-stroke text-sky-600 dark:text-sky-400"></i>
+          </button>
+        </div>
+        <div class="relative md:hidden">
+          <button onclick="toggleMobileDropdown()" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+          </button>
+          <div id="mobileDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 py-2">
+            <button onclick="openMenuModal('about'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-info text-secondary w-4 text-center"></i> About Us
+            </button>
+            <button onclick="toggleMute(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i id="mobileMuteIcon" class="fa-solid fa-volume-high text-teal-600 w-4 text-center"></i> <span id="mobileMuteText">Mute Sound</span>
+            </button>
+            <button onclick="openMenuModal('reference'); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-book-bookmark text-amber-500 w-4 text-center"></i> Reference
+            </button>
+            <button onclick="toggleDarkMode(); toggleMobileDropdown();" class="w-full text-left px-4 py-2 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-900 flex items-center gap-2 text-slate-700 dark:text-slate-200 cursor-pointer">
+              <i class="fa-solid fa-circle-half-stroke text-sky-600 w-4 text-center"></i> Theme Toggle
+            </button>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+            <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> Mastery: 0%
+          </span>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <!-- MASTER WORKSPACE -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-12 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 transition-all duration-500" id="workspaceContainer">
+
+    <!-- LEFT: VIEWPORT + TEACH DECK + ASSESS CONSOLE -->
+    <section class="lg:col-span-7 space-y-4" id="simulationViewPort">
+
+      <!-- INTERACTIVE OCULAR VIEWPORT (Practice + Assess) -->
+      <div id="eyeViewportCard" class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">Simulated Ocular View (Through the Oculars)</span>
+          <span class="text-[10px] font-mono text-secondary px-2.5 py-1 bg-sky-50 dark:bg-sky-950/40 rounded border border-sky-100 dark:border-sky-900/60 font-bold" id="currentTechLabel">Technique: Diffuse Illumination</span>
+        </div>
+
+        <div class="bg-slate-950 rounded-2xl relative flex items-center justify-center h-[280px] md:h-[320px] overflow-hidden shadow-inner">
+          <svg viewBox="0 0 300 300" class="w-[240px] h-[240px] md:w-[280px] md:h-[280px]" id="viewportSvg">
+            <defs>
+              <radialGradient id="fieldVignette" cx="50%" cy="50%" r="60%">
+                <stop offset="60%" stop-color="#000000" stop-opacity="0"/>
+                <stop offset="100%" stop-color="#000000" stop-opacity="0.85"/>
+              </radialGradient>
+              <radialGradient id="irisGrad" cx="45%" cy="40%" r="65%">
+                <stop offset="0%" stop-color="#a1662f"/>
+                <stop offset="55%" stop-color="#7c4a1e"/>
+                <stop offset="100%" stop-color="#3d2410"/>
+              </radialGradient>
+              <radialGradient id="retroGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#f97316" stop-opacity="0.95"/>
+                <stop offset="100%" stop-color="#f97316" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+
+            <!-- Sclera / field background -->
+            <circle cx="150" cy="150" r="145" fill="#fdf1e7" />
+            <!-- Limbus ring -->
+            <circle cx="150" cy="150" r="108" fill="none" stroke="#94a3b8" stroke-width="3" opacity="0.55" />
+            <!-- Iris -->
+            <circle cx="150" cy="150" r="100" fill="url(#irisGrad)" id="irisCircle" />
+            <!-- Iris crypts texture -->
+            <g id="irisTexture" stroke="#5c3a18" stroke-width="1" opacity="0.35">
+              <circle cx="150" cy="150" r="60" fill="none" />
+              <circle cx="150" cy="150" r="80" fill="none" />
+            </g>
+            <!-- Pupil -->
+            <circle cx="150" cy="150" r="42" fill="#05070c" id="pupilCircle" />
+            <!-- Standard corneal light reflex (removed under sclerotic scatter) -->
+            <ellipse cx="122" cy="118" rx="10" ry="6" fill="#ffffff" opacity="0.55" id="standardReflex" />
+
+            <!-- DIFFUSE overlay -->
+            <circle cx="150" cy="150" r="145" fill="#ffffff" opacity="0" id="ov-diffuse" style="mix-blend-mode:soft-light" />
+
+            <!-- DIRECT FOCAL optic-section beam -->
+            <g id="ov-direct" opacity="0" style="transform-origin:150px 150px;">
+              <rect id="ov-direct-beam" x="146" y="45" width="8" height="210" fill="#e0f2fe" opacity="0.92" />
+              <rect id="ov-direct-beam-core" x="149" y="45" width="2" height="210" fill="#ffffff" opacity="0.95" />
+            </g>
+
+            <!-- SPECULAR REFLECTION glint -->
+            <g id="ov-specular" opacity="0" style="transform-origin:150px 150px;">
+              <ellipse cx="150" cy="90" rx="16" ry="10" fill="#ffffff" opacity="0.95" />
+              <g id="ov-specular-mosaic" opacity="0">
+                <line x1="138" y1="86" x2="162" y2="86" stroke="#0284c7" stroke-width="0.6"/>
+                <line x1="138" y1="90" x2="162" y2="90" stroke="#0284c7" stroke-width="0.6"/>
+                <line x1="138" y1="94" x2="162" y2="94" stroke="#0284c7" stroke-width="0.6"/>
+                <line x1="142" y1="82" x2="142" y2="98" stroke="#0284c7" stroke-width="0.6"/>
+                <line x1="150" y1="82" x2="150" y2="98" stroke="#0284c7" stroke-width="0.6"/>
+                <line x1="158" y1="82" x2="158" y2="98" stroke="#0284c7" stroke-width="0.6"/>
+              </g>
+            </g>
+
+            <!-- RETRO-ILLUMINATION fundus glow -->
+            <circle cx="150" cy="150" r="42" fill="url(#retroGlow)" opacity="0" id="ov-retro" />
+
+            <!-- SCLEROTIC SCATTER dark cornea + limbal ring light -->
+            <g id="ov-sclerotic" opacity="0">
+              <circle cx="150" cy="150" r="100" fill="#0b1e33" opacity="0.72" />
+              <circle cx="150" cy="150" r="106" fill="none" stroke="#7dd3fc" stroke-width="5" opacity="0.8" />
+              <circle id="ov-sclerotic-edema" cx="150" cy="150" r="34" fill="#93c5fd" opacity="0" filter="blur(3px)" />
+            </g>
+
+            <!-- INDIRECT ILLUMINATION: focused glow beside a small lesion -->
+            <g id="ov-indirect" opacity="0">
+              <circle cx="150" cy="150" r="8" fill="#dc2626" opacity="0.85" id="ov-indirect-lesion" />
+              <ellipse cx="178" cy="150" rx="26" ry="22" fill="#e0f2fe" opacity="0.55" filter="blur(2px)" />
+            </g>
+
+            <!-- Field vignette (slit lamp ocular circular crop) -->
+            <circle cx="150" cy="150" r="150" fill="url(#fieldVignette)" />
+          </svg>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-hand-pointer text-secondary"></i>
+            <span>Select a technique and adjust slit width / angle to change what's visible.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIVE CLINICAL COMMENTARY (Practice only) -->
+      <div id="commentaryCard" class="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
+        <h4 class="text-xs uppercase font-extrabold text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+          <i class="fa-solid fa-comment-medical text-secondary"></i> What You're Seeing
+        </h4>
+        <p id="commentaryText" class="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+          Diffuse illumination gives a wide, low-magnification wash of light across the whole anterior segment &mdash; good for an initial overview scan of lids, conjunctiva and gross corneal surface, but it won't localize depth.
+        </p>
+      </div>
+
+      <!-- TEACH DECK: illumination technique reference cards -->
+      <div id="teachDeckCard" class="hidden bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+        <div>
+          <h4 class="text-xs uppercase font-extrabold text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+            <i class="fa-solid fa-graduation-cap text-secondary"></i> Illumination Technique Syllabus
+          </h4>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">Six standard slit lamp illumination techniques. Study each one, then switch to Practice to try them, and Assess to be tested until every one is mastered.</p>
+        </div>
+        <div id="teachDeckGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+      </div>
+
+      <!-- ASSESS CONSOLE -->
+      <div id="testConsoleContainer" class="hidden bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-md">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 dark:border-slate-900 pb-4">
+          <div>
+            <h3 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">Slit Lamp Assessment</h3>
+            <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1">Identify the illumination technique shown, then answer the technique/anatomy quiz below.</p>
+          </div>
+          <span class="text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700" id="liveScoreCard">Score: Unsubmitted</span>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-[10px] uppercase font-black text-slate-900 dark:text-white tracking-widest">Step 1: Identify the Illumination Technique Shown Above (50% Marks)</label>
+          <div id="techChoiceGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+          <p id="techFeedback" class="text-[11px] font-bold hidden"></p>
+        </div>
+
+        <div class="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800" id="testMcqSuite">
+          <p class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">Step 2: Technique &amp; Anatomy Quiz (50% Marks)</p>
+          <div id="dynamicTestMcqs" class="space-y-4"></div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-200 dark:border-slate-800">
+          <button onclick="submitTestEvaluation()" id="btnSubmitTest" class="w-full py-3 bg-secondary hover:bg-sky-700 text-white font-extrabold rounded-xl text-xs transition shadow-md cursor-pointer">
+            Submit Assessment Review
+          </button>
+        </div>
+      </div>
+
+      <!-- REPORT CARD / MASTERY LOOP -->
+      <div id="finalScoreCard" class="hidden p-5 rounded-2xl text-center space-y-4 shadow-sm border border-slate-200 dark:border-slate-800">
+        <div class="space-y-1">
+          <p class="text-base font-black text-slate-900 dark:text-white" id="finalStatusText">Status: Unsubmitted</p>
+          <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed" id="finalStatusDescription">Every technique and question you answer correctly is banked for good &mdash; wrong ones simply come back for another attempt.</p>
+        </div>
+
+        <div class="space-y-1.5 text-left">
+          <div class="flex justify-between text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <span>Cumulative Mastery (this simulator)</span>
+            <span id="masteryPercentLabel" class="font-mono text-secondary">0%</span>
+          </div>
+          <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-300 dark:border-slate-700">
+            <div id="masteryBarFill" class="bg-gradient-to-r from-secondary to-emerald-500 h-full w-[0%] transition-all duration-700 ease-out"></div>
+          </div>
+        </div>
+
+        <div id="practiceRedirectionBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+          <p class="text-[11px] text-red-600 dark:text-red-400 font-extrabold leading-normal" id="weakAreasSummaryText">
+            Some techniques/questions are still unmastered. They'll be prioritized in your next Assess round.
+          </p>
+          <button onclick="changeMode('test')" class="w-full py-2.5 bg-secondary hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition shadow-sm cursor-pointer">
+            <i class="fa-solid fa-rotate-right mr-1"></i> Retest Weak Areas Now
+          </button>
+          <button onclick="changeMode('teach')" class="w-full py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition shadow-sm cursor-pointer">
+            <i class="fa-solid fa-graduation-cap mr-1"></i> Review Teach Deck First
+          </button>
+        </div>
+
+        <div id="masteryCompleteBlock" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800">
+          <p class="text-xs font-extrabold text-emerald-600 dark:text-emerald-400"><i class="fa-solid fa-trophy mr-1"></i> 100% Mastered &mdash; every technique and question in this simulator has been answered correctly at least once.</p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT: MODE TOGGLE + PRACTICE CONTROLS -->
+    <section class="lg:col-span-5 space-y-4" id="controlsPanel">
+
+      <!-- MODE TOGGLE -->
+      <div class="bg-white dark:bg-slate-900 p-2 sm:p-3 rounded-3xl border border-slate-200 dark:border-slate-800 flex gap-2 shadow-sm">
+        <button onclick="changeMode('teach')" id="btnMode-teach" class="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-sm cursor-pointer">
+          <i class="fa-solid fa-graduation-cap"></i> <span class="hidden sm:inline">Teach</span>
+        </button>
+        <button onclick="changeMode('practice')" id="btnMode-practice" class="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm cursor-pointer">
+          <i class="fa-solid fa-hand-pointer"></i> <span class="hidden sm:inline">Practice</span>
+        </button>
+        <button onclick="changeMode('test')" id="btnMode-test" class="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm cursor-pointer">
+          <i class="fa-solid fa-vial"></i> <span class="hidden sm:inline">Assess</span>
+        </button>
+      </div>
+
+      <!-- PRACTICE CONTROLLER HUB -->
+      <div id="interactiveControlsCard" class="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-sm">
+        <div>
+          <h3 class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-secondary"></i> Practice Controller Hub
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Choose an illumination technique and adjust beam parameters.</p>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">Illumination Technique</label>
+          <div id="techBtnGrid" class="grid grid-cols-2 gap-2"></div>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex justify-between items-center text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">
+            <span>Slit Beam Width</span>
+            <span id="slitWidthLabel" class="font-mono text-secondary">Medium (4mm)</span>
+          </div>
+          <input type="range" min="1" max="10" value="5" id="slitWidthSlider" oninput="onControlsChanged()" class="w-full accent-secondary cursor-pointer">
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex justify-between items-center text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">
+            <span>Illumination Angle (from viewing axis)</span>
+            <span id="angleLabel" class="font-mono text-secondary">45&deg;</span>
+          </div>
+          <input type="range" min="0" max="90" value="45" id="angleSlider" oninput="onControlsChanged()" class="w-full accent-secondary cursor-pointer">
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-[10px] uppercase font-extrabold text-slate-400 dark:text-slate-500 tracking-wider">Magnification</label>
+          <select id="magSelect" onchange="onControlsChanged()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-800 dark:text-slate-100 font-bold focus:outline-none focus:border-secondary shadow-sm">
+            <option value="6">6x (Low)</option>
+            <option value="10" selected>10x (Routine Scan)</option>
+            <option value="16">16x (Routine Scan)</option>
+            <option value="25">25x (Detail)</option>
+            <option value="40">40x (High Detail)</option>
+          </select>
+        </div>
+
+        <div id="sclEdemaToggleWrap" class="hidden pt-3 border-t border-slate-200 dark:border-slate-800">
+          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition">
+            <input type="checkbox" id="edemaToggle" onclick="onControlsChanged()" class="w-4 h-4 text-secondary rounded border-slate-300 dark:border-slate-700 accent-secondary">
+            <div>
+              <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200">Simulate Mild Corneal Edema</p>
+              <p class="text-[9px] text-slate-400 dark:text-slate-500">Watch how a cloudy scatter patch breaks up the dark sclerotic centre</p>
+            </div>
+          </label>
+        </div>
+
+        <div class="p-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-2xl border border-indigo-100/40 dark:border-indigo-900/30 text-slate-700 dark:text-slate-300 space-y-1">
+          <span class="text-[9px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+            <i class="fa-solid fa-key"></i> Quick Reference
+          </span>
+          <p class="text-[10px] leading-relaxed">
+            • <strong>Direct focal / optic section</strong>: narrow slit at 45&ndash;60&deg;, localizes depth in the cornea.<br>
+            • <strong>Specular reflection</strong>: mirror angle to view the endothelial mosaic.<br>
+            • <strong>Sclerotic scatter</strong>: beam at the limbus, cornea stays dark unless it scatters (edema).<br>
+            • <strong>Retro-illumination</strong>: light bounced off the iris/fundus reveals lens &amp; corneal opacities.
+          </p>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <footer class="bg-slate-900 text-slate-400 border-t border-slate-800 py-6 text-center text-[10px] mt-auto shrink-0">
+    <div class="max-w-7xl mx-auto px-6">
+      <p class="text-slate-300 font-bold">SAHS-E-LAB Optometry Clinical Directory | Department of Anatomy</p>
+    </div>
+  </footer>
+
+  <!-- ABOUT MODAL -->
+  <div id="aboutModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200 transition-colors duration-500">
+      <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-graduation-cap text-lg"></i></div>
+        <div>
+          <h3 class="text-md font-bold text-slate-900 dark:text-white">About SAHS-E-LAB</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Vinayaka Mission's Research Foundation</p>
+        </div>
+      </div>
+      <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+        The <strong>SAHS-E-LAB Anatomy Module</strong> introduces first-year students to core clinical instrumentation &mdash; starting with slit lamp illumination technique &mdash; before advancing into full refraction and diagnostic simulators.
+      </p>
+    </div>
+  </div>
+
+  <!-- REFERENCE MODAL -->
+  <div id="referenceModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-900 dark:text-slate-200 transition-colors duration-500">
+      <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-700"><i class="fa-solid fa-book text-lg"></i></div>
+        <div>
+          <h3 class="text-md font-bold text-slate-900 dark:text-white">Clinical References</h3>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400">Academic Literature for Slit Lamp Technique</p>
+        </div>
+      </div>
+      <div class="space-y-3 text-xs leading-relaxed max-h-64 overflow-y-auto">
+         <p><strong>1. AAO Basic &amp; Clinical Science Course, Section 3:</strong> Clinical Optics &amp; the biomicroscope. Standard illumination technique nomenclature and use-cases.</p>
+         <p class="pt-2 border-t border-slate-200/50 dark:border-slate-800/50"><strong>2. Elliott, D. B. (ed.), Clinical Procedures in Primary Eye Care:</strong> Slit lamp biomicroscopy chapter &mdash; diffuse, direct/indirect focal, specular reflection, sclerotic scatter and retro-illumination technique descriptions.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================
+    // CONTENT BANKS
+    // =========================================================
+    const SIM_META = { year: 'year1', dept: 'Anatomy', sim: 'SlitLamp' };
+
+    const TECH_BANK = [
+      {
+        id: 'diffuse', name: 'Diffuse Illumination', icon: 'fa-circle-half-stroke',
+        summary: 'Wide beam, low magnification, ground-glass diffuser over the light. A broad, even wash of light across the whole anterior segment.',
+        use: 'Fast overview scan of lids, lashes, conjunctiva and gross corneal surface before switching to a focal technique.',
+        commentary: "Diffuse illumination gives a wide, low-magnification wash of light across the whole anterior segment — good for an initial overview scan of lids, conjunctiva and gross corneal surface, but it won't localize depth."
+      },
+      {
+        id: 'direct_focal', name: 'Direct Focal (Optic Section)', icon: 'fa-layer-group',
+        summary: 'A narrow slit beam angled 45–60° from the viewing axis creates a thin bright "optic section" — a cross-sectional slice through the cornea.',
+        use: 'Localizing the depth of a corneal opacity, foreign body, or scar within the epithelium, stroma, or endothelium.',
+        commentary: "Direct focal illumination throws a narrow, bright optic-section beam across the cornea. Narrowing the slit width sharpens the cross-section, letting you localize a lesion's depth layer by layer."
+      },
+      {
+        id: 'specular', name: 'Specular Reflection', icon: 'fa-sun',
+        summary: 'The light and the observation angle are matched so the beam reflects like a mirror off a smooth surface (cornea or lens).',
+        use: 'Examining the corneal endothelium mosaic pattern (cell size/shape, guttae) and the tear film lipid layer.',
+        commentary: "Specular reflection places a small mirror-like glint on the corneal surface where the incident and observation angles match. At the correct angle you can resolve the endothelial cell mosaic."
+      },
+      {
+        id: 'retro', name: 'Retro-Illumination', icon: 'fa-circle-radiation',
+        summary: 'Light is bounced off the iris or the fundus (the "red reflex") and travels back out through the cornea or lens, illuminating it from behind.',
+        use: 'Detecting corneal vascularization, subtle epithelial defects, and lens opacities silhouetted against the glow.',
+        commentary: "Retro-illumination bounces light off the iris/fundus back through the pupil. Anything translucent sitting in that path — a lens opacity, a corneal scar — shows up as a dark silhouette against the orange glow."
+      },
+      {
+        id: 'sclerotic', name: 'Sclerotic Scatter', icon: 'fa-circle-notch',
+        summary: 'A beam is directed at the limbus; light travels through the cornea by total internal reflection, so a normal cornea stays dark centrally.',
+        use: 'Detecting subtle corneal edema or haze — the scatter breaks up and lights the affected zone, standing out against the dark background.',
+        commentary: "Sclerotic scatter shines the beam tangentially at the limbus. Because the cornea normally guides that light around by total internal reflection, the centre stays dark — any haze or edema breaks the reflection and glows."
+      },
+      {
+        id: 'indirect', name: 'Indirect Illumination', icon: 'fa-arrows-left-right-to-line',
+        summary: 'The beam is focused just beside the area of interest rather than directly on it, so that area is seen only by light scattered from nearby tissue.',
+        use: 'Viewing subtle, translucent lesions or fine corneal nerves that would be washed out by direct light.',
+        commentary: "Indirect illumination is aimed just beside the lesion rather than on it, so the area of interest is seen only by scattered light from its surroundings — useful for subtle, easily-overexposed findings."
+      }
+    ];
+    const TECH_IDS = TECH_BANK.map(t => 'tech:' + t.id);
+
+    const MCQ_POOL = [
+      { id: 'q1', q: 'Which illumination technique produces a thin "optical section" that lets you localize the depth of a corneal finding?', options: ['Diffuse illumination', 'Direct focal illumination', 'Sclerotic scatter', 'Retro-illumination'], correct: 1 },
+      { id: 'q2', q: 'The corneal endothelial mosaic (and guttae) is best examined with which technique?', options: ['Specular reflection', 'Diffuse illumination', 'Indirect illumination', 'Retro-illumination'], correct: 0 },
+      { id: 'q3', q: 'Which technique keeps a normal cornea dark centrally and reveals subtle edema by breaking up limbal light scatter?', options: ['Direct focal illumination', 'Specular reflection', 'Sclerotic scatter', 'Diffuse illumination'], correct: 2 },
+      { id: 'q4', q: 'Lens opacities are best silhouetted against the orange fundus glow using which technique?', options: ['Retro-illumination', 'Sclerotic scatter', 'Direct focal illumination', 'Diffuse illumination'], correct: 0 },
+      { id: 'q5', q: 'For a fast overall external scan of lids, lashes and conjunctiva at the start of an exam, which technique is used?', options: ['Specular reflection', 'Diffuse illumination', 'Indirect illumination', 'Sclerotic scatter'], correct: 1 },
+      { id: 'q6', q: 'Illuminating just beside a lesion so it is seen only by scattered light is called:', options: ['Indirect illumination', 'Direct focal illumination', 'Retro-illumination', 'Specular reflection'], correct: 0 },
+      { id: 'q7', q: 'What primarily controls the thickness of the optic section seen at the cornea?', options: ['Magnification only', 'Slit beam width', 'Filter colour', 'Patient fixation'], correct: 1 },
+      { id: 'q8', q: 'Typical magnification for a routine slit lamp anterior segment scan is closest to:', options: ['1x–2x', '10x–16x', '100x', '400x'], correct: 1 }
+    ];
+    const MCQ_IDS = MCQ_POOL.map(m => 'mcq:' + m.id);
+    const FULL_BANK_IDS = TECH_IDS.concat(MCQ_IDS);
+
+    // =========================================================
+    // STATE
+    // =========================================================
+    const simState = {
+      mode: 'teach',
+      technique: 'diffuse',
+      slitWidth: 5,
+      angle: 45,
+      magnification: 10,
+      edema: false,
+      testTechniqueTarget: null,
+      testMcqSet: [],
+      testAnswers: { technique: null, mcq: {} }
+    };
+
+    // =========================================================
+    // INIT
+    // =========================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('sahselab_theme') === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+      SAHSEngine.ensureProfile(function () {});
+      buildTeachDeck();
+      buildTechButtons();
+      buildTechChoiceGrid();
+      renderViewport();
+      syncMasteryBadge();
+
+      const params = new URLSearchParams(location.search);
+      const wantMode = params.get('mode');
+      if (wantMode === 'test' || wantMode === 'practice' || wantMode === 'teach') {
+        changeMode(wantMode);
+      } else {
+        changeMode('teach');
+      }
+    });
+
+    // =========================================================
+    // MODE SWITCHING
+    // =========================================================
+    const MODE_BTN_ACTIVE = 'flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-secondary text-secondary bg-sky-50/50 dark:bg-sky-950/20 shadow-sm cursor-pointer';
+    const MODE_BTN_INACTIVE = 'flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm cursor-pointer';
+
+    function changeMode(targetMode) {
+      simState.mode = targetMode;
+      playAudioTone(500, 'sine', 0.1, 0.03);
+      ['teach', 'practice', 'test'].forEach(m => {
+        document.getElementById('btnMode-' + m).className = (m === targetMode) ? MODE_BTN_ACTIVE : MODE_BTN_INACTIVE;
+      });
+
+      document.getElementById('teachDeckCard').classList.toggle('hidden', targetMode !== 'teach');
+      document.getElementById('interactiveControlsCard').classList.toggle('hidden', targetMode !== 'practice');
+      document.getElementById('commentaryCard').classList.toggle('hidden', targetMode !== 'practice');
+      document.getElementById('eyeViewportCard').classList.toggle('hidden', targetMode === 'teach');
+      document.getElementById('testConsoleContainer').classList.toggle('hidden', targetMode !== 'test');
+      document.getElementById('finalScoreCard').classList.add('hidden');
+
+      if (targetMode === 'practice') {
+        renderViewport();
+      } else if (targetMode === 'test') {
+        setupTestRound();
+      }
+    }
+
+    // =========================================================
+    // TEACH DECK
+    // =========================================================
+    function buildTeachDeck() {
+      const grid = document.getElementById('teachDeckGrid');
+      grid.innerHTML = TECH_BANK.map(t => `
+        <div class="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-950/40 flex items-center justify-center text-secondary border border-sky-100 dark:border-sky-900">
+              <i class="fa-solid ${t.icon} text-sm"></i>
+            </div>
+            <h5 class="font-bold text-slate-900 dark:text-white text-xs">${t.name}</h5>
+          </div>
+          <p class="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">${t.summary}</p>
+          <p class="text-[10px] text-secondary dark:text-sky-400 font-semibold leading-relaxed"><i class="fa-solid fa-stethoscope mr-1"></i>${t.use}</p>
+        </div>
+      `).join('');
+    }
+
+    // =========================================================
+    // PRACTICE CONTROLS
+    // =========================================================
+    function buildTechButtons() {
+      const grid = document.getElementById('techBtnGrid');
+      grid.innerHTML = TECH_BANK.map(t => `
+        <button class="tech-btn ${t.id === simState.technique ? 'active' : ''} py-2.5 px-2 text-[10px] font-extrabold uppercase rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-sm cursor-pointer" onclick="setTechnique('${t.id}')">${t.name.split(' (')[0]}</button>
+      `).join('');
+    }
+
+    function setTechnique(techId) {
+      simState.technique = techId;
+      playAudioTone(480, 'sine', 0.1, 0.04);
+      document.querySelectorAll('#techBtnGrid .tech-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', TECH_BANK[i].id === techId);
+      });
+      document.getElementById('sclEdemaToggleWrap').classList.toggle('hidden', techId !== 'sclerotic');
+      renderViewport();
+    }
+
+    function onControlsChanged() {
+      simState.slitWidth = parseInt(document.getElementById('slitWidthSlider').value);
+      simState.angle = parseInt(document.getElementById('angleSlider').value);
+      simState.magnification = parseInt(document.getElementById('magSelect').value);
+      simState.edema = document.getElementById('edemaToggle') ? document.getElementById('edemaToggle').checked : false;
+
+      const widthLabelMap = { 1: 'Very Narrow (1mm)', 2: 'Very Narrow (1mm)', 3: 'Narrow (2mm)', 4: 'Narrow (2mm)', 5: 'Medium (4mm)', 6: 'Medium (4mm)', 7: 'Wide (6mm)', 8: 'Wide (6mm)', 9: 'Full Beam (8mm+)', 10: 'Full Beam (8mm+)' };
+      document.getElementById('slitWidthLabel').innerText = widthLabelMap[simState.slitWidth];
+      document.getElementById('angleLabel').innerText = simState.angle + '°';
+
+      renderViewport();
+    }
+
+    // =========================================================
+    // VIEWPORT RENDERING
+    // =========================================================
+    function renderViewport() {
+      const t = simState.technique;
+      const tMeta = TECH_BANK.find(x => x.id === t);
+      document.getElementById('currentTechLabel').innerText = 'Technique: ' + tMeta.name;
+      if (document.getElementById('commentaryText')) {
+        document.getElementById('commentaryText').innerText = tMeta.commentary;
+      }
+
+      // Hide all overlays first
+      ['ov-diffuse', 'ov-direct', 'ov-specular', 'ov-retro', 'ov-sclerotic', 'ov-indirect'].forEach(id => {
+        document.getElementById(id).style.opacity = '0';
+      });
+      document.getElementById('standardReflex').style.opacity = '0.55';
+
+      const widthPx = 3 + simState.slitWidth * 2.2;
+      const angleDeg = simState.angle - 45; // visual rotation range
+
+      if (t === 'diffuse') {
+        document.getElementById('ov-diffuse').style.opacity = '0.4';
+      } else if (t === 'direct_focal') {
+        document.getElementById('standardReflex').style.opacity = '0';
+        const beamGroup = document.getElementById('ov-direct');
+        beamGroup.style.opacity = '0.95';
+        beamGroup.style.transform = 'rotate(' + angleDeg + 'deg)';
+        document.getElementById('ov-direct-beam').setAttribute('width', widthPx.toFixed(1));
+        document.getElementById('ov-direct-beam').setAttribute('x', (150 - widthPx / 2).toFixed(1));
+      } else if (t === 'specular') {
+        document.getElementById('standardReflex').style.opacity = '0';
+        const glintGroup = document.getElementById('ov-specular');
+        glintGroup.style.opacity = '0.98';
+        glintGroup.style.transform = 'rotate(' + (angleDeg * 0.6) + 'deg)';
+        const optimal = simState.angle >= 20 && simState.angle <= 40;
+        document.getElementById('ov-specular-mosaic').style.opacity = optimal ? '0.9' : '0';
+      } else if (t === 'retro') {
+        document.getElementById('standardReflex').style.opacity = '0.25';
+        document.getElementById('ov-retro').style.opacity = '0.85';
+      } else if (t === 'sclerotic') {
+        document.getElementById('standardReflex').style.opacity = '0';
+        document.getElementById('ov-sclerotic').style.opacity = '1';
+        document.getElementById('ov-sclerotic-edema').style.opacity = simState.edema ? '0.75' : '0';
+      } else if (t === 'indirect') {
+        document.getElementById('standardReflex').style.opacity = '0.2';
+        document.getElementById('ov-indirect').style.opacity = '0.95';
+      }
+    }
+
+    // =========================================================
+    // ASSESS MODE
+    // =========================================================
+    function buildTechChoiceGrid() {
+      const grid = document.getElementById('techChoiceGrid');
+      grid.innerHTML = TECH_BANK.map(t => `
+        <button class="tech-choice-btn py-2.5 px-2 text-[10px] font-extrabold uppercase rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-sm cursor-pointer" data-tech="${t.id}" onclick="selectTestTechnique('${t.id}')">${t.name.split(' (')[0]}</button>
+      `).join('');
+    }
+
+    function selectTestTechnique(techId) {
+      simState.testAnswers.technique = techId;
+      playAudioTone(500, 'sine', 0.08, 0.04);
+      document.querySelectorAll('#techChoiceGrid .tech-choice-btn').forEach(btn => {
+        const isSel = btn.dataset.tech === techId;
+        btn.className = 'tech-choice-btn py-2.5 px-2 text-[10px] font-extrabold uppercase rounded-lg border transition shadow-sm cursor-pointer ' +
+          (isSel ? 'border-secondary text-white bg-secondary' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700');
+      });
+    }
+
+    function setupTestRound() {
+      simState.testAnswers = { technique: null, mcq: {} };
+      document.getElementById('techFeedback').classList.add('hidden');
+      document.getElementById('liveScoreCard').innerText = 'Score: Unsubmitted';
+      document.querySelectorAll('#techChoiceGrid .tech-choice-btn').forEach(btn => {
+        btn.className = 'tech-choice-btn py-2.5 px-2 text-[10px] font-extrabold uppercase rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-sm cursor-pointer';
+      });
+
+      // Step 1: pick one technique (weighted toward unmastered) and render it, hidden name
+      const pickedTechFull = SAHSEngine.pickWeighted(SIM_META.year, SIM_META.dept, SIM_META.sim, TECH_IDS, 1)[0];
+      simState.testTechniqueTarget = pickedTechFull.replace('tech:', '');
+      simState.technique = simState.testTechniqueTarget;
+      simState.slitWidth = 5; simState.angle = simState.testTechniqueTarget === 'specular' ? 30 : 45; simState.edema = Math.random() > 0.5;
+      renderViewport();
+      // Hide the giveaway label + commentary text during assessment
+      document.getElementById('currentTechLabel').innerText = 'Technique: ??? (Identify Below)';
+      document.getElementById('commentaryText') && (document.getElementById('commentaryText').innerText = '');
+
+      // Step 2: 5 weighted MCQs
+      const pickedMcqFull = SAHSEngine.pickWeighted(SIM_META.year, SIM_META.dept, SIM_META.sim, MCQ_IDS, 5);
+      simState.testMcqSet = pickedMcqFull.map(fullId => MCQ_POOL.find(m => 'mcq:' + m.id === fullId));
+      renderTestMcqs();
+    }
+
+    function renderTestMcqs() {
+      const wrap = document.getElementById('dynamicTestMcqs');
+      wrap.innerHTML = simState.testMcqSet.map((q, qi) => `
+        <div class="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2">
+          <p class="text-[11px] font-bold text-slate-800 dark:text-slate-200">${qi + 1}. ${q.q}</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            ${q.options.map((opt, oi) => `
+              <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+                <input type="radio" name="mcq-${q.id}" value="${oi}" onchange="setMcqAnswer('${q.id}', ${oi})" class="accent-secondary">
+                ${opt}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function setMcqAnswer(qid, optionIndex) {
+      simState.testAnswers.mcq[qid] = optionIndex;
+      playAudioTone(480, 'sine', 0.06, 0.03);
+    }
+
+    function submitTestEvaluation() {
+      if (!simState.testAnswers.technique) {
+        document.getElementById('techFeedback').className = 'text-[11px] font-bold text-red-600 dark:text-red-400';
+        document.getElementById('techFeedback').innerText = 'Please identify the illumination technique before submitting.';
+        document.getElementById('techFeedback').classList.remove('hidden');
+        playAudioTone(240, 'sawtooth', 0.2, 0.05);
+        return;
+      }
+
+      // Step 1: technique identification
+      const techCorrect = simState.testAnswers.technique === simState.testTechniqueTarget;
+      SAHSEngine.recordItemResult(SIM_META.year, SIM_META.dept, SIM_META.sim, 'tech:' + simState.testTechniqueTarget, techCorrect);
+      const fbEl = document.getElementById('techFeedback');
+      fbEl.classList.remove('hidden');
+      if (techCorrect) {
+        fbEl.className = 'text-[11px] font-bold text-emerald-600 dark:text-emerald-400';
+        fbEl.innerText = 'Correct — that was ' + TECH_BANK.find(t => t.id === simState.testTechniqueTarget).name + '.';
+      } else {
+        fbEl.className = 'text-[11px] font-bold text-red-600 dark:text-red-400';
+        fbEl.innerText = 'Not quite — that was actually ' + TECH_BANK.find(t => t.id === simState.testTechniqueTarget).name + '. It will come back in your next Assess round.';
+      }
+      document.getElementById('currentTechLabel').innerText = 'Technique: ' + TECH_BANK.find(t => t.id === simState.testTechniqueTarget).name;
+      document.getElementById('commentaryText') && (document.getElementById('commentaryText').innerText = TECH_BANK.find(t => t.id === simState.testTechniqueTarget).commentary);
+
+      // Step 2: MCQs
+      let mcqCorrectCount = 0;
+      simState.testMcqSet.forEach(q => {
+        const given = simState.testAnswers.mcq[q.id];
+        const correct = given === q.correct;
+        if (correct) mcqCorrectCount++;
+        SAHSEngine.recordItemResult(SIM_META.year, SIM_META.dept, SIM_META.sim, 'mcq:' + q.id, correct);
+      });
+
+      const totalItemsThisRound = 1 + simState.testMcqSet.length;
+      const correctThisRound = (techCorrect ? 1 : 0) + mcqCorrectCount;
+      const roundPct = Math.round((correctThisRound / totalItemsThisRound) * 100);
+      document.getElementById('liveScoreCard').innerText = 'Score: ' + correctThisRound + '/' + totalItemsThisRound + ' (' + roundPct + '%)';
+
+      playAudioTone(techCorrect ? 700 : 320, techCorrect ? 'sine' : 'sawtooth', 0.18, 0.05);
+      showResultScreen(roundPct);
+      syncMasteryBadge();
+    }
+
+    function showResultScreen(roundPct) {
+      const masteryPct = SAHSEngine.getMasteryPercent(SIM_META.year, SIM_META.dept, SIM_META.sim, FULL_BANK_IDS);
+      document.getElementById('finalScoreCard').classList.remove('hidden');
+      document.getElementById('masteryPercentLabel').innerText = masteryPct + '%';
+      document.getElementById('masteryBarFill').style.width = masteryPct + '%';
+
+      const card = document.getElementById('finalScoreCard');
+      const roundPassed = roundPct >= 80;
+
+      if (masteryPct >= 100) {
+        card.className = 'p-5 rounded-2xl text-center space-y-4 shadow-sm border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20';
+        document.getElementById('finalStatusText').innerText = 'Status: 100% MASTERED';
+        document.getElementById('finalStatusText').className = 'text-base font-black text-emerald-600 dark:text-emerald-400';
+        document.getElementById('finalStatusDescription').innerText = 'Every illumination technique and question in this simulator has been answered correctly at least once. Outstanding work.';
+        document.getElementById('practiceRedirectionBlock').classList.add('hidden');
+        document.getElementById('masteryCompleteBlock').classList.remove('hidden');
+      } else if (roundPassed) {
+        card.className = 'p-5 rounded-2xl text-center space-y-4 shadow-sm border border-sky-200 dark:border-sky-900 bg-sky-50/50 dark:bg-sky-950/20';
+        document.getElementById('finalStatusText').innerText = 'Round Passed: ' + roundPct + '%';
+        document.getElementById('finalStatusText').className = 'text-base font-black text-secondary';
+        document.getElementById('finalStatusDescription').innerText = 'Good round — but cumulative mastery only fills as each individual technique/question gets answered correctly at least once. Keep going.';
+        document.getElementById('practiceRedirectionBlock').classList.remove('hidden');
+        document.getElementById('masteryCompleteBlock').classList.add('hidden');
+      } else {
+        card.className = 'p-5 rounded-2xl text-center space-y-4 shadow-sm border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/20';
+        document.getElementById('finalStatusText').innerText = 'Round Score: ' + roundPct + '%';
+        document.getElementById('finalStatusText').className = 'text-base font-black text-red-600 dark:text-red-400';
+        document.getElementById('finalStatusDescription').innerText = 'No permanent penalty — every wrong item just gets prioritized in your next Assess round until it flips to mastered.';
+        document.getElementById('practiceRedirectionBlock').classList.remove('hidden');
+        document.getElementById('masteryCompleteBlock').classList.add('hidden');
+      }
+    }
+
+    // =========================================================
+    // MASTERY BADGE / COMPLETION SYNC
+    // =========================================================
+    function syncMasteryBadge() {
+      const pct = SAHSEngine.getMasteryPercent(SIM_META.year, SIM_META.dept, SIM_META.sim, FULL_BANK_IDS);
+      SAHSEngine.renderMasteryBadge(document.getElementById('completionStatusBadge'), pct);
+      if (pct >= 100) {
+        try {
+          const legacy = JSON.parse(localStorage.getItem('sahselab_completed_sims')) || [];
+          if (!legacy.includes('Slit-Lamp')) {
+            legacy.push('Slit-Lamp');
+            localStorage.setItem('sahselab_completed_sims', JSON.stringify(legacy));
+          }
+        } catch (e) { /* ignore */ }
+      }
+    }
+
+    // =========================================================
+    // UTILITIES
+    // =========================================================
+    function openMenuModal(modalId) {
+      playAudioTone(600, 'sine', 0.08, 0.04);
+      document.getElementById(modalId + 'Modal').classList.remove('hidden');
+    }
+    function closeMenuModal(modalId) {
+      playAudioTone(600, 'sine', 0.08, 0.04);
+      document.getElementById(modalId + 'Modal').classList.add('hidden');
+    }
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+      playAudioTone(600, 'sine', 0.08, 0.04);
+    }
+    function toggleMobileDropdown() {
+      document.getElementById('mobileDropdown').classList.toggle('hidden');
+    }
+    function toggleMute() {
+      hubState.soundMuted = !hubState.soundMuted;
+      const muteIcon = document.getElementById('muteIcon');
+      const muteText = document.getElementById('muteText');
+      if (hubState.soundMuted) {
+        muteIcon.className = "fa-solid fa-volume-xmark text-slate-400";
+        muteText.innerText = "Unmute";
+      } else {
+        muteIcon.className = "fa-solid fa-volume-high text-teal-700 animate-pulse";
+        muteText.innerText = "Mute";
+        playAudioTone(520, 'sine', 0.1, 0.05);
+      }
+    }
+  </script>
+</body>
+</html>

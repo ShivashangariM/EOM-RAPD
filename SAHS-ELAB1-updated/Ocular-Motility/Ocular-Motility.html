@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAHS-E-LAB | Ocular Motility Department Hub</title>
+    
+    <!-- ThreeJS & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Tailwind CSS & Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0f172a',    /* Slate 900 */
+                        secondary: '#2563eb',  /* Blue 600 */
+                        accent: '#0d9488',     /* Teal 600 */
+                        lightbg: '#f8fafc',    /* Slate 50 */
+                        panelbg: 'rgba(255, 255, 255, 0.95)'
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        .dark ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+
+        #three-container { width: 100%; height: 100%; position: relative; cursor: crosshair; }
+
+        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(226, 232, 240, 0.8); }
+        .dark .glass-panel { background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(51, 65, 85, 0.8); }
+        .dark-glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        
+        .active-btn { background-color: #2563eb !important; color: white !important; border-color: #2563eb !important; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+        .active-btn-indigo { background-color: #4f46e5 !important; color: white !important; border-color: #4f46e5 !important; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3); }
+        .active-btn-indigo .arrow-box { background: rgba(255,255,255,0.2); color: white; }
+
+        .cardinal-btn { background: white; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; cursor: pointer; height: 48px; }
+        .dark .cardinal-btn { background: #1e293b; border-color: #334155; color: white; }
+        .cardinal-btn:hover { background-color: #f8fafc; border-color: #cbd5e1; transform: translateY(-1px); }
+        .dark .cardinal-btn:hover { background-color: #334155; border-color: #475569; }
+        
+        .arrow-box { background: #f1f5f9; color: #64748b; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 14px; }
+        .dark .arrow-box { background: #0f172a; color: #94a3b8; }
+        .active-btn .arrow-box { background: rgba(255,255,255,0.2); color: white; }
+
+        .floating-label {
+            position: absolute; pointer-events: auto; cursor: pointer;
+            background: rgba(15, 23, 42, 0.9); color: white; padding: 6px 12px;
+            border-radius: 6px; font-size: 10px; font-weight: 800; white-space: nowrap; text-align: center; line-height: 1.35;
+            transform: translate(-50%, -50%); z-index: 50; border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0.3;
+        }
+        
+        .active-label { background: #2563eb !important; opacity: 1 !important; transform: translate(-50%, -50%) scale(1.1); }
+        
+        /* 6 Modalities Highlight Colors */
+        .hl-muscles { background: #1e40af !important; color: white !important; opacity: 1 !important; transform: translate(-50%, -50%) scale(1.15) !important; z-index: 100; box-shadow: 0 0 20px rgba(37, 99, 235, 0.7); border-color: #60a5fa !important; }
+        .hl-angles { background: #065f46 !important; color: white !important; opacity: 1 !important; transform: translate(-50%, -50%) scale(1.15) !important; z-index: 100; box-shadow: 0 0 20px rgba(16, 185, 129, 0.7); border-color: #34d399 !important; }
+        .hl-movement { background: #3730a3 !important; color: white !important; opacity: 1 !important; transform: translate(-50%, -50%) scale(1.15) !important; z-index: 100; box-shadow: 0 0 20px rgba(79, 70, 229, 0.7); border-color: #818cf8 !important; }
+        .hl-nerves { background: #92400e !important; color: white !important; opacity: 1 !important; transform: translate(-50%, -50%) scale(1.15) !important; z-index: 100; box-shadow: 0 0 20px rgba(245, 158, 11, 0.7); border-color: #fbbf24 !important; }
+        .hl-laws { background: #6b21a8 !important; color: white !important; opacity: 1 !important; transform: translate(-50%, -50%) scale(1.15) !important; z-index: 100; box-shadow: 0 0 20px rgba(168, 85, 247, 0.7); border-color: #c084fc !important; }
+        .hl-quiz { background: #e11d48 !important; color: white !important; opacity: 1 !important; transform: translate(-50%, -50%) scale(1.15) !important; z-index: 100; box-shadow: 0 0 20px rgba(244, 63, 94, 0.75); border-color: #fda4af !important; }
+
+        .eye-badge {
+            position: absolute; padding: 6px 14px; border-radius: 10px; font-weight: 900; font-size: 14px;
+            color: white; z-index: 60; pointer-events: none; box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            text-transform: uppercase; letter-spacing: 0.1em; border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .muscle-table { width: 100%; border-collapse: separate; border-spacing: 4px 0; font-size: 10px; }
+        .muscle-table th { color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.15em; font-weight: 900; text-align: center; padding: 0 8px 8px 8px; }
+        .muscle-table td { padding: 12px 8px; background: rgba(255,255,255,0.05); border-radius: 8px; text-align: center; width: 50%; transition: background 0.2s; min-height: 44px; vertical-align: middle; }
+        .od-cell { color: #f87171; font-weight: 700; border: 1px solid rgba(248, 113, 113, 0.1); }
+        .os-cell { color: #34d399; font-weight: 700; border: 1px solid rgba(52, 211, 153, 0.1); }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-500" id="bodyFrame">
+
+    <script>
+        let audioCtx = null;
+        const hubState = { 
+            soundMuted: false,
+            completedSimulators: {
+                EOM: false,
+                H_Pattern: false,
+                Park_3_steps: false,
+                Saccades: false,
+                Quiz: false
+            }
+        };
+
+        function playAudioTone(freq = 440, type = 'sine', duration = 0.12, vol = 0.05) {
+            if (hubState.soundMuted) return;
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.start(); osc.stop(audioCtx.currentTime + duration);
+            } catch (e) { console.warn("Audio Context blocked."); }
+        }
+    </script>
+
+    <!-- HEADER / CLINICAL BRANDING BAR -->
+    <header class="w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between shrink-0 z-10 shadow-xs">
+        <div class="flex items-center gap-3">
+            <a href="../index.html" onclick="playAudioTone(480, 'sine', 0.1)" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition shadow-xs">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1 class="text-sm sm:text-md font-extrabold tracking-tight text-slate-900 dark:text-white leading-none">
+                    SAHS-E-LAB | <span class="text-secondary">Ocular Motility</span>
+                </h1>
+                <p class="text-[9px] text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] font-semibold mt-1">Extraocular Muscles, Cranial Nerves &amp; Anatomy Origins v2.9</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button onclick="openMenuModal('about')" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition items-center gap-1.5">
+                <i class="fa-solid fa-circle-info text-secondary"></i> About Us
+            </button>
+            <button onclick="openMenuModal('reference')" class="hidden md:flex px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition items-center gap-1.5">
+                <i class="fa-solid fa-book-bookmark text-teal-600"></i> Reference
+            </button>
+            <button onclick="toggleMute()" id="muteBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5">
+                <i id="muteIcon" class="fa-solid fa-volume-high text-teal-600"></i> <span id="muteText">Mute</span>
+            </button>
+            <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition">
+                <i class="fa-solid fa-circle-half-stroke"></i>
+            </button>
+            
+            <div class="flex items-center gap-3 text-xs">
+                <span class="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1" id="completionStatusBadge">
+                    <i class="fa-solid fa-circle-dot animate-pulse text-amber-500"></i> <span id="progressIndicator">0 / 5 Labs Completed</span>
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN TWO-COLUMN SPLIT CONTAINER -->
+    <main class="flex-grow flex flex-col lg:flex-row overflow-hidden relative">
+        
+        <!-- LEFT COLUMN: THREE.JS 3D INTERACTIVE EYE-BOX -->
+        <div id="three-container-wrapper" class="relative bg-slate- flex-grow h-[45vh] lg:h-full">
+            <div id="three-container"></div>
+            <div id="labels-overlay" class="absolute inset-0 pointer-events-none"></div>
+            
+            <div id="badge-od" class="eye-badge bg-red-500 shadow-red-500/20">OD (Right)</div>
+            <div id="badge-os" class="eye-badge bg-emerald-500 shadow-emerald-500/20">OS (Left)</div>
+
+            <div class="absolute inset-0 pointer-events-none p-4 sm:p-6 flex flex-col justify-between">
+                <div class="flex justify-between items-start">
+                    <div class="dark-glass px-5 py-4 rounded-2xl text-white shadow-2xl border border-white/5 w-[260px] sm:w-[310px] pointer-events-auto">
+                        <div id="movement-label" class="text-xs sm:text-sm font-black uppercase tracking-tight mb-2 border-b border-white/10 pb-1.5 text-secondary flex items-center gap-1.5">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i> Primary Position
+                        </div>
+                        <table class="muscle-table">
+                            <thead>
+                                <tr><th>OD (Patient Right)</th><th>OS (Patient Left)</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="od-muscle-display" class="od-cell text-[9.5px] sm:text-[10px] leading-tight">None</td>
+                                    <td id="os-muscle-display" class="os-cell text-[9.5px] sm:text-[10px] leading-tight">None</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex flex-col gap-2 pointer-events-auto">
+                        <button onclick="resetScene()" class="dark-glass px-3 py-2 rounded-xl text-[9px] sm:text-[10px] font-bold uppercase text-white hover:bg-slate-800 transition border border-white/20 shadow-lg flex items-center gap-1">
+                            <i class="fa-solid fa-arrow-rotate-left"></i> Reset System
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDEBAR -->
+        <aside class="bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 flex flex-col shrink-0 w-full lg:w-[420px] h-[55vh] lg:h-full overflow-y-auto shadow-xl">
+            
+            <div class="p-5 sm:p-6 space-y-5">
+                
+                <section class="space-y-2">
+                    <h3 class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-1">
+                        <i class="fa-solid fa-layer-group"></i> Visualization Overlay Mode
+                    </h3>
+                    <div class="relative">
+                        <button onclick="toggleViewDropdown()" id="view-dropdown-btn" class="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-[12px] shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                            <span id="current-view-label" class="flex items-center gap-2 text-left text-blue-600 font-black">
+                                <i class="fa-solid fa-eye"></i> 1. Extraocular Muscles
+                            </span>
+                            <svg class="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        
+                        <div id="view-dropdown-menu" class="hidden absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl z-[100] overflow-hidden">
+                            <button onclick="setViewMode('muscles')" class="w-full text-left py-3 px-4 text-[11px] font-semibold border-b border-slate-100 dark:border-slate-800 flex flex-col group transition hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                                <span class="font-black text-blue-600 dark:text-blue-400 flex items-center gap-1.5"><i class="fa-solid fa-eye"></i> 1. Extraocular Muscles</span>
+                                <span class="text-[9px] text-slate-500 dark:text-slate-400 font-medium">Primary action, active gazes, and labels</span>
+                            </button>
+                            <button onclick="setViewMode('angles')" class="w-full text-left py-3 px-4 text-[11px] font-semibold border-b border-slate-100 dark:border-slate-800 flex flex-col group transition hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+                                <span class="font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5"><i class="fa-solid fa-compass"></i> 2. Insertion Angles &amp; Origins</span>
+                                <span class="text-[9px] text-slate-500 dark:text-slate-400 font-medium">Visual pull axis guides, Annulus of Zinn, and Oblique bone origins</span>
+                            </button>
+                            <button onclick="setViewMode('movement')" class="w-full text-left py-3 px-4 text-[11px] font-semibold border-b border-slate-100 dark:border-slate-800 flex flex-col group transition hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
+                                <span class="font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5"><i class="fa-solid fa-arrows-up-down-left-right"></i> 3. Movement (Simulator)</span>
+                                <span class="text-[9px] text-slate-500 dark:text-slate-400 font-medium">Conjugate movements, monocular/binocular simulations</span>
+                            </button>
+                            <button onclick="setViewMode('nerves')" class="w-full text-left py-3 px-4 text-[11px] font-semibold border-b border-slate-100 dark:border-slate-800 flex flex-col group transition hover:bg-amber-50 dark:hover:bg-amber-900/20">
+                                <span class="font-black text-amber-600 dark:text-amber-500 flex items-center gap-1.5"><i class="fa-solid fa-project-diagram"></i> 4. Cranial Nerves &amp; Palsies</span>
+                                <span class="text-[9px] text-slate-500 dark:text-slate-400 font-medium">CN III, CN IV, and CN VI innervation &amp; deficit tester</span>
+                            </button>
+                            <button onclick="setViewMode('laws')" class="w-full text-left py-3 px-4 text-[11px] font-semibold border-b border-slate-100 dark:border-slate-800 flex flex-col group transition hover:bg-purple-50 dark:hover:bg-purple-900/20">
+                                <span class="font-black text-purple-600 dark:text-purple-400 flex items-center gap-1.5"><i class="fa-solid fa-scale-balanced"></i> 5. Laws of Motility</span>
+                                <span class="text-[9px] text-slate-500 dark:text-slate-400 font-medium">Sherrington's, Hering's, Donder's &amp; Listing's Laws</span>
+                            </button>
+                            <button onclick="setViewMode('quiz')" class="w-full text-left py-3 px-4 text-[11px] font-semibold flex flex-col group transition hover:bg-rose-50 dark:hover:bg-rose-900/20 border-t border-slate-100 dark:border-slate-900">
+                                <span class="font-black text-rose-600 dark:text-rose-400 flex items-center gap-1.5"><i class="fa-solid fa-graduation-cap"></i> 6. Clinical Exam / Quiz</span>
+                                <span class="text-[9px] text-slate-500 dark:text-slate-400 font-medium">Test structural recognition of muscles, nerves, Annulus, and Oblique origins</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="muscle-highlighter-section" class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl space-y-2">
+                    <h3 class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-1.5">
+                        <i class="fa-solid fa-eye-dropper text-blue-600 dark:text-blue-400"></i> Anatomical Selection Highlighter
+                    </h3>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button onclick="toggleMuscleHighlight('MR')" id="btn-hl-MR" class="py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200">Medial Rectus</button>
+                        <button onclick="toggleMuscleHighlight('LR')" id="btn-hl-LR" class="py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200">Lateral Rectus</button>
+                        <button onclick="toggleMuscleHighlight('SR')" id="btn-hl-SR" class="py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200">Superior Rectus</button>
+                        <button onclick="toggleMuscleHighlight('IR')" id="btn-hl-IR" class="py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200">Inferior Rectus</button>
+                        <button onclick="toggleMuscleHighlight('SO')" id="btn-hl-SO" class="py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200">Superior Oblique</button>
+                        <button onclick="toggleMuscleHighlight('IO')" id="btn-hl-IO" class="py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200">Inferior Oblique</button>
+                        
+                        <!-- Oblique Origins -->
+                        <button onclick="toggleMuscleHighlight('SO_Origin')" id="btn-hl-SO_Origin" class="py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200">SO Origin (Sphenoid)</button>
+                        <button onclick="toggleMuscleHighlight('IO_Origin')" id="btn-hl-IO_Origin" class="py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200 col-span-2">IO Origin (Orbital Floor)</button>
+                        
+                        <button onclick="toggleMuscleHighlight('AoZ')" id="btn-hl-AoZ" class="py-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-300 dark:border-slate-700 text-[10px] font-black transition-all hover:bg-slate-100 text-slate-800 dark:text-slate-100 col-span-3">Annulus of Zinn (Common Tendinous Ring)</button>
+                    </div>
+                </section>
+
+                <!-- 1. EXTRAOCULAR MUSCLES CONTENT PANEL -->
+                <div id="panel-muscles" class="space-y-4">
+                    <section class="bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-900 rounded-2xl p-4 shadow-xs">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                            <h4 class="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Extraocular Anatomy</h4>
+                        </div>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                            Extraocular muscles govern eye movements. The four rectus muscles (Superior, Inferior, Medial, Lateral) originate posterior to the globe from the <strong>Annulus of Zinn</strong> at the orbital apex, while the oblique muscles have unique insertion courses.
+                        </p>
+                        <div class="mt-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center text-secondary shrink-0">
+                                <i class="fa-solid fa-circle-nodes"></i>
+                            </div>
+                            <div>
+                                <h5 class="text-[10.5px] font-bold text-slate-800 dark:text-slate-200">Orbital Apex Landmark</h5>
+                                <p class="text-[9.5px] text-slate-500 dark:text-slate-400 mt-0.5 leading-normal">
+                                    Click or hover over the <strong>Annulus of Zinn</strong> (tendinous ring at the very back of the orbits) or the oblique origin structures to trace muscle origins.
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-blue-50/30 dark:bg-blue-900/10 border border-blue-200/80 dark:border-blue-800/40 rounded-2xl shadow-xs overflow-hidden mt-4">
+                        <button onclick="toggleMuscleActions()" class="w-full flex items-center justify-between p-4 bg-white/50 dark:bg-slate-800/50 hover:bg-blue-100/50 dark:hover:bg-blue-900/50 transition">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-table-list text-blue-600 dark:text-blue-400"></i>
+                                <h4 class="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Clinical Muscle Actions</h4>
+                            </div>
+                            <i id="muscle-actions-icon" class="fa-solid fa-chevron-down text-slate-500 transition-transform"></i>
+                        </button>
+                        <div id="muscle-actions-content" class="hidden p-4 border-t border-blue-100 dark:border-blue-800/50">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse text-[10px]">
+                                    <thead>
+                                        <tr><th colspan="4" class="text-[9px] text-blue-500 dark:text-blue-400 font-semibold pb-2"><i class="fa-solid fa-hand-pointer mr-1"></i> Click an action button below to simulate its movement and isolate all contributing muscles (Primarily, Secondarily, Tertiarily) in 3D</th></tr>
+                                        <tr class="text-slate-500 dark:text-slate-400 border-b border-blue-200 dark:border-blue-800">
+                                            <th class="py-1.5 font-black uppercase tracking-wider">Muscle</th>
+                                            <th class="py-1.5 font-black uppercase tracking-wider">Primary Action</th>
+                                            <th class="py-1.5 font-black uppercase tracking-wider">Secondary</th>
+                                            <th class="py-1.5 font-black uppercase tracking-wider">Tertiary</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="text-slate-700 dark:text-slate-300">
+                                        <tr class="transition group border-b border-blue-100/30 dark:border-blue-800/30">
+                                            <td class="py-2.5 px-1 font-bold text-slate-800 dark:text-slate-200">Medial Rectus (MR)</td>
+                                            <td class="py-2.5">
+                                                <button data-action="Adduction" onclick="simulateActionGroup('Adduction')" class="action-sim-btn px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-extrabold text-[9px] uppercase tracking-wider rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all active:scale-95 shadow-sm">Adduction</button>
+                                            </td>
+                                            <td class="py-2.5 text-slate-500 dark:text-slate-400">-</td>
+                                            <td class="py-2.5 text-slate-500 dark:text-slate-400">-</td>
+                                        </tr>
+                                        <tr class="transition group border-b border-blue-100/30 dark:border-blue-800/30">
+                                            <td class="py-2.5 px-1 font-bold text-slate-800 dark:text-slate-200">Lateral Rectus (LR)</td>
+                                            <td class="py-2.5">
+                                                <button data-action="Abduction" onclick="simulateActionGroup('Abduction')" class="action-sim-btn px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-extrabold text-[9px] uppercase tracking-wider rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all active:scale-95 shadow-sm">Abduction</button>
+                                            </td>
+                                            <td class="py-2.5 text-slate-500 dark:text-slate-400">-</td>
+                                            <td class="py-2.5 text-slate-500 dark:text-slate-400">-</td>
+                                        </tr>
+                                        <tr class="transition group border-b border-blue-100/30 dark:border-blue-800/30">
+                                            <td class="py-2.5 px-1 font-bold text-slate-800 dark:text-slate-200">Superior Rectus (SR)</td>
+                                            <td class="py-2.5">
+                                                <button data-action="Elevation" onclick="simulateActionGroup('Elevation')" class="action-sim-btn px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-extrabold text-[9px] uppercase tracking-wider rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all active:scale-95 shadow-sm">Elevation (73%)</button>
+                                            </td>
+                                            <td class="py-2.5 text-slate-600 dark:text-slate-400 font-medium">Intorsion (~20%)</td>
+                                            <td class="py-2.5 text-slate-600 dark:text-slate-400 font-medium">Adduction (~7%)</td>
+                                        </tr>
+                                        <tr class="transition group border-b border-blue-100/30 dark:border-blue-800/30">
+                                            <td class="py-2.5 px-1 font-bold text-slate-800 dark:text-slate-200">Inferior Rectus (IR)</td>
+                                            <td class="py-2.5">
+                                                <button data-action="Depression" onclick="simulateActionGroup('Depression')" class="action-sim-btn px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-extrabold text-[9px] uppercase tracking-wider rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all active:scale-95 shadow-sm">Depression (73%)</button>
+                                            </td>
+                                            <td class="py-2.5 text-slate-600 dark:text-slate-400 font-medium">Extorsion (~20%)</td>
+                                            <td class="py-2.5 text-slate-600 dark:text-slate-400 font-medium">Adduction (~7%)</td>
+                                        </tr>
+                                        <tr class="transition group border-b border-blue-100/30 dark:border-blue-800/30">
+                                            <td class="py-2.5 px-1 font-bold text-slate-800 dark:text-slate-200">Superior Oblique (SO)</td>
+                                            <td class="py-2.5">
+                                                <button data-action="Intorsion" onclick="simulateActionGroup('Intorsion')" class="action-sim-btn px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-extrabold text-[9px] uppercase tracking-wider rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all active:scale-95 shadow-sm">Intorsion (58%)</button>
+                                            </td>
+                                            <td class="py-2.5 text-slate-600 dark:text-slate-400 font-medium">Depression (~42%)</td>
+                                            <td class="py-2.5 text-slate-600 dark:text-slate-400 font-medium">Abduction (~5%)</td>
+                                        </tr>
+                                        <tr class="transition group text-xs">
+                                            <td class="py-2.5 px-1 font-bold text-slate-800 dark:text-slate-200">Inferior Oblique (IO)</td>
+                                            <td class="py-2.5">
+                                                <button data-action="Extorsion" onclick="simulateActionGroup('Extorsion')" class="action-sim-btn px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-extrabold text-[9px] uppercase tracking-wider rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all active:scale-95 shadow-sm">Extorsion (58%)</button>
+                                            </td>
+                                            <td class="py-2.5 text-slate-600 dark:text-slate-400 font-medium">Elevation (~42%)</td>
+                                            <td class="py-2.5 text-slate-600 dark:text-slate-400 font-medium">Abduction (~5%)</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <p class="text-[8.5px] text-slate-500 mt-2 italic">* Data referenced from AAO, AOA &amp; EyeWiki clinical guidelines. Note: Vector percentages are normalized clinical approximations.</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 2. INSERTION ANGLES CONTENT PANEL -->
+                <div id="panel-angles" class="space-y-4 hidden">
+                    <section class="bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-900 rounded-2xl p-4 shadow-xs">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                            <h4 class="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Visual Pull Axes &amp; Insertion Distances</h4>
+                        </div>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
+                            The 3D model visualizes the <strong>23°</strong> and <strong>51°</strong> pull angles relative to the visual axis. The 4 recti attach anteriorly and originate at the <strong>Annulus of Zinn</strong> at the apex.
+                        </p>
+                        
+                        <div class="space-y-2">
+                            <div class="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
+                                <span class="font-bold text-slate-700 dark:text-slate-300">Medial Rectus (MR)</span>
+                                <span class="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono text-slate-500">5.5mm from limbus</span>
+                            </div>
+                            <div class="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
+                                <span class="font-bold text-slate-700 dark:text-slate-300">Inferior Rectus (IR)</span>
+                                <span class="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono text-slate-500">6.5mm / 23° pull</span>
+                            </div>
+                            <div class="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
+                                <span class="font-bold text-slate-700 dark:text-slate-300">Lateral Rectus (LR)</span>
+                                <span class="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono text-slate-500">6.9mm from limbus</span>
+                            </div>
+                            <div class="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
+                                <span class="font-bold text-slate-700 dark:text-slate-300">Superior Rectus (SR)</span>
+                                <span class="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono text-slate-500">7.7mm / 23° pull</span>
+                            </div>
+                            
+                            <div class="p-2.5 bg-slate-100 dark:bg-slate-950 rounded-xl border border-dashed border-emerald-500/50 p-3 mt-2 text-[10.5px] leading-relaxed text-slate-600 dark:text-slate-400 space-y-2">
+                                <div>
+                                    <span class="font-extrabold text-emerald-600 dark:text-emerald-400 block mb-0.5">THE COMMON TENDINOUS RING:</span>
+                                    The <strong>Annulus of Zinn</strong> serves as the common muscular origin for the 4 recti. It encircles the optic canal and the medial portion of the superior orbital fissure.
+                                </div>
+                                <div class="border-t border-slate-200 dark:border-slate-800 pt-2">
+                                    <span class="font-extrabold text-emerald-600 dark:text-emerald-400 block mb-0.5">OBLIQUE MUSCLE ORIGINS:</span>
+                                    • <strong>Superior Oblique:</strong> Originates superior and medial to the optic canal on the body of the sphenoid bone.<br>
+                                    • <strong>Inferior Oblique:</strong> Originates from the anteromedial floor of the orbit (maxillary bone).
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 3. MOVEMENT CONTROLS PANEL (DIRECTIONS SIMULATOR) -->
+                <div id="movement-controls" class="space-y-5 hidden">
+                    <section class="bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-900 rounded-2xl p-4 shadow-xs space-y-4">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+                            <h4 class="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Kinematic Simulator</h4>
+                        </div>
+                        
+                        <div>
+                            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2.5">Simulation Mode</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="setMode('binocular')" id="mode-binocular" class="mode-btn py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-[11px] font-bold border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300 active-btn-indigo">Binocular</button>
+                                <button onclick="setMode('monocular')" id="mode-monocular" class="mode-btn py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-[11px] font-bold border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300">Monocular</button>
+                            </div>
+                        </div>
+
+                        <div id="monocular-select" class="hidden">
+                            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2.5">Active Eye</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="setActiveEye('OD')" id="eye-OD" class="eye-btn py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-[11px] font-bold border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300 active-btn-indigo">Right (OD)</button>
+                                <button onclick="setActiveEye('OS')" id="eye-OS" class="eye-btn py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-[11px] font-bold border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300">Left (OS)</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between mb-2 px-1">
+                                <span id="label-right" class="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Dextro (Right)</span>
+                                <span id="label-left" class="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Levo (Left)</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button onclick="setGaze('up-dextro')" id="btn-up-dextro" class="cardinal-btn"><div class="arrow-box">↖</div></button>
+                                <button onclick="setGaze('up')" id="btn-up" class="cardinal-btn"><div class="arrow-box">↑</div></button>
+                                <button onclick="setGaze('up-levo')" id="btn-up-levo" class="cardinal-btn"><div class="arrow-box">↗</div></button>
+                                
+                                <button onclick="setGaze('dextro')" id="btn-dextro" class="cardinal-btn"><div class="arrow-box">←</div></button>
+                                <button onclick="setGaze('primary')" id="btn-primary" class="rounded-xl bg-indigo-600 text-white text-[11px] font-black uppercase active-btn-indigo shadow-lg shadow-indigo-100">Center</button>
+                                <button onclick="setGaze('levo')" id="btn-levo" class="cardinal-btn"><div class="arrow-box">→</div></button>
+                                
+                                <button onclick="setGaze('down-dextro')" id="btn-down-dextro" class="cardinal-btn"><div class="arrow-box">↙</div></button>
+                                <button onclick="setGaze('down')" id="btn-down" class="cardinal-btn"><div class="arrow-box">↓</div></button>
+                                <button onclick="setGaze('down-levo')" id="btn-down-levo" class="cardinal-btn"><div class="arrow-box">↘</div></button>
+                            </div>
+                        </div>
+
+                        <div id="vergence-section">
+                            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2.5">Vergence</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="setGaze('convergence')" id="btn-convergence" class="py-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 text-[11px] font-black border border-indigo-100 dark:border-indigo-900/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 transition">Convergence</button>
+                                <button onclick="setGaze('divergence')" id="btn-divergence" class="py-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 text-[11px] font-black border border-indigo-100 dark:border-indigo-900/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 transition">Divergence</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 id="torsion-label" class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2.5">Cycloversion</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="setGaze('torsion-left')" id="btn-torsion-left" class="py-3 rounded-xl bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 text-[11px] font-black border border-cyan-100 dark:border-cyan-900/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/80 transition">Levocyclo</button>
+                                <button onclick="setGaze('torsion-right')" id="btn-torsion-right" class="py-3 rounded-xl bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 text-[11px] font-black border border-cyan-100 dark:border-cyan-900/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/80 transition">Dextrocyclo</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 4. CRANIAL NERVES CONTENT PANEL -->
+                <div id="panel-nerves" class="space-y-4 hidden">
+                    <section class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-4 rounded-2xl space-y-3 shadow-xs">
+                        <div>
+                            <h3 class="text-[10px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-[0.2em] flex items-center gap-1.5">
+                                <i class="fa-solid fa-project-diagram text-amber-500"></i> Highlight Nerve Supply
+                            </h3>
+                            <p class="text-[9px] text-slate-500 dark:text-slate-400 mt-1">Select a Cranial Nerve to trace its pathway and supplied Extraocular Muscles.</p>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button onclick="toggleNerveHighlight('CN III')" id="btn-hn-CNIII" class="py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200">CN III (Oculomotor)</button>
+                            <button onclick="toggleNerveHighlight('CN IV')" id="btn-hn-CNIV" class="py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200">CN IV (Trochlear)</button>
+                            <button onclick="toggleNerveHighlight('CN VI')" id="btn-hn-CNVI" class="py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200">CN VI (Abducens)</button>
+                        </div>
+                    </section>
+
+                    <section class="bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-900 rounded-2xl p-4 shadow-xs">
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                <h4 class="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Cranial Nerve Palsy Tester</h4>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Clinical motor systems correspond to the classic anatomical rule of thumb: <strong>LR₆SO₄(All Others)₃</strong>.
+                            </p>
+                            
+                            <div class="space-y-2.5">
+                                <div onclick="toggleCranialNervePalsy('CN III')" id="card-CNIII" class="cursor-pointer bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-amber-300 transition flex items-start gap-2.5 shadow-xs">
+                                    <div class="w-5 h-5 rounded-md bg-amber-500 text-white font-extrabold text-[9px] flex items-center justify-center mt-0.5">III</div>
+                                    <div class="flex-1">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-bold text-slate-800 dark:text-slate-200 text-[11px]">CN III (Oculomotor)</span>
+                                            <span class="text-[8px] bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-md font-bold uppercase">Agonist Deficit</span>
+                                        </div>
+                                        <p class="text-[9.5px] text-slate-400 dark:text-slate-500 mt-0.5">Supplies: MR, SR, IR, IO</p>
+                                        <p class="text-[9px] text-amber-700 dark:text-amber-400 font-semibold mt-1" id="palsy-text-CNIII">Palsy: "Down &amp; Out" eye deviation, complete ptosis, pupillary dilation.</p>
+                                    </div>
+                                </div>
+                                <div onclick="toggleCranialNervePalsy('CN IV')" id="card-CNIV" class="cursor-pointer bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-amber-300 transition flex items-start gap-2.5 shadow-xs">
+                                    <div class="w-5 h-5 rounded-md bg-amber-500 text-white font-extrabold text-[9px] flex items-center justify-center mt-0.5">IV</div>
+                                    <div class="flex-1">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-bold text-slate-800 dark:text-slate-200 text-[11px]">CN IV (Trochlear)</span>
+                                            <span class="text-[8px] bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-md font-bold uppercase">SO Deficit</span>
+                                        </div>
+                                        <p class="text-[9.5px] text-slate-400 dark:text-slate-500 mt-0.5">Supplies: Superior Oblique (SO)</p>
+                                        <p class="text-[9px] text-amber-700 dark:text-amber-400 font-semibold mt-1" id="palsy-text-CNIV">Palsy: Vertical diplopia, eye elevated on adduction, compensatory head tilt.</p>
+                                    </div>
+                                </div>
+                                <div onclick="toggleCranialNervePalsy('CN VI')" id="card-CNVI" class="cursor-pointer bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-amber-300 transition flex items-start gap-2.5 shadow-xs">
+                                    <div class="w-5 h-5 rounded-md bg-amber-500 text-white font-extrabold text-[9px] flex items-center justify-center mt-0.5">VI</div>
+                                    <div class="flex-1">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-bold text-slate-800 dark:text-slate-200 text-[11px]">CN VI (Abducens)</span>
+                                            <span class="text-[8px] bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-md font-bold uppercase">LR Deficit</span>
+                                        </div>
+                                        <p class="text-[9.5px] text-slate-400 dark:text-slate-500 mt-0.5">Supplies: Lateral Rectus (LR)</p>
+                                        <p class="text-[9px] text-amber-700 dark:text-amber-400 font-semibold mt-1" id="palsy-text-CNVI">Palsy: Complete failure to abduct the eye, marked Esotropia in primary position.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 5. LAWS OF MOTILITY CONTENT PANEL -->
+                <div id="panel-laws" class="space-y-4 hidden">
+                    <section class="bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-900 rounded-2xl p-4 shadow-xs">
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                                <h4 class="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Clinical Relationships &amp; Laws</h4>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Select a clinical relationship below to visualize physiological mechanisms on the 3D model.
+                            </p>
+                            
+                            <div class="space-y-2.5 mt-2">
+                                <div onclick="simulateLaw('sherrington')" id="card-law-sherrington" class="cursor-pointer bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-purple-400 transition shadow-xs">
+                                    <h5 class="font-bold text-slate-800 dark:text-slate-200 text-[11px] mb-1">1. Agonist &amp; Antagonist (Sherrington's Law)</h5>
+                                    <p class="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                        Reciprocal innervation: Increased innervation to an agonist (OD LR) causes proportional decreased innervation to its direct antagonist (OD MR).
+                                    </p>
+                                    <div class="mt-2 text-[8.5px] font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-wider"><i class="fa-solid fa-eye mr-1"></i> Simulating: OD Abduction</div>
+                                </div>
+                                
+                                <div onclick="simulateLaw('hering')" id="card-law-hering" class="cursor-pointer bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-purple-400 transition shadow-xs">
+                                    <h5 class="font-bold text-slate-800 dark:text-slate-200 text-[11px] mb-1">2. Yoke Muscles (Hering's Law)</h5>
+                                    <p class="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                        Equal innervation: Contralateral synergists (e.g., OD LR &amp; OS MR) receive equal and simultaneous innervation during conjugate gaze.
+                                    </p>
+                                    <div class="mt-2 text-[8.5px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider"><i class="fa-solid fa-eye mr-1"></i> Simulating: Dextroversion</div>
+                                </div>
+                                
+                                <div onclick="simulateLaw('synergist')" id="card-law-synergist" class="cursor-pointer bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-purple-400 transition shadow-xs">
+                                    <h5 class="font-bold text-slate-800 dark:text-slate-200 text-[11px] mb-1">3. Ipsilateral Synergists</h5>
+                                    <p class="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                        Muscles in the same eye that act together to produce a specific movement (e.g., OD Superior Rectus and OD Inferior Oblique both elevate).
+                                    </p>
+                                    <div class="mt-2 text-[8.5px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider"><i class="fa-solid fa-eye mr-1"></i> Simulating: OD Elevation</div>
+                                </div>
+
+                                <div onclick="simulateLaw('listing')" id="card-law-listing" class="cursor-pointer bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-purple-400 transition shadow-xs">
+                                    <h5 class="font-bold text-slate-800 dark:text-slate-200 text-[11px] mb-1">4. Donder's &amp; Listing's Laws</h5>
+                                    <p class="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed mb-1">
+                                        <strong>Donder's:</strong> Torsional position is fixed for any gaze direction.
+                                    </p>
+                                    <p class="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                        <strong>Listing's:</strong> Rotations occur around an axis in Listing's equatorial plane.
+                                    </p>
+                                    <div class="mt-2 text-[8.5px] font-bold text-amber-500 dark:text-amber-500 uppercase tracking-wider"><i class="fa-solid fa-eye mr-1"></i> Simulating: Tertiary Gaze via Listing's Plane</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 6. CLINICAL EXAM / QUIZ PANEL -->
+                <div id="panel-quiz" class="space-y-4 hidden">
+                    <section class="bg-rose-50/40 dark:bg-rose-950/10 border border-rose-200 dark:border-rose-900 p-4 rounded-2xl space-y-4 shadow-sm">
+                        <div class="flex items-center justify-between pb-2 border-b border-rose-200/50 dark:border-rose-900/50">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-rose-600 animate-pulse"></span>
+                                <h4 class="text-xs font-black text-rose-700 dark:text-rose-400 uppercase tracking-wider">Clinical Board Exam</h4>
+                            </div>
+                            <span id="quiz-score-badge" class="px-2 py-0.5 rounded bg-rose-200 dark:bg-rose-900 text-rose-800 dark:text-rose-200 font-mono text-[10px] font-bold">Score: 0/5</span>
+                        </div>
+
+                        <!-- Question Screen -->
+                        <div id="quiz-question-container" class="space-y-3">
+                            <p class="text-[10px] uppercase font-mono tracking-wider text-slate-400" id="quiz-q-index">Question 1 of 5</p>
+                            <p class="text-[12px] font-bold text-slate-800 dark:text-slate-100 leading-relaxed" id="quiz-question-text">
+                                Which of the following extraocular muscles does NOT originate from the common tendinous ring (Annulus of Zinn)?
+                            </p>
+                            
+                            <div class="space-y-1.5" id="quiz-options-container">
+                                <!-- Options injected dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Quiz Action Button / Feedback -->
+                        <div id="quiz-feedback" class="hidden p-3 rounded-xl text-[11px] font-semibold"></div>
+                        <button onclick="nextQuizQuestion()" id="quiz-action-btn" class="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs uppercase tracking-wide transition shadow-md shadow-rose-200 dark:shadow-none hidden">
+                            Next Question <i class="fa-solid fa-arrow-right ml-1"></i>
+                        </button>
+                    </section>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3.5 shadow-xs transition-colors duration-500">
+                    <div>
+                        <h3 class="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-list-check text-secondary"></i> Training Course &amp; Simulators
+                        </h3>
+                        <p class="text-[10px] text-slate-500 dark:text-slate-400">Launch sub-files and pass the exam to complete training modules.</p>
+                    </div>
+
+                    <div class="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                        <!-- EOM Simulator -->
+                        <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-700/80 transition text-xs">
+                            <div class="flex items-center gap-2 truncate pr-2">
+                                <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-500 flex-shrink-0" id="icon-EOM"></i>
+                                <div class="truncate">
+                                    <p class="font-extrabold text-slate-800 dark:text-slate-100 truncate">EOM Simulator</p>
+                                </div>
+                            </div>
+                            <button onclick="simulateLaunch('EOM')" class="px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-secondary dark:text-blue-400 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</button>
+                        </div>
+                        <!-- H-Pattern Simulator -->
+                        <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-700/80 transition text-xs">
+                            <div class="flex items-center gap-2 truncate pr-2">
+                                <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-500 flex-shrink-0" id="icon-H-Pattern"></i>
+                                <div class="truncate">
+                                    <p class="font-extrabold text-slate-800 dark:text-slate-100 truncate">H-Pattern Simulator</p>
+                                </div>
+                            </div>
+                            <button onclick="simulateLaunch('H_Pattern')" class="px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-secondary dark:text-blue-400 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</button>
+                        </div>
+                        <!-- Parks & 3 Steps -->
+                        <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-700/80 transition text-xs">
+                            <div class="flex items-center gap-2 truncate pr-2">
+                                <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-500 flex-shrink-0" id="icon-Park-3-steps"></i>
+                                <div class="truncate">
+                                    <p class="font-extrabold text-slate-800 dark:text-slate-100 truncate">Parks &amp; 3 Steps</p>
+                                </div>
+                            </div>
+                            <button onclick="simulateLaunch('Park_3_steps')" class="px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-secondary dark:text-blue-400 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</button>
+                        </div>
+                        <!-- Saccades Simulator -->
+                        <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-700/80 transition text-xs">
+                            <div class="flex items-center gap-2 truncate pr-2">
+                                <i class="fa-solid fa-circle-play text-slate-400 dark:text-slate-500 flex-shrink-0" id="icon-Saccades"></i>
+                                <div class="truncate">
+                                    <p class="font-extrabold text-slate-800 dark:text-slate-100 truncate">Saccades Simulator</p>
+                                </div>
+                            </div>
+                            <button onclick="simulateLaunch('Saccades')" class="px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-secondary dark:text-blue-400 hover:bg-secondary hover:text-white font-extrabold text-[10px] uppercase tracking-wider transition">Launch</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="mt-auto p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 shrink-0">
+                <div class="space-y-1">
+                    <p class="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em]">Course Director</p>
+                    <h4 class="text-xs font-black text-slate-900 dark:text-white">Shivashangari M</h4>
+                    <p class="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase">Asst. Professor | Department of Optometry</p>
+                </div>
+            </footer>
+        </aside>
+    </main>
+
+    <!-- MODALS CONTAINER -->
+    <div id="aboutModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200 transition-colors duration-500">
+            <button onclick="closeMenuModal('about')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:hover:bg-slate-700 transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-secondary"><i class="fa-solid fa-graduation-cap text-lg"></i></div>
+                <div>
+                    <h3 class="text-md font-bold text-slate-900 dark:text-white">About SAHS-E-LAB</h3>
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400">Vinayaka Mission's Research Foundation</p>
+                </div>
+            </div>
+            <p class="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+                The <strong>SAHS-E-LAB Ocular Motility Module</strong> supports clinical optometry students in studying extraocular muscle kinematics, visual axes configuration, cranial nerve supplies, motility laws, and the complex anatomy of the orbital apex tendinous ring (Annulus of Zinn).
+            </p>
+        </div>
+    </div>
+
+    <div id="referenceModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-slate-800 dark:text-slate-200 transition-colors duration-500">
+            <button onclick="closeMenuModal('reference')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div class="flex items-center gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div class="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950 flex items-center justify-center text-teal-600"><i class="fa-solid fa-book text-lg"></i></div>
+                <div>
+                    <h3 class="text-md font-bold text-slate-900 dark:text-white">Clinical Reference Manual</h3>
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400">Department of Optometry, SAHS</p>
+                </div>
+            </div>
+            <div class="text-xs space-y-2 max-h-[300px] overflow-y-auto pr-1 leading-relaxed text-slate-600 dark:text-slate-400">
+                <p><strong>Common Tendinous Ring (Annulus of Zinn)</strong></p>
+                <p class="bg-slate-50 dark:bg-slate-950 p-2 rounded">
+                    A circular fibrous ring positioned at the orbital apex surrounding the optic canal. It acts as the common muscular origin for all four recti muscles.
+                </p>
+                <p><strong>Oblique Muscle Origins</strong></p>
+                <p class="bg-slate-50 dark:bg-slate-950 p-2 rounded">
+                    • <strong>Superior Oblique (SO)</strong> originates from the sphenoid bone body superomedial to the optic canal.<br>
+                    • <strong>Inferior Oblique (IO)</strong> originates on the anterior orbital floor of the maxilla bone, making it unique as it does not originate at the deep orbital apex.
+                </p>
+                <p><strong>Cranial Nerve Formula</strong></p>
+                <p class="bg-slate-50 dark:bg-slate-950 p-2 rounded">
+                    <strong>LR₆SO₄(All Others)₃:</strong> Lateral Rectus is innervated by Cranial Nerve VI (Abducens). Superior Oblique is innervated by Cranial Nerve IV (Trochlear). All other muscles (SR, IR, MR, IO) are innervated by Cranial Nerve III (Oculomotor).
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls, raycaster, mouse;
+        let leftEye, rightEye;
+        let leftMuscles = {}, rightMuscles = {};
+        let leftAnnulusMesh, rightAnnulusMesh;
+        let muscleObjects = []; 
+        let targetRotL = new THREE.Euler(0, 0, 0);
+        let targetRotR = new THREE.Euler(0, 0, 0);
+        let currentMode = 'binocular';
+        let activeEye = 'OD';
+        let currentGazeKey = 'primary';
+        let hoveredMuscleRef = null;
+        let hoveredFromLabel = null;
+        
+        let activeActionGroup = null;
+        let activeLaw = null;
+        let manualMuscleHighlight = null;
+        let activeNerveHighlight = null;
+
+        let currentViewMode = 'muscles'; 
+        let leftScleraMesh, rightScleraMesh;
+        let leftCorneaMesh, rightCorneaMesh;
+        let leftPupilMesh, rightPupilMesh; 
+        let leftPlane, rightPlane; 
+        let nerveObjects = [];
+        let leftNerves = {}, rightNerves = {};
+        let axisIndicators = [];
+        let hoveredNerveInfo = null;
+        let hoveredFromNerveLabel = null;
+        let activePalsyNerve = null;
+
+        const muscleInfo = {
+            'MR': { name: 'Medial Rectus', color: 0x9e1a1a },
+            'LR': { name: 'Lateral Rectus', color: 0x9e1a1a },
+            'SR': { name: 'Superior Rectus', color: 0x9e1a1a },
+            'IR': { name: 'Inferior Rectus', color: 0x9e1a1a },
+            'SO': { name: 'Superior Oblique', color: 0x7a1818 },
+            'IO': { name: 'Inferior Oblique', color: 0x7a1818 }
+        };
+
+        const clinicalActionGroups = {
+            'Adduction': { gaze: 'levo', roles: { 'MR': 'Primarily (100%)', 'SR': 'Tertiarily (~15%)', 'IR': 'Tertiarily (~15%)' } },
+            'Abduction': { gaze: 'dextro', roles: { 'LR': 'Primarily (100%)', 'SO': 'Tertiarily (~15%)', 'IO': 'Tertiarily (~15%)' } },
+            'Elevation': { gaze: 'up', roles: { 'SR': 'Primarily (73%)', 'IO': 'Secondarily (27%)' } },
+            'Depression': { gaze: 'down', roles: { 'IR': 'Primarily (73%)', 'SO': 'Secondarily (27%)' } },
+            'Intorsion': { gaze: 'torsion-left', roles: { 'SO': 'Primarily (58%)', 'SR': 'Secondarily (42%)' } },
+            'Extorsion': { gaze: 'torsion-right', roles: { 'IO': 'Primarily (58%)', 'IR': 'Secondarily (42%)' } }
+        };
+
+        const nerveSupplyMap = { 'CN III': ['MR', 'SR', 'IR', 'IO'], 'CN IV': ['SO'], 'CN VI': ['LR'] };
+
+        const config = {
+            'primary': { label: 'Primary Position', L: [0,0,0], R: [0,0,0], odPri: 'None', odSec: 'None', osPri: 'None', osSec: 'None' },
+            'dextro': { label: 'Dextroversion', L: [0, -0.6, 0], R: [0, -0.6, 0], odPri: 'Lateral Rectus', odSec: 'None', osPri: 'Medial Rectus', osSec: 'None' },
+            'levo': { label: 'Levoversion', L: [0, 0.6, 0], R: [0, 0.6, 0], odPri: 'Medial Rectus', odSec: 'None', osPri: 'Lateral Rectus', osSec: 'None' },
+            'up': { label: 'Supraversion', L: [-0.45, 0, 0], R: [-0.45, 0, 0], odPri: 'Superior Rectus', odSec: 'Inferior Oblique', osPri: 'Superior Rectus', osSec: 'Inferior Oblique' },
+            'down': { label: 'Infraversion', L: [0.45, 0, 0], R: [0.45, 0, 0], odPri: 'Inferior Rectus', odSec: 'Superior Oblique', osPri: 'Inferior Rectus', osSec: 'Superior Oblique' },
+            'up-dextro': { label: 'Dextroelevation', L: [-0.4, -0.5, 0.15], R: [-0.4, -0.5, -0.15], odPri: 'Superior Rectus', odSec: 'None', osPri: 'Inferior Oblique', osSec: 'None' },
+            'down-dextro': { label: 'Dextrodepression', L: [0.4, -0.5, -0.15], R: [0.4, -0.5, 0.15], odPri: 'Inferior Rectus', odSec: 'None', osPri: 'Superior Oblique', osSec: 'None' },
+            'up-levo': { label: 'Levoelevation', L: [-0.4, 0.5, -0.15], R: [-0.4, 0.5, 0.15], odPri: 'Inferior Oblique', odSec: 'None', osPri: 'Superior Rectus', osSec: 'None' },
+            'down-levo': { label: 'Levodepression', L: [0.4, 0.5, 0.15], R: [0.4, 0.5, -0.15], odPri: 'Superior Oblique', odSec: 'None', osPri: 'Inferior Rectus', osSec: 'None' },
+            'convergence': { label: 'Convergence', L: [0, -0.6, 0], R: [0, 0.6, 0], odPri: 'Medial Rectus', odSec: 'None', osPri: 'Medial Rectus', osSec: 'None' },
+            'divergence': { label: 'Divergence', L: [0, 0.4, 0], R: [0, -0.4, 0], odPri: 'Lateral Rectus', odSec: 'None', osPri: 'Lateral Rectus', osSec: 'None' }
+        };
+
+        const quizQuestions = [
+            {
+                question: "Which of the following extraocular muscles does NOT originate from the common tendinous ring (Annulus of Zinn)?",
+                options: ["Superior Rectus (SR)", "Lateral Rectus (LR)", "Inferior Oblique (IO)", "Medial Rectus (MR)"],
+                correctIndex: 2,
+                anatomyFocus: "IO",
+                explanation: "The Inferior Oblique originates from the anterior medial aspect of the orbital floor (lacrimal fossa), unlike the recti."
+            },
+            {
+                question: "An Oculomotor Nerve (CN III) palsy usually produces which distinctive resting pupil and alignment deviation?",
+                options: ["Restricted abduction only", "Mydriasis (dilated pupil) & 'Down & Out' alignment", "Inward esotropia with normal pupil size", "Head tilt toward the opposite shoulder"],
+                correctIndex: 1,
+                anatomyFocus: "CN III",
+                explanation: "CN III supplies pupillary constrictors and 4 EOMs. Its palsy releases lateral rectus and superior oblique, drifting the eye down and out."
+            },
+            {
+                question: "To test the Superior Oblique muscle's primary action in 3D, which clinical movement is correct?",
+                options: ["Pure Abduction", "Elevation in abduction", "Intorsion / Depression in adduction", "Pure Adduction"],
+                correctIndex: 2,
+                anatomyFocus: "SO",
+                explanation: "The Superior Oblique's secondary pull results in depression once the eye is fully adducted."
+            },
+            {
+                question: "Which of the following is the yoke pair (Hering's Law) active during dextroversion (gaze to patient's right)?",
+                options: ["OD Lateral Rectus and OS Medial Rectus", "OD Medial Rectus and OS Lateral Rectus", "OD Superior Rectus and OS Inferior Oblique", "OD Inferior Rectus and OS Superior Oblique"],
+                correctIndex: 0,
+                anatomyFocus: "LR",
+                explanation: "Dextroversion pairs the Right Lateral Rectus (OD LR) with the Left Medial Rectus (OS MR) to move both eyes to the right."
+            },
+            {
+                question: "From where does the Inferior Oblique muscle anatomically originate?",
+                options: ["Common Tendinous Ring (Annulus of Zinn)", "Anteromedial Maxillary Orbital Floor", "Sphenoid Bone Body", "Trochlea loop of the superior orbital border"],
+                correctIndex: 1,
+                anatomyFocus: "IO_Origin",
+                explanation: "Unlike the other extraocular muscles which arise from the deep apex of the orbit, the Inferior Oblique arises from a shallow depression on the maxillary orbital floor anteriorly."
+            }
+        ];
+
+        let quizState = {
+            currentIdx: 0,
+            score: 0,
+            answered: false
+        };
+
+        function updateCompletionProgress() {
+            let totalCompleted = 0;
+            Object.values(hubState.completedSimulators).forEach(status => {
+                if (status === true) totalCompleted++;
+            });
+            document.getElementById('progressIndicator').innerText = `${totalCompleted} / 5 Labs Completed`;
+        }
+
+        function simulateLaunch(simId) {
+            playAudioTone(640, 'triangle', 0.15, 0.05);
+            hubState.completedSimulators[simId] = true;
+            const icon = document.getElementById(`icon-${simId.replace(/_/g, '-')}`);
+            if (icon) {
+                icon.className = "fa-solid fa-circle-check text-emerald-500 flex-shrink-0";
+            }
+            updateCompletionProgress();
+            
+            const notify = document.createElement('div');
+            notify.className = "fixed bottom-5 left-5 bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-2xl z-[999] border border-white/15 flex items-center gap-2";
+            notify.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i> Simulated ${simId.replace(/_/g, ' ')} Launch successfully completed.`;
+            document.body.appendChild(notify);
+            setTimeout(() => notify.remove(), 3200);
+        }
+
+        function toggleNerveHighlight(cnName) {
+            playAudioTone(580, 'sine', 0.1, 0.05);
+            activeNerveHighlight = (activeNerveHighlight === cnName) ? null : cnName;
+
+            ['CN III', 'CN IV', 'CN VI'].forEach(name => {
+                const idName = name.replace(' ', '');
+                const btn = document.getElementById(`btn-hn-${idName}`);
+                if (btn) {
+                    if (name === activeNerveHighlight) {
+                        btn.className = "py-2 rounded-lg text-[10px] font-extrabold transition-all text-white bg-amber-500 border border-amber-500 shadow-md";
+                    } else {
+                        btn.className = "py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200";
+                    }
+                }
+            });
+            updateFloatingLabelsVisibility();
+        }
+
+        function toggleMuscleHighlight(id) {
+            playAudioTone(580, 'sine', 0.1, 0.05);
+            manualMuscleHighlight = (manualMuscleHighlight === id) ? null : id;
+
+            // Highlight basic muscles
+            Object.keys(muscleInfo).forEach(key => {
+                const btn = document.getElementById(`btn-hl-${key}`);
+                if (btn) {
+                    if (key === manualMuscleHighlight) {
+                        btn.className = "py-2 rounded-lg text-[10px] font-extrabold transition-all text-white bg-blue-600 border border-blue-600 shadow-md";
+                    } else {
+                        btn.className = "py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200";
+                    }
+                }
+            });
+            
+            // Highlight SO Origin button
+            const soOriginBtn = document.getElementById('btn-hl-SO_Origin');
+            if (soOriginBtn) {
+                if (manualMuscleHighlight === 'SO_Origin') {
+                    soOriginBtn.className = "py-2 rounded-lg text-[10px] font-extrabold transition-all text-white bg-blue-600 border border-blue-600 shadow-md";
+                } else {
+                    soOriginBtn.className = "py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200";
+                }
+            }
+
+            // Highlight IO Origin button
+            const ioOriginBtn = document.getElementById('btn-hl-IO_Origin');
+            if (ioOriginBtn) {
+                if (manualMuscleHighlight === 'IO_Origin') {
+                    ioOriginBtn.className = "py-2 rounded-lg text-[10px] font-extrabold transition-all text-white bg-blue-600 border border-blue-600 shadow-md col-span-2";
+                } else {
+                    ioOriginBtn.className = "py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200 col-span-2";
+                }
+            }
+
+            const ringBtn = document.getElementById('btn-hl-AoZ');
+            if (ringBtn) {
+                if (manualMuscleHighlight === 'AoZ') {
+                    ringBtn.className = "py-2.5 rounded-lg text-[10px] font-black transition-all text-white bg-emerald-600 border border-emerald-600 col-span-3";
+                } else {
+                    ringBtn.className = "py-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-300 dark:border-slate-700 text-[10px] font-black transition-all hover:bg-slate-100 text-slate-800 dark:text-slate-100 col-span-3";
+                }
+            }
+            updateFloatingLabelsVisibility();
+        }
+
+        function toggleMuscleActions() {
+            const content = document.getElementById('muscle-actions-content');
+            const icon = document.getElementById('muscle-actions-icon');
+            content.classList.toggle('hidden');
+            icon.style.transform = content.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+            playAudioTone(520, 'sine', 0.1, 0.05);
+        }
+
+        function simulateActionGroup(actionName) {
+            if (activeActionGroup === actionName) {
+                activeActionGroup = null;
+                setMode('binocular');
+                setGaze('primary');
+            } else {
+                activeActionGroup = actionName;
+                playAudioTone(640, 'triangle', 0.1, 0.05);
+                setMode('monocular');
+                setActiveEye('OD');
+                if (clinicalActionGroups[actionName]?.gaze) setGaze(clinicalActionGroups[actionName].gaze);
+            }
+
+            document.querySelectorAll('.action-sim-btn').forEach(btn => {
+                if (btn.dataset.action === activeActionGroup) {
+                    btn.className = "action-sim-btn px-2.5 py-1 bg-blue-600 text-white font-extrabold text-[9px] uppercase tracking-wider rounded-lg border border-blue-600 transition-all shadow-sm";
+                } else {
+                    btn.className = "action-sim-btn px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-extrabold text-[9px] uppercase tracking-wider rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white transition-all";
+                }
+            });
+            
+            if (currentViewMode !== 'muscles') setViewMode('muscles');
+            else updateFloatingLabelsVisibility();
+        }
+
+        function createScleraTexture() {
+            const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 512;
+            const ctx = canvas.getContext('2d'); ctx.fillStyle = '#fefefa'; ctx.fillRect(0, 0, 1024, 512);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createIrisTexture() {
+            const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            const cx = 512, cy = 512;
+            
+            const grad = ctx.createRadialGradient(cx, cy, 60, cx, cy, 500);
+            grad.addColorStop(0, '#020b14'); 
+            grad.addColorStop(0.15, '#4a3610'); 
+            grad.addColorStop(0.4, '#1b3b5e');  
+            grad.addColorStop(0.8, '#10253f');  
+            grad.addColorStop(1, '#050a12');    
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 1024, 1024);
+
+            ctx.lineWidth = 1.2;
+            for (let i = 0; i < 1200; i++) {
+                const angle = (Math.random() * Math.PI * 2);
+                const rStart = 80 + Math.random() * 60;
+                const rEnd = 400 + Math.random() * 90;
+                
+                ctx.beginPath();
+                ctx.moveTo(cx + Math.cos(angle) * rStart, cy + Math.sin(angle) * rStart);
+                
+                const cp1Angle = angle + (Math.random() - 0.5) * 0.25;
+                const cp2Angle = angle + (Math.random() - 0.5) * 0.25;
+                const cp1R = rStart + (rEnd - rStart) * 0.33;
+                const cp2R = rStart + (rEnd - rStart) * 0.66;
+                
+                ctx.bezierCurveTo(
+                    cx + Math.cos(cp1Angle) * cp1R, cy + Math.sin(cp1Angle) * cp1R,
+                    cx + Math.cos(cp2Angle) * cp2R, cy + Math.sin(cp2Angle) * cp2R,
+                    cx + Math.cos(angle) * rEnd, cy + Math.sin(angle) * rEnd
+                );
+
+                const alpha = 0.1 + Math.random() * 0.35;
+                if (Math.random() > 0.75) {
+                    ctx.strokeStyle = `rgba(220, 240, 255, ${alpha})`; 
+                } else if (Math.random() > 0.45) {
+                    ctx.strokeStyle = `rgba(180, 140, 60, ${alpha})`; 
+                } else {
+                    ctx.strokeStyle = `rgba(10, 20, 40, ${alpha})`; 
+                }
+                ctx.stroke();
+            }
+
+            ctx.beginPath();
+            for (let i = 0; i <= 360; i += 4) {
+                const a = i * Math.PI / 180;
+                const r = 200 + Math.sin(i * 12 * Math.PI / 180) * 18 + Math.random() * 12;
+                if (i === 0) ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+                else ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.lineWidth = 3.5;
+            ctx.strokeStyle = 'rgba(210, 170, 90, 0.35)';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, 95, 0, Math.PI * 2);
+            ctx.fillStyle = '#010204';
+            ctx.fill();
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createMuscleTexture() {
+            const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 128;
+            const ctx = canvas.getContext('2d'); ctx.fillStyle = '#8f2020'; ctx.fillRect(0, 0, 256, 128);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(4, 1);
+            return tex;
+        }
+
+        function toggleViewDropdown() {
+            document.getElementById('view-dropdown-menu').classList.toggle('hidden');
+        }
+
+        function clearInteractiveStates() {
+            activePalsyNerve = activeActionGroup = activeLaw = manualMuscleHighlight = activeNerveHighlight = null;
+            hoveredMuscleRef = null;
+            hoveredFromLabel = null;
+            hoveredNerveInfo = null;
+            hoveredFromNerveLabel = null;
+
+            document.querySelectorAll('.action-sim-btn').forEach(btn => {
+                btn.className = "action-sim-btn px-2.5 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-extrabold text-[9px] uppercase tracking-wider rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-600 hover:text-white transition-all";
+            });
+
+            ['sherrington', 'hering', 'synergist', 'listing'].forEach(l => {
+                const card = document.getElementById(`card-law-${l}`);
+                if (card) card.className = "cursor-pointer bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-purple-400 transition shadow-xs";
+            });
+
+            Object.keys(muscleInfo).forEach(key => {
+                const btn = document.getElementById(`btn-hl-${key}`);
+                if (btn) btn.className = "py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200";
+            });
+
+            const ringBtn = document.getElementById('btn-hl-AoZ');
+            if (ringBtn) {
+                ringBtn.className = "py-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-300 dark:border-slate-700 text-[10px] font-black transition-all hover:bg-slate-100 text-slate-800 dark:text-slate-100 col-span-3";
+            }
+
+            const soOriginBtn = document.getElementById('btn-hl-SO_Origin');
+            if (soOriginBtn) {
+                soOriginBtn.className = "py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200";
+            }
+
+            const ioOriginBtn = document.getElementById('btn-hl-IO_Origin');
+            if (ioOriginBtn) {
+                ioOriginBtn.className = "py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200 col-span-2";
+            }
+
+            ['CN III', 'CN IV', 'CN VI'].forEach(name => {
+                const idName = name.replace(' ', '');
+                const btn = document.getElementById(`btn-hn-${idName}`);
+                if (btn) btn.className = "py-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-extrabold transition-all hover:bg-slate-100 text-slate-700 dark:text-slate-200";
+            });
+
+            ['CN III', 'CN IV', 'CN VI'].forEach(name => {
+                const cleanCnId = name.replace(' ', '');
+                const card = document.getElementById(`card-${cleanCnId}`);
+                if (card) card.className = "cursor-pointer bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-amber-300 transition flex items-start gap-2.5 shadow-xs";
+            });
+
+            if (rightPupilMesh) rightPupilMesh.scale.setScalar(1.0);
+        }
+
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            playAudioTone(520, 'sine', 0.1, 0.05);
+
+            clearInteractiveStates();
+            
+            currentMode = 'binocular';
+            activeEye = 'OD';
+            
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active-btn-indigo'));
+            const binocBtn = document.getElementById('mode-binocular');
+            if(binocBtn) binocBtn.classList.add('active-btn-indigo');
+            
+            const monoSelect = document.getElementById('monocular-select');
+            if(monoSelect) monoSelect.classList.toggle('hidden', true);
+            
+            const vergSelect = document.getElementById('vergence-section');
+            if(vergSelect) vergSelect.classList.toggle('hidden', false);
+            
+            document.querySelectorAll('.eye-btn').forEach(b => b.classList.remove('active-btn-indigo'));
+            const eyeOdBtn = document.getElementById('eye-OD');
+            if(eyeOdBtn) eyeOdBtn.classList.add('active-btn-indigo');
+            
+            updateDuctionLabels();
+            
+            const labels = { 
+                'muscles': '<i class="fa-solid fa-eye"></i> 1. Extraocular Muscles', 
+                'angles': '<i class="fa-solid fa-compass"></i> 2. Insertion Angles &amp; Origins', 
+                'movement': '<i class="fa-solid fa-arrows-up-down-left-right"></i> 3. Movement (Simulator)', 
+                'nerves': '<i class="fa-solid fa-project-diagram"></i> 4. Cranial Nerves &amp; Palsies', 
+                'laws': '<i class="fa-solid fa-scale-balanced"></i> 5. Laws of Motility',
+                'quiz': '<i class="fa-solid fa-graduation-cap"></i> 6. Clinical Exam / Quiz'
+            };
+            const badgeColor = { 
+                'muscles': 'text-blue-600 dark:text-blue-400', 
+                'angles': 'text-emerald-600 dark:text-emerald-400', 
+                'movement': 'text-indigo-600 dark:text-indigo-400', 
+                'nerves': 'text-amber-600 dark:text-amber-500', 
+                'laws': 'text-purple-600 dark:text-purple-400',
+                'quiz': 'text-rose-600 dark:text-rose-400'
+            };
+            
+            document.getElementById('current-view-label').innerHTML = `<span class="${badgeColor[mode]} flex items-center gap-1.5 font-black">${labels[mode]}</span>`;
+            document.getElementById('view-dropdown-menu').classList.add('hidden');
+            
+            document.getElementById('panel-muscles').classList.toggle('hidden', mode !== 'muscles');
+            document.getElementById('panel-angles').classList.toggle('hidden', mode !== 'angles');
+            document.getElementById('movement-controls').classList.toggle('hidden', mode !== 'movement');
+            document.getElementById('panel-nerves').classList.toggle('hidden', mode !== 'nerves');
+            document.getElementById('panel-laws').classList.toggle('hidden', mode !== 'laws');
+            document.getElementById('panel-quiz').classList.toggle('hidden', mode !== 'quiz');
+            
+            document.getElementById('muscle-highlighter-section').classList.toggle('hidden', ['movement', 'nerves', 'laws', 'quiz'].includes(mode));
+            
+            if (leftNerves.group) leftNerves.group.visible = (mode === 'nerves');
+            if (rightNerves.group) rightNerves.group.visible = (mode === 'nerves');
+            if (leftPlane && rightPlane) leftPlane.visible = rightPlane.visible = (mode === 'laws' && activeLaw === 'listing');
+            
+            axisIndicators.forEach(ind => ind.visible = (mode === 'angles'));
+            
+            const opacityVal = (mode === 'angles') ? 0.35 : 1.0;
+            const transFlag = (mode === 'angles');
+            
+            if (leftScleraMesh) { leftScleraMesh.material.opacity = opacityVal; leftScleraMesh.material.transparent = transFlag; leftScleraMesh.material.needsUpdate = true; }
+            if (rightScleraMesh) { rightScleraMesh.material.opacity = opacityVal; rightScleraMesh.material.transparent = transFlag; rightScleraMesh.material.needsUpdate = true; }
+
+            const corneaOp = (mode === 'angles') ? 0.02 : 0.1;
+            const corneaTrans = (mode === 'angles') ? 0.0 : 0.4;
+            
+            if (leftCorneaMesh) { 
+                leftCorneaMesh.material.opacity = corneaOp; 
+                leftCorneaMesh.material.transmission = corneaTrans;
+                leftCorneaMesh.material.needsUpdate = true; 
+            }
+            if (rightCorneaMesh) { 
+                rightCorneaMesh.material.opacity = corneaOp; 
+                rightCorneaMesh.material.transmission = corneaTrans;
+                rightCorneaMesh.material.needsUpdate = true; 
+            }
+            
+            if (mode === 'angles') {
+                camera.position.set(0, 14, 0); 
+                controls.target.set(0, 0, 0); 
+                controls.update();
+            } else if (mode === 'quiz') {
+                camera.position.set(0, 4, 15);
+                controls.target.set(0, 0, 0);
+                controls.update();
+            } else {
+                camera.position.set(0, 1.5, 17);
+                controls.target.set(0, 0, 0); 
+                controls.update();
+            }
+            
+            setGaze('primary');
+            updateFloatingLabelsVisibility();
+        }
+
+        function setMode(m) {
+            currentMode = m;
+            playAudioTone(580, 'sine', 0.1, 0.04);
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active-btn-indigo'));
+            document.getElementById(`mode-${m}`).classList.add('active-btn-indigo');
+            document.getElementById('monocular-select').classList.toggle('hidden', m !== 'monocular');
+            document.getElementById('vergence-section').classList.toggle('hidden', m === 'monocular');
+            updateDuctionLabels();
+            setGaze(currentGazeKey);
+        }
+
+        function setActiveEye(e) {
+            activeEye = e;
+            playAudioTone(580, 'sine', 0.1, 0.04);
+            document.querySelectorAll('.eye-btn').forEach(b => b.classList.remove('active-btn-indigo'));
+            document.getElementById(`eye-${e}`).classList.add('active-btn-indigo');
+            updateDuctionLabels();
+            setGaze(currentGazeKey);
+        }
+
+        function updateDuctionLabels() {
+            const lLbl = document.getElementById('label-left');
+            const rLbl = document.getElementById('label-right');
+            if (currentMode === 'binocular') {
+                rLbl.innerText = "Dextro (Right)"; lLbl.innerText = "Levo (Left)";
+            } else {
+                rLbl.innerText = activeEye === 'OD' ? "Abduction" : "Adduction";
+                lLbl.innerText = activeEye === 'OD' ? "Adduction" : "Abduction";
+            }
+        }
+
+        function toggleCranialNervePalsy(nerve) {
+            playAudioTone(500, 'triangle', 0.15, 0.06);
+            activePalsyNerve = (activePalsyNerve === nerve) ? null : nerve;
+            if (rightPupilMesh) rightPupilMesh.scale.setScalar(activePalsyNerve === 'CN III' ? 1.6 : 1.0);
+            setGaze(currentGazeKey);
+        }
+
+        function setGaze(key) {
+            currentGazeKey = key;
+            const baseData = config[key] || config['primary'];
+            let lRot = [...baseData.L], rRot = [...baseData.R];
+            let displayLabel = baseData.label;
+            let odPri = baseData.odPri, odSec = baseData.odSec;
+            let osPri = baseData.osPri, osSec = baseData.osSec;
+
+            if (currentMode === 'binocular') {
+                if (key === 'torsion-left') {
+                    displayLabel = "Levocycloversion"; lRot = [0, 0, -0.35]; rRot = [0, 0, -0.35];
+                    odPri = 'Inferior Rectus'; odSec = 'Inferior Oblique'; osPri = 'Superior Rectus'; osSec = 'Superior Oblique';
+                } else if (key === 'torsion-right') {
+                    displayLabel = "Dextrocycloversion"; lRot = [0, 0, 0.35]; rRot = [0, 0, 0.35];
+                    odPri = 'Superior Rectus'; odSec = 'Superior Oblique'; osPri = 'Inferior Rectus'; osSec = 'Inferior Oblique';
+                }
+            } else {
+                if (activeEye === 'OD') {
+                    lRot = [0,0,0]; osPri = 'None'; osSec = 'None';
+                    if (key === 'torsion-left') { displayLabel = "Incycloduction"; rRot = [0, 0, -0.35]; odPri = 'Superior Rectus'; odSec = 'Superior Oblique'; }
+                    else if (key === 'torsion-right') { displayLabel = "Excycloduction"; rRot = [0, 0, 0.35]; odPri = 'Inferior Rectus'; odSec = 'Inferior Oblique'; }
+                    else displayLabel = getDuctionTerm(key, 'OD');
+                } else {
+                    rRot = [0,0,0]; odPri = 'None'; odSec = 'None';
+                    if (key === 'torsion-left') { displayLabel = "Incycloduction"; lRot = [0, 0, 0.35]; osPri = 'Superior Rectus'; osSec = 'Superior Oblique'; }
+                    else if (key === 'torsion-right') { displayLabel = "Excycloduction"; lRot = [0, 0, -0.35]; osPri = 'Inferior Rectus'; osSec = 'Inferior Oblique'; }
+                    else displayLabel = getDuctionTerm(key, 'OS');
+                }
+            }
+
+            if (activePalsyNerve) {
+                if (activePalsyNerve === 'CN III') { rRot = [0.35, -0.5, -0.2]; odPri = 'Paralyzed CN III'; odSec = 'Unchallenged LR'; displayLabel += " (OD CN III Palsy)"; }
+                else if (activePalsyNerve === 'CN IV' && (key === 'levo' || key === 'down-levo')) { rRot = [-0.25, 0.45, 0.15]; odPri = 'SO Failure'; displayLabel += " (OD CN IV Palsy)"; }
+                else if (activePalsyNerve === 'CN VI' && ['dextro', 'up-dextro', 'down-dextro'].includes(key)) { rRot = [rRot[0], 0, rRot[2]]; odPri = 'Abduction Deficit'; displayLabel += " (OD CN VI Palsy)"; }
+            }
+
+            const formatCell = (p, s) => (p === 'None' ? 'None' : (s === 'None' ? p : `${p} + ${s}`));
+            document.getElementById('od-muscle-display').innerText = formatCell(odPri, odSec);
+            document.getElementById('os-muscle-display').innerText = formatCell(osPri, osSec);
+            document.getElementById('movement-label').innerText = displayLabel;
+            
+            targetRotL.set(lRot[0], lRot[1], lRot[2]);
+            targetRotR.set(rRot[0], rRot[1], rRot[2]);
+            
+            document.querySelectorAll('button[id^="btn-"]').forEach(b => {
+                if(b.id.startsWith('btn-hl-') || b.id.startsWith('btn-axis-') || b.id.startsWith('btn-hn-')) return; 
+                b.classList.remove('active-btn', 'active-btn-indigo');
+            });
+            const btn = document.getElementById(`btn-${key}`); 
+            if (btn) btn.classList.add(currentViewMode === 'movement' ? 'active-btn-indigo' : 'active-btn');
+            
+            const activeOD = [odPri, odSec]; const activeOS = [osPri, osSec];
+            Object.keys(leftMuscles).forEach(k => leftMuscles[k].userData.isActive = activeOS.includes(muscleInfo[k].name));
+            Object.keys(rightMuscles).forEach(k => rightMuscles[k].userData.isActive = activeOD.includes(muscleInfo[k].name));
+
+            updateFloatingLabelsVisibility();
+        }
+
+        function getDuctionTerm(key, side) {
+            if (key === 'primary') return "Primary Position";
+            if (key === 'up') return "Supraduction";
+            if (key === 'down') return "Infraduction";
+            return side === 'OD' ? (key === 'dextro' ? "Abduction" : "Adduction") : (key === 'levo' ? "Abduction" : "Adduction");
+        }
+
+        function getMuscleLabelText(side, id) {
+            if (id === 'AoZ') {
+                return `<span style="font-size:11px; font-weight:900;">Annulus of Zinn</span><br><span style="color:#34d399; font-size:8.5px;">Common Tendinous Ring<br>Origin of Recti Muscles</span>`;
+            }
+            if (id === 'SO_Origin') {
+                return `<span style="font-size:11px; font-weight:900;">Sphenoid Origin (SO)</span><br><span style="color:#f59e0b; font-size:8.5px;">Anatomical origin of the<br>Superior Oblique muscle</span>`;
+            }
+            if (id === 'IO_Origin') {
+                return `<span style="font-size:11px; font-weight:900;">Orbital Floor Origin (IO)</span><br><span style="color:#f59e0b; font-size:8.5px;">Anatomical origin of the<br>Inferior Oblique muscle</span>`;
+            }
+            if (currentViewMode === 'angles') {
+                if (id === 'MR') return "<span style='font-size:11px; font-weight:900;'>Medial Rectus</span><br><span style='color:#94a3b8; font-size:8.5px;'>5.5mm from Limbus (~11mm from Pupil)<br>Pull Axis: 0°</span>";
+                if (id === 'IR') return "<span style='font-size:11px; font-weight:900;'>Inferior Rectus</span><br><span style='color:#fb923c; font-size:8.5px;'>6.5mm from Limbus (~12mm from Pupil)<br>Pull Axis: 23°</span>";
+                if (id === 'LR') return "<span style='font-size:11px; font-weight:900;'>Lateral Rectus</span><br><span style='color:#94a3b8; font-size:8.5px;'>6.9mm from Limbus (~12.4mm from Pupil)<br>Pull Axis: 0°</span>";
+                if (id === 'SR') return "<span style='font-size:11px; font-weight:900;'>Superior Rectus</span><br><span style='color:#fb923c; font-size:8.5px;'>7.7mm from Limbus (~13.2mm from Pupil)<br>Pull Axis: 23°</span>";
+                if (id === 'SO') return "<span style='font-size:11px; font-weight:900;'>Superior Oblique</span><br><span style='color:#fbbf24; font-size:8.5px;'>Post-equatorial<br>Pull Axis: 51°</span>";
+                if (id === 'IO') return "<span style='font-size:11px; font-weight:900;'>Inferior Oblique</span><br><span style='color:#fbbf24; font-size:8.5px;'>Post-equatorial<br>Pull Axis: 51°</span>";
+            }
+            if (currentViewMode === 'nerves') {
+                const activeCN = activeNerveHighlight || (hoveredNerveInfo ? hoveredNerveInfo.name : null);
+                if (activeCN && nerveSupplyMap[activeCN] && nerveSupplyMap[activeCN].includes(id)) {
+                    return `<span style="font-size:11px; font-weight:900;">${muscleInfo[id].name}</span><br><span style="color:#fbbf24; font-size:9px; font-weight:800;">Supplied by ${activeCN}</span>`;
+                }
+            }
+            if (currentViewMode === 'laws') {
+                if (activeLaw === 'sherrington' && side === 'OD') {
+                    if (id === 'LR') return `<span style="font-size:11px; font-weight:900;">Lateral Rectus (Agonist)</span><br><span style="color:#6ee7b7; font-size:9px; font-weight:800; letter-spacing:0.05em;">↑ Increased Innervation (Contracts)</span>`;
+                    if (id === 'MR') return `<span style="font-size:11px; font-weight:900;">Medial Rectus (Antagonist)</span><br><span style="color:#fca5a5; font-size:9px; font-weight:800; letter-spacing:0.05em;">↓ Proportional Relaxation</span>`;
+                }
+                if (activeLaw === 'hering') {
+                    if (side === 'OD' && id === 'LR') return `<span style="font-size:11px; font-weight:900;">OD Lateral Rectus (Yoke)</span><br><span style="color:#d8b4fe; font-size:9px; font-weight:800; letter-spacing:0.05em;">= EQUAL YOKE INNERVATION</span>`;
+                    if (side === 'OS' && id === 'MR') return `<span style="font-size:11px; font-weight:900;">OS Medial Rectus (Yoke)</span><br><span style="color:#d8b4fe; font-size:9px; font-weight:800; letter-spacing:0.05em;">= EQUAL YOKE INNERVATION</span>`;
+                }
+                if (activeLaw === 'synergist' && side === 'OD') {
+                    if (id === 'SR') return `<span style="font-size:11px; font-weight:900;">OD Superior Rectus (Synergist)</span><br><span style="color:#93c5fd; font-size:9px; font-weight:800; letter-spacing:0.05em;">↑ Co-contracts for Elevation</span>`;
+                    if (id === 'IO') return `<span style="font-size:11px; font-weight:900;">OD Inferior Oblique (Synergist)</span><br><span style="color:#93c5fd; font-size:9px; font-weight:800; letter-spacing:0.05em;">↑ Co-contracts for Elevation</span>`;
+                }
+                if (activeLaw === 'listing') {
+                    if (side === 'OD' && id === 'SR') return `<span style="font-size:11px; font-weight:900;">OD Superior Rectus</span><br><span style="color:#fde047; font-size:9px; font-weight:800; letter-spacing:0.05em;">Fixed Torsion (Donder's)</span>`;
+                    if (side === 'OS' && id === 'IO') return `<span style="font-size:11px; font-weight:900;">OS Inferior Oblique</span><br><span style="color:#fde047; font-size:9px; font-weight:800; letter-spacing:0.05em;">Listing's Plane Axis</span>`;
+                }
+            }
+            if (currentViewMode === 'muscles' && activeActionGroup && side === 'OD') {
+                const roles = clinicalActionGroups[activeActionGroup].roles;
+                if (roles[id]) return `<span style="font-size:11px; font-weight:900;">${muscleInfo[id].name}</span><br><span style="color:#93c5fd; font-size:9px; font-weight:800;">${roles[id]}</span>`;
+            }
+            return `<span style="font-size:11px; font-weight:900;">${muscleInfo[id] ? muscleInfo[id].name : id}</span>`;
+        }
+
+        function createNerves(side, group) {
+            const nervesGroup = new THREE.Group(); nervesGroup.visible = false; group.add(nervesGroup);
+            const posX = (side === 'R') ? -4.5 : 4.5; const r = 2.2;
+            const medX = side === 'R' ? r : -r; const latX = side === 'R' ? -r : r; const soX = (side === 'L') ? -2.2 : 2.2;
+
+            const yellowMaterial = () => new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xeab308, emissiveIntensity: 0.65, roughness: 0.1, transparent: true, opacity: 0.95 });
+
+            const addNerveSpline = (cnName, pts, thickness = 0.1) => {
+                const curve = new THREE.CatmullRomCurve3(pts);
+                const geo = new THREE.TubeGeometry(curve, 35, thickness, 8, false);
+                const mesh = new THREE.Mesh(geo, yellowMaterial());
+                mesh.userData = { type: 'CN', name: cnName, side: side === 'L' ? 'OS' : 'OD', originalColor: 0xfacc15, originalEmissive: 0xeab308 };
+                nervesGroup.add(mesh); nerveObjects.push(mesh);
+                return mesh;
+            };
+
+            const apexIII = new THREE.Vector3(0, -0.4, -13);
+            const brMR = addNerveSpline('CN III', [apexIII, new THREE.Vector3(medX * 0.4, -0.2, -8), new THREE.Vector3(medX * 1.05, 0, -3.5)], 0.08); 
+            const brSR = addNerveSpline('CN III', [apexIII, new THREE.Vector3(0, r * 0.4, -8), new THREE.Vector3(0, r * 0.95, -3.5)], 0.08); 
+            const brIR = addNerveSpline('CN III', [apexIII, new THREE.Vector3(0, -r * 0.4, -8), new THREE.Vector3(0, -r * 0.95, -3.5)], 0.08); 
+            const brIO = addNerveSpline('CN III', [apexIII, new THREE.Vector3(side === 'L' ? 0.4 : -0.4, -2.4, -5), new THREE.Vector3(0, -3.1, 0.5)], 0.08); 
+            const mainIII = addNerveSpline('CN III', [new THREE.Vector3(0, -0.4, -18), apexIII], 0.16); 
+            const mainIV = addNerveSpline('CN IV', [new THREE.Vector3(side === 'L' ? 0.6 : -0.6, r + 0.9, -18), new THREE.Vector3(soX * 0.9, r + 0.6, -11), new THREE.Vector3(soX * 0.95, 2.5, -3)], 0.12);
+            const mainVI = addNerveSpline('CN VI', [new THREE.Vector3(latX * 0.4, -0.4, -18), new THREE.Vector3(latX * 1.0, 0, -10), new THREE.Vector3(latX * 1.12, 0, -3.5)], 0.12);
+
+            if (side === 'L') leftNerves = { 'CN III': [brMR, brSR, brIR, brIO, mainIII], 'CN IV': [mainIV], 'CN VI': [mainVI], group: nervesGroup };
+            else rightNerves = { 'CN III': [brMR, brSR, brIR, brIO, mainIII], 'CN IV': [mainIV], 'CN VI': [mainVI], group: nervesGroup };
+        }
+
+        function createAngleIndicators(side, group) {
+            const indicatorsGroup = new THREE.Group(); indicatorsGroup.visible = false; group.add(indicatorsGroup); axisIndicators.push(indicatorsGroup);
+            const angle23 = 23 * Math.PI / 180; const signLat = side === 'R' ? -1 : 1; 
+            const rectusAxisDir = new THREE.Vector3(signLat * Math.sin(angle23), 0, Math.cos(angle23)).normalize();
+            
+            const visualAxisLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,5.5)]), new THREE.LineDashedMaterial({ color: 0x06b6d4, dashSize: 0.3, gapSize: 0.15 }));
+            visualAxisLine.computeLineDistances(); indicatorsGroup.add(visualAxisLine);
+
+            const rectusAxisLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), rectusAxisDir.clone().multiplyScalar(5.5)]), new THREE.LineDashedMaterial({ color: 0xf97316, dashSize: 0.2, gapSize: 0.1 }));
+            rectusAxisLine.computeLineDistances(); indicatorsGroup.add(rectusAxisLine);
+
+            const angle51 = 51 * Math.PI / 180; const signMed = side === 'R' ? 1 : -1; 
+            const obliqueAxisDir = new THREE.Vector3(signMed * Math.sin(angle51), 0, Math.cos(angle51)).normalize();
+            const obliqueAxisLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), obliqueAxisDir.clone().multiplyScalar(5.5)]), new THREE.LineDashedMaterial({ color: 0xeab308, dashSize: 0.2, gapSize: 0.1 }));
+            obliqueAxisLine.computeLineDistances(); indicatorsGroup.add(obliqueAxisLine);
+
+            const r = 2.2;
+            const spiralCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(side === 'R' ? r : -r, 0, 1).normalize().multiplyScalar(r + 0.04),
+                new THREE.Vector3(0, -r, 1).normalize().multiplyScalar(r + 0.04),
+                new THREE.Vector3(side === 'R' ? -r : r, 0, 1).normalize().multiplyScalar(r + 0.04),
+                new THREE.Vector3(0, r, 1).normalize().multiplyScalar(r + 0.04),
+                new THREE.Vector3(side === 'R' ? r : -r, 0, 1).normalize().multiplyScalar(r + 0.04)
+            ]);
+            const spiralLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(spiralCurve.getPoints(60)), new THREE.LineDashedMaterial({ color: 0x10b981, dashSize: 0.12, gapSize: 0.08 }));
+            spiralLine.computeLineDistances(); indicatorsGroup.add(spiralLine);
+        }
+
+        function createEyeUnit(side) {
+            const group = new THREE.Group(); group.position.x = (side === 'R') ? -4.5 : 4.5;
+
+            const sclera = new THREE.Mesh(new THREE.SphereGeometry(2.2, 64, 64), new THREE.MeshStandardMaterial({ map: createScleraTexture(), roughness: 0.03, metalness: 0.05 }));
+            group.add(sclera);
+            if (side === 'L') leftScleraMesh = sclera; else rightScleraMesh = sclera;
+
+            const iris = new THREE.Mesh(new THREE.CircleGeometry(1.2, 64), new THREE.MeshStandardMaterial({ map: createIrisTexture(), roughness: 0.3, metalness: 0.0 }));
+            iris.position.z = 2.165; group.add(iris);
+
+            const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.5, 64), new THREE.MeshBasicMaterial({ color: 0x010204 }));
+            pupil.position.z = 2.18; group.add(pupil);
+            if (side === 'L') leftPupilMesh = pupil; else rightPupilMesh = pupil;
+
+            const cornea = new THREE.Mesh(
+                new THREE.SphereGeometry(2.23, 64, 64, 0, Math.PI*2, 0, 1.1), 
+                new THREE.MeshPhysicalMaterial({ 
+                    color: 0xffffff, 
+                    transparent: true, 
+                    opacity: 0.1, 
+                    roughness: 0.0,
+                    metalness: 0.1,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.0,
+                    transmission: 0.4,
+                    ior: 1.376
+                })
+            );
+            cornea.rotation.x = -Math.PI / 2; group.add(cornea);
+            if (side === 'L') leftCorneaMesh = cornea; else rightCorneaMesh = cornea;
+
+            const muscles = {}; const r = 2.2, originZ = -18;
+            const medX = side === 'R' ? r : -r, latX = side === 'R' ? -r : r; const muscleTex = createMuscleTexture();
+
+            const addM = (id, pts, thick) => {
+                const curve = new THREE.CatmullRomCurve3(pts);
+                const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, thick, 12, false), new THREE.MeshStandardMaterial({ map: muscleTex, color: muscleInfo[id].color, roughness: 0.2, transparent: true, opacity: 0.82 }));
+                m.userData = { id, side: side === 'L' ? 'OS' : 'OD', labelAnchor: pts[0].clone(), originalColor: muscleInfo[id].color };
+                group.add(m); muscles[id] = m; muscleObjects.push(m);
+            };
+
+            addM('MR', [new THREE.Vector3(medX, 0, 1), new THREE.Vector3(medX*1.2, 0, -5), new THREE.Vector3(0, 0, originZ)], 0.4);
+            addM('LR', [new THREE.Vector3(latX, 0, 1), new THREE.Vector3(latX*1.2, 0, -5), new THREE.Vector3(0, 0, originZ)], 0.4);
+            addM('SR', [new THREE.Vector3(0, r, 1), new THREE.Vector3(0, r+0.5, -5), new THREE.Vector3(0, 0.4, originZ)], 0.4);
+            addM('IR', [new THREE.Vector3(0, -r, 1), new THREE.Vector3(0, -r-0.5, -5), new THREE.Vector3(0, -0.4, originZ)], 0.4);
+            
+            const soX = (side === 'L') ? -2.2 : 2.2;
+            addM('SO', [new THREE.Vector3(side==='L'?0.5:-0.5, r, 1.2), new THREE.Vector3(soX, 2.6, 3), new THREE.Vector3(soX, 2.6, -8)], 0.22);
+            addM('IO', [new THREE.Vector3(side==='L'?0.5:-0.5, -r, 1.2), new THREE.Vector3(0, -3.6, 0), new THREE.Vector3(group.position.x, -3, -10)], 0.22);
+
+            const trochlea = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.07, 8, 24), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.4 }));
+            trochlea.position.set(soX, 2.6, 3); trochlea.rotation.y = Math.PI / 2; group.add(trochlea);
+
+            const eqPlane = new THREE.Mesh(new THREE.TorusGeometry(2.35, 0.015, 16, 100), new THREE.MeshBasicMaterial({color: 0xa855f7, transparent: true, opacity: 0.6}));
+            eqPlane.visible = false; group.add(eqPlane);
+
+            // Adding the Annulus of Zinn (Common Tendinous Ring) at the apex
+            const ringGeo = new THREE.TorusGeometry(1.2, 0.35, 12, 32);
+            const ringMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.6, transparent: true, opacity: 0.8 });
+            const annulusRing = new THREE.Mesh(ringGeo, ringMat);
+            annulusRing.position.set(0, 0, originZ);
+            annulusRing.userData = { id: 'AoZ', side: side === 'L' ? 'OS' : 'OD', originalColor: 0xd1d5db };
+            group.add(annulusRing);
+            muscleObjects.push(annulusRing); 
+
+            // Sphenoid Bone Origin flange for the Superior Oblique muscle
+            const soOriginGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.15, 16);
+            const bonyMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.9, metalness: 0.1, transparent: true, opacity: 0.8 });
+            const soOriginMesh = new THREE.Mesh(soOriginGeo, bonyMat);
+            soOriginMesh.position.set(soX, 2.6, -8);
+            soOriginMesh.rotation.x = Math.PI / 2;
+            soOriginMesh.userData = { id: 'SO_Origin', side: side === 'L' ? 'OS' : 'OD', originalColor: 0x94a3b8 };
+            group.add(soOriginMesh);
+            muscleObjects.push(soOriginMesh);
+
+            // Maxillary Orbital Floor Origin plate for the Inferior Oblique muscle
+            const ioOriginGeo = new THREE.BoxGeometry(0.8, 0.2, 0.8);
+            const ioOriginMesh = new THREE.Mesh(ioOriginGeo, bonyMat.clone());
+            ioOriginMesh.position.set(group.position.x, -3, -10);
+            ioOriginMesh.userData = { id: 'IO_Origin', side: side === 'L' ? 'OS' : 'OD', originalColor: 0x94a3b8 };
+            group.add(ioOriginMesh);
+            muscleObjects.push(ioOriginMesh);
+
+            if (side === 'L') leftAnnulusMesh = annulusRing; else rightAnnulusMesh = annulusRing;
+
+            return { group, muscles, plane: eqPlane, annulus: annulusRing };
+        }
+
+        function createFloatingLabels() {
+            const overlay = document.getElementById('labels-overlay'); overlay.innerHTML = ''; 
+            ['OD', 'OS'].forEach(side => {
+                Object.entries(muscleInfo).forEach(([id, info]) => {
+                    const label = document.createElement('div'); label.className = 'floating-label'; label.id = `label-${side}-${id}`;
+                    label.innerHTML = `<span style="font-size:11px; font-weight:900;">${info.name}</span>`; 
+                    label.onmouseenter = () => { hoveredFromLabel = { side, id }; updateFloatingLabelsVisibility(); };
+                    label.onmouseleave = () => { hoveredFromLabel = null; updateFloatingLabelsVisibility(); };
+                    overlay.appendChild(label);
+                });
+                
+                // Add explicit label for the Annulus of Zinn
+                const annulusLabel = document.createElement('div');
+                annulusLabel.className = 'floating-label border-emerald-500/50 text-emerald-400 font-extrabold';
+                annulusLabel.id = `label-${side}-AoZ`;
+                annulusLabel.innerHTML = "Annulus of Zinn";
+                annulusLabel.onmouseenter = () => { hoveredFromLabel = { side, id: 'AoZ' }; updateFloatingLabelsVisibility(); };
+                annulusLabel.onmouseleave = () => { hoveredFromLabel = null; updateFloatingLabelsVisibility(); };
+                overlay.appendChild(annulusLabel);
+
+                // Add labels for Oblique Muscle Origin Landmarks
+                ['SO_Origin', 'IO_Origin'].forEach(orgId => {
+                    const label = document.createElement('div');
+                    label.className = 'floating-label border-amber-500/50 text-amber-400 font-extrabold';
+                    label.id = `label-${side}-${orgId}`;
+                    label.innerHTML = orgId === 'SO_Origin' ? "Sphenoid Origin (SO)" : "Orbital Floor Origin (IO)";
+                    label.onmouseenter = () => { hoveredFromLabel = { side, id: orgId }; updateFloatingLabelsVisibility(); };
+                    label.onmouseleave = () => { hoveredFromLabel = null; updateFloatingLabelsVisibility(); };
+                    overlay.appendChild(label);
+                });
+
+                ['CN III', 'CN IV', 'CN VI'].forEach(cnName => {
+                    const label = document.createElement('div'); label.className = 'floating-label border-amber-500/50 shadow-md text-amber-400 font-extrabold'; label.id = `label-${side}-${cnName.replace(' ', '')}`;
+                    label.innerHTML = cnName; 
+                    label.onmouseenter = () => { hoveredFromNerveLabel = { side, name: cnName }; updateFloatingLabelsVisibility(); };
+                    label.onmouseleave = () => { hoveredFromNerveLabel = null; updateFloatingLabelsVisibility(); };
+                    overlay.appendChild(label);
+                });
+                ['23', '51'].forEach(deg => {
+                    const label = document.createElement('div'); label.className = 'floating-label border-emerald-500/40 text-emerald-400 font-extrabold bg-slate-900/95 text-[9px] px-2 py-0.5 rounded'; label.id = `label-angle-${side}-${deg}`;
+                    label.innerHTML = `${deg}° Pull`; overlay.appendChild(label);
+                });
+            });
+        }
+
+        function updateFloatingLabelsVisibility() {
+            ['OD', 'OS'].forEach(side => {
+                Object.keys(muscleInfo).forEach(id => {
+                    const label = document.getElementById(`label-${side}-${id}`);
+                    if (!label) return;
+                    
+                    let shouldShow = false;
+
+                    if (currentViewMode === 'nerves') {
+                        const activeCN = activeNerveHighlight || (hoveredNerveInfo ? hoveredNerveInfo.name : null);
+                        if (activeCN && nerveSupplyMap[activeCN] && nerveSupplyMap[activeCN].includes(id)) {
+                            shouldShow = true;
+                        }
+                    }
+                    else if (currentViewMode === 'laws' && activeLaw) {
+                        if (activeLaw === 'sherrington' && side === 'OD' && (id === 'LR' || id === 'MR')) shouldShow = true;
+                        if (activeLaw === 'hering' && ((side === 'OD' && id === 'LR') || (side === 'OS' && id === 'MR'))) shouldShow = true;
+                        if (activeLaw === 'synergist' && side === 'OD' && (id === 'SR' || id === 'IO')) shouldShow = true;
+                        if (activeLaw === 'listing' && ((side === 'OD' && id === 'SR') || (side === 'OS' && id === 'IO'))) shouldShow = true;
+                    } 
+                    else if (currentViewMode === 'quiz') {
+                        // Dynamically highlight during Exam focus
+                        const activeQ = quizQuestions[quizState.currentIdx];
+                        if (activeQ && activeQ.anatomyFocus === id) {
+                            shouldShow = true;
+                        }
+                    }
+                    else if (manualMuscleHighlight) {
+                        shouldShow = (id === manualMuscleHighlight);
+                    } 
+                    else if (activeActionGroup) {
+                        shouldShow = (side === 'OD' && clinicalActionGroups[activeActionGroup].roles[id]);
+                    } 
+                    else {
+                        shouldShow = ['muscles', 'angles', 'movement', 'nerves', 'laws'].includes(currentViewMode);
+                    }
+
+                    label.style.display = shouldShow ? 'block' : 'none';
+                    if(shouldShow) label.innerHTML = getMuscleLabelText(side, id);
+                });
+
+                // Annulus label visibility logic supporting real-time hover feedback
+                const annulusLabel = document.getElementById(`label-${side}-AoZ`);
+                if (annulusLabel) {
+                    let isHovered = (hoveredMuscleRef && hoveredMuscleRef.userData.id === 'AoZ' && hoveredMuscleRef.userData.side === side) ||
+                                    (hoveredFromLabel && hoveredFromLabel.id === 'AoZ' && hoveredFromLabel.side === side);
+                    let isRingQuizFocus = (currentViewMode === 'quiz' && quizQuestions[quizState.currentIdx]?.anatomyFocus === 'AoZ');
+                    
+                    let showAnnulus = (currentViewMode === 'angles') || 
+                                      (manualMuscleHighlight === 'AoZ') || 
+                                      isRingQuizFocus || 
+                                      isHovered;
+                    annulusLabel.style.display = showAnnulus ? 'block' : 'none';
+                    if (showAnnulus) annulusLabel.innerHTML = getMuscleLabelText(side, 'AoZ');
+                }
+
+                // Oblique origin labels visibility logic supporting real-time hover feedback
+                ['SO_Origin', 'IO_Origin'].forEach(orgId => {
+                    const label = document.getElementById(`label-${side}-${orgId}`);
+                    if (label) {
+                        let isHovered = (hoveredMuscleRef && hoveredMuscleRef.userData.id === orgId && hoveredMuscleRef.userData.side === side) ||
+                                        (hoveredFromLabel && hoveredFromLabel.id === orgId && hoveredFromLabel.side === side);
+                        let isOrgQuizFocus = (currentViewMode === 'quiz' && quizQuestions[quizState.currentIdx]?.anatomyFocus === orgId);
+                        let showOrg = (currentViewMode === 'angles') ||
+                                      (manualMuscleHighlight === orgId) ||
+                                      isOrgQuizFocus ||
+                                      isHovered;
+                        label.style.display = showOrg ? 'block' : 'none';
+                        if (showOrg) label.innerHTML = getMuscleLabelText(side, orgId);
+                    }
+                });
+
+                ['CNIII', 'CNIV', 'CNVI'].forEach(cnId => {
+                    const label = document.getElementById(`label-${side}-${cnId}`);
+                    if (label) {
+                        let showNerveLabel = (currentViewMode === 'nerves');
+                        if (currentViewMode === 'quiz') {
+                            const actQ = quizQuestions[quizState.currentIdx];
+                            const nerveStr = cnId === 'CNIII' ? 'CN III' : (cnId === 'CNIV' ? 'CN IV' : 'CN VI');
+                            if (actQ && actQ.anatomyFocus === nerveStr) showNerveLabel = true;
+                        }
+                        label.style.display = showNerveLabel ? 'block' : 'none';
+                    }
+                });
+                ['23', '51'].forEach(deg => {
+                    const label = document.getElementById(`label-angle-${side}-${deg}`);
+                    if (label) {
+                        label.style.display = (currentViewMode === 'angles') ? 'block' : 'none';
+                    }
+                });
+            });
+        }
+
+        function updateUIOverlays() {
+            const container = document.getElementById('three-container'); if (!container) return;
+            const widthHalf = container.clientWidth / 2, heightHalf = container.clientHeight / 2; const vector = new THREE.Vector3();
+            
+            [ {obj: rightEye, id: 'badge-od'}, {obj: leftEye, id: 'badge-os'} ].forEach(e => {
+                const el = document.getElementById(e.id);
+                if (el) {
+                    vector.set(0, 3.8, 0); e.obj.localToWorld(vector); vector.project(camera);
+                    el.style.left = `${(vector.x * widthHalf) + widthHalf}px`; el.style.top = `${-(vector.y * heightHalf) + heightHalf}px`;
+                }
+            });
+
+            if (['muscles', 'angles', 'movement', 'nerves', 'laws', 'quiz'].includes(currentViewMode)) {
+                [ {eye: leftEye, m: leftMuscles, s: 'OS'}, {eye: rightEye, m: rightMuscles, s: 'OD'} ].forEach(e => {
+                    Object.entries(e.m).forEach(([id, m]) => {
+                        const label = document.getElementById(`label-${e.s}-${id}`); if (!label || label.style.display === 'none') return;
+                        
+                        let isLawHighlight = false;
+                        if (currentViewMode === 'nerves') {
+                            const activeCN = activeNerveHighlight || (hoveredNerveInfo ? hoveredNerveInfo.name : null);
+                            if (activeCN && nerveSupplyMap[activeCN] && nerveSupplyMap[activeCN].includes(id)) {
+                                isLawHighlight = true;
+                            }
+                        }
+                        else if (currentViewMode === 'laws' && activeLaw) {
+                            if (activeLaw === 'sherrington' && e.s === 'OD' && (id === 'LR' || id === 'MR')) isLawHighlight = true;
+                            if (activeLaw === 'hering' && ((e.s === 'OD' && id === 'LR') || (e.s === 'OS' && id === 'MR'))) isLawHighlight = true;
+                            if (activeLaw === 'synergist' && e.s === 'OD' && (id === 'SR' || id === 'IO')) isLawHighlight = true;
+                            if (activeLaw === 'listing' && ((e.s === 'OD' && id === 'SR') || (e.s === 'OS' && id === 'IO'))) isLawHighlight = true;
+                        }
+
+                        vector.copy(m.userData.labelAnchor); m.localToWorld(vector); vector.project(camera);
+                        if (vector.z > 1) { label.style.display = 'none'; } 
+                        else {
+                            label.style.display = 'block';
+                            label.style.left = `${(vector.x * widthHalf) + widthHalf}px`; label.style.top = `${-(vector.y * heightHalf) + heightHalf}px`;
+                            
+                            let isQuizFocus = false;
+                            if (currentViewMode === 'quiz') {
+                                const actQ = quizQuestions[quizState.currentIdx];
+                                if (actQ && actQ.anatomyFocus === id) isQuizFocus = true;
+                            }
+
+                            const activeHl = (hoveredMuscleRef === m) || id === manualMuscleHighlight || (hoveredFromLabel && hoveredFromLabel.id === id && hoveredFromLabel.side === e.s) || (activeActionGroup && e.s === 'OD' && clinicalActionGroups[activeActionGroup].roles[id]) || isLawHighlight || isQuizFocus;
+                            
+                            if (currentViewMode === 'laws' && isLawHighlight) {
+                                if (activeLaw === 'sherrington' && id === 'MR') {
+                                    label.className = `floating-label bg-red-950/80 !opacity-90 !scale-110 shadow-lg border-red-500/50`;
+                                } else if (activeLaw === 'sherrington' && id === 'LR') {
+                                    label.className = `floating-label bg-emerald-950/80 !opacity-100 !scale-110 shadow-lg border-emerald-500/50`;
+                                } else if (activeLaw === 'synergist') {
+                                    label.className = `floating-label bg-blue-950/80 !opacity-100 !scale-110 shadow-lg border-blue-500/50`;
+                                } else {
+                                    label.className = `floating-label bg-purple-950/90 !opacity-100 !scale-110 shadow-lg shadow-purple-500/30 border-purple-500/50`;
+                                }
+                            } else if (isQuizFocus) {
+                                label.className = `floating-label hl-quiz text-white font-extrabold scale-110 animate-bounce`;
+                            } else {
+                                label.className = `floating-label ${activeHl ? 'hl-' + currentViewMode : ''} ${(!activeHl && m.userData.isActive) ? 'active-label' : ''}`;
+                            }
+                        }
+                    });
+
+                    // Update Zinn's Ring labels with adaptive hover support
+                    const annulusLabel = document.getElementById(`label-${e.s}-AoZ`);
+                    if (annulusLabel && annulusLabel.style.display !== 'none') {
+                        let isRingQuizFocus = (currentViewMode === 'quiz' && quizQuestions[quizState.currentIdx]?.anatomyFocus === 'AoZ');
+                        let isHovered = (hoveredMuscleRef && hoveredMuscleRef.userData.id === 'AoZ' && hoveredMuscleRef.userData.side === e.s) ||
+                                        (hoveredFromLabel && hoveredFromLabel.id === 'AoZ' && hoveredFromLabel.side === e.s);
+                        let isHl = (manualMuscleHighlight === 'AoZ') || isRingQuizFocus || isHovered;
+                        
+                        vector.set(0, 0, -18); e.eye.localToWorld(vector); vector.project(camera);
+                        if (vector.z > 1) annulusLabel.style.display = 'none';
+                        else {
+                            annulusLabel.style.display = 'block';
+                            annulusLabel.style.left = `${(vector.x * widthHalf) + widthHalf}px`;
+                            annulusLabel.style.top = `${-(vector.y * heightHalf) + heightHalf}px`;
+                            annulusLabel.className = `floating-label ${isHl ? (isRingQuizFocus ? 'hl-quiz animate-bounce text-white' : 'hl-angles text-white') : 'bg-slate-900/95 text-emerald-400 opacity-80'}`;
+                        }
+                    }
+
+                    // Update Oblique Muscle Origin labels with dynamic screen coordinates and hover triggers
+                    ['SO_Origin', 'IO_Origin'].forEach(orgId => {
+                        const orgLabel = document.getElementById(`label-${e.s}-${orgId}`);
+                        if (orgLabel && orgLabel.style.display !== 'none') {
+                            let isOrgQuizFocus = (currentViewMode === 'quiz' && quizQuestions[quizState.currentIdx]?.anatomyFocus === orgId);
+                            let isHovered = (hoveredMuscleRef && hoveredMuscleRef.userData.id === orgId && hoveredMuscleRef.userData.side === e.s) ||
+                                            (hoveredFromLabel && hoveredFromLabel.id === orgId && hoveredFromLabel.side === e.s);
+                            let isHl = (manualMuscleHighlight === orgId) || isOrgQuizFocus || isHovered;
+
+                            let targetMesh = null;
+                            e.eye.traverse(child => {
+                                if (child.userData && child.userData.id === orgId) {
+                                    targetMesh = child;
+                                }
+                            });
+
+                            if (targetMesh) {
+                                vector.copy(targetMesh.position);
+                                e.eye.localToWorld(vector);
+                                vector.project(camera);
+                                if (vector.z > 1) orgLabel.style.display = 'none';
+                                else {
+                                    orgLabel.style.display = 'block';
+                                    orgLabel.style.left = `${(vector.x * widthHalf) + widthHalf}px`;
+                                    orgLabel.style.top = `${-(vector.y * heightHalf) + heightHalf}px`;
+                                    orgLabel.className = `floating-label ${isHl ? (isOrgQuizFocus ? 'hl-quiz animate-bounce text-white' : 'hl-angles text-white') : 'bg-slate-900/95 text-amber-400 opacity-80'}`;
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+
+            if (currentViewMode === 'nerves' || currentViewMode === 'quiz') {
+                ['L', 'R'].forEach(sideChar => {
+                    const side = sideChar === 'L' ? 'OS' : 'OD';
+                    const groupObj = sideChar === 'L' ? leftEye : rightEye;
+                    const r = 2.2;
+                    const latX = sideChar === 'R' ? -r : r;
+                    const soX = (sideChar === 'L') ? -2.2 : 2.2;
+
+                    const cnAnchors = {
+                        'CNIII': new THREE.Vector3(0, -0.4, -6),
+                        'CNIV': new THREE.Vector3(soX * 0.9, r + 0.5, -6),
+                        'CNVI': new THREE.Vector3(latX * 1.1, -0.4, -6)
+                    };
+
+                    Object.entries(cnAnchors).forEach(([cnId, localPos]) => {
+                        const label = document.getElementById(`label-${side}-${cnId}`);
+                        if (!label || label.style.display === 'none') return;
+                        vector.copy(localPos); groupObj.localToWorld(vector); vector.project(camera);
+                        if (vector.z > 1) label.style.display = 'none';
+                        else {
+                            label.style.display = 'block';
+                            label.style.left = `${(vector.x * widthHalf) + widthHalf}px`;
+                            label.style.top = `${-(vector.y * heightHalf) + heightHalf}px`;
+                            
+                            const realCnName = cnId === 'CNIII' ? 'CN III' : (cnId === 'CNIV' ? 'CN IV' : 'CN VI');
+                            let isQuizFocus = (currentViewMode === 'quiz' && quizQuestions[quizState.currentIdx]?.anatomyFocus === realCnName);
+                            
+                            const isNerveHovered = (hoveredNerveInfo && hoveredNerveInfo.name === realCnName && (hoveredNerveInfo.side === side || hoveredNerveInfo.side === 'BOTH')) || (hoveredFromNerveLabel && hoveredFromNerveLabel.name === realCnName && hoveredFromNerveLabel.side === side) || (activePalsyNerve === realCnName && side === 'OD') || (activeNerveHighlight === realCnName) || isQuizFocus;
+                            
+                            label.className = `floating-label border-amber-500/50 shadow-md ${isNerveHovered ? (isQuizFocus ? 'hl-quiz animate-bounce text-white' : 'hl-nerves text-white') : 'bg-slate-900/95 text-amber-400 opacity-80'}`;
+                        }
+                    });
+                });
+            }
+
+            if (currentViewMode === 'angles') {
+                ['L', 'R'].forEach(sideChar => {
+                    const side = sideChar === 'L' ? 'OS' : 'OD';
+                    const groupObj = sideChar === 'L' ? leftEye : rightEye;
+                    
+                    const angle23 = 23 * Math.PI / 180;
+                    const signLat = sideChar === 'R' ? -1 : 1;
+                    const pos23 = new THREE.Vector3(signLat * Math.sin(angle23/2) * 4.0, 0, Math.cos(angle23/2) * 4.0);
+                    
+                    const angle51 = 51 * Math.PI / 180;
+                    const signMed = sideChar === 'R' ? 1 : -1;
+                    const pos51 = new THREE.Vector3(signMed * Math.sin(angle51/2) * 3.0, 0, Math.cos(angle51/2) * 3.0);
+
+                    const lbl23 = document.getElementById(`label-angle-${side}-23`);
+                    if (lbl23 && lbl23.style.display !== 'none') {
+                        vector.copy(pos23); groupObj.localToWorld(vector); vector.project(camera);
+                        if (vector.z > 1) lbl23.style.display = 'none';
+                        else {
+                            lbl23.style.display = 'block';
+                            lbl23.style.left = `${(vector.x * widthHalf) + widthHalf}px`;
+                            lbl23.style.top = `${-(vector.y * heightHalf) + heightHalf}px`;
+                        }
+                    }
+
+                    const lbl51 = document.getElementById(`label-angle-${side}-51`);
+                    if (lbl51 && lbl51.style.display !== 'none') {
+                        vector.copy(pos51); groupObj.localToWorld(vector); vector.project(camera);
+                        if (vector.z > 1) lbl51.style.display = 'none';
+                        else {
+                            lbl51.style.display = 'block';
+                            lbl51.style.left = `${(vector.x * widthHalf) + widthHalf}px`;
+                            lbl51.style.top = `${-(vector.y * heightHalf) + heightHalf}px`;
+                        }
+                    }
+                });
+            }
+        }
+
+        function init() {
+            const container = document.getElementById('three-container'); scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(35, container.clientWidth / container.clientHeight, 0.1, 1000); camera.position.set(0, 1.5, 17);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); container.appendChild(renderer.domElement);
+            
+            controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true;
+            raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2(-10, -10);
+            
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            const keyLight = new THREE.DirectionalLight(0xffffff, 1.1); keyLight.position.set(6, 12, 10); scene.add(keyLight);
+            
+            const catchLight1 = new THREE.PointLight(0xffffff, 1.8, 50); 
+            catchLight1.position.set(3, 4, 10); 
+            scene.add(catchLight1);
+            
+            const catchLight2 = new THREE.PointLight(0xe0f2fe, 0.7, 50); 
+            catchLight2.position.set(-4, -2, 8); 
+            scene.add(catchLight2);
+            
+            const OS = createEyeUnit('L'); leftEye = OS.group; leftMuscles = OS.muscles; leftPlane = OS.plane;
+            const OD = createEyeUnit('R'); rightEye = OD.group; rightMuscles = OD.muscles; rightPlane = OD.plane;
+            scene.add(leftEye, rightEye);
+            
+            createFloatingLabels(); createNerves('L', leftEye); createNerves('R', rightEye);
+            createAngleIndicators('L', leftEye); createAngleIndicators('R', rightEye);
+            
+            setViewMode('muscles'); setGaze('primary');
+            container.addEventListener('mousemove', (e) => {
+                const rect = container.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1; mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            });
+            updateCompletionProgress(); animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate); raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(muscleObjects); 
+            const newHovered = intersects.length > 0 ? intersects[0].object : null;
+            
+            // Trigger floating label state updates on live changes
+            if (newHovered !== hoveredMuscleRef) {
+                hoveredMuscleRef = newHovered;
+                updateFloatingLabelsVisibility();
+            }
+
+            // Smoothly calculate actual visual gaze changes
+            ['x','y','z'].forEach(ax => {
+                leftEye.rotation[ax] = THREE.MathUtils.lerp(leftEye.rotation[ax], targetRotL[ax], 0.1);
+                rightEye.rotation[ax] = THREE.MathUtils.lerp(rightEye.rotation[ax], targetRotR[ax], 0.1);
+            });
+
+            const themeColors = { 'muscles': 0x2563eb, 'angles': 0x10b981, 'movement': 0x4f46e5, 'nerves': 0xf59e0b, 'laws': 0xa855f7, 'quiz': 0xe11d48 };
+            const hlColor = themeColors[currentViewMode] || 0x2563eb;
+
+            muscleObjects.forEach(m => {
+                const id = m.userData.id;
+                const mSide = m.userData.side;
+                let isHl = (hoveredMuscleRef === m) || (id === manualMuscleHighlight) || (hoveredFromLabel && hoveredFromLabel.id === id && hoveredFromLabel.side === mSide);
+                if (activeActionGroup && m.userData.side === 'OD' && clinicalActionGroups[activeActionGroup].roles[id]) isHl = true;
+                
+                let targetCol = isHl ? hlColor : (m.userData.isActive ? 0x2563eb : m.userData.originalColor);
+                
+                // Set default visibility depending on the structure type
+                let defaultOpacity = 0.28;
+                if (id === 'AoZ' || id === 'SO_Origin' || id === 'IO_Origin') {
+                    defaultOpacity = (currentViewMode === 'angles') ? 0.85 : 0.28;
+                }
+                let targetOpacity = (isHl || m.userData.isActive) ? 1.0 : defaultOpacity;
+
+                // Handle Exam/Quiz Highlight Targets in 3D
+                if (currentViewMode === 'quiz') {
+                    const activeQ = quizQuestions[quizState.currentIdx];
+                    if (activeQ && activeQ.anatomyFocus === id) {
+                        targetCol = 0xe11d48; // Rose Highlight
+                        isHl = true;
+                        targetOpacity = 1.0;
+                    }
+                }
+
+                if (currentViewMode === 'nerves') {
+                    const activeCN = activeNerveHighlight || (hoveredNerveInfo ? hoveredNerveInfo.name : null) || (hoveredFromNerveLabel ? hoveredFromNerveLabel.name : null);
+                    if (activeCN && nerveSupplyMap[activeCN] && nerveSupplyMap[activeCN].includes(id)) {
+                        targetCol = hlColor; 
+                        isHl = true; 
+                        targetOpacity = 1.0;
+                    }
+                }
+
+                if (currentViewMode === 'laws' && activeLaw) {
+                    if (activeLaw === 'sherrington' && m.userData.side === 'OD') {
+                        if (id === 'LR') { targetCol = 0x10b981; isHl = true; targetOpacity = 1.0; } 
+                        if (id === 'MR') { targetCol = 0xef4444; isHl = true; targetOpacity = 0.4; } 
+                    }
+                    if (activeLaw === 'hering' && ((m.userData.side === 'OD' && id === 'LR') || (m.userData.side === 'OS' && id === 'MR'))) {
+                        targetCol = 0xa855f7; isHl = true; targetOpacity = 1.0; 
+                    }
+                    if (activeLaw === 'synergist' && m.userData.side === 'OD' && (id === 'SR' || id === 'IO')) {
+                        targetCol = 0x3b82f6; isHl = true; targetOpacity = 1.0; 
+                    }
+                    if (activeLaw === 'listing' && ((m.userData.side === 'OD' && id === 'SR') || (m.userData.side === 'OS' && id === 'IO'))) {
+                        targetCol = 0xf59e0b; isHl = true; targetOpacity = 1.0; 
+                    }
+                }
+
+                m.material.color.lerp(new THREE.Color(targetCol), 0.12);
+                m.material.opacity = THREE.MathUtils.lerp(m.material.opacity, targetOpacity, 0.12);
+            });
+
+            // Gentle glowing pulse for cranial nerves
+            const nervePulse = Math.sin(Date.now() * 0.004) * 0.15 + 0.5;
+            nerveObjects.forEach(n => {
+                const nName = n.userData.name;
+                const nSide = n.userData.side;
+                
+                let isNerveHovered = false;
+                if (activeNerveHighlight === nName) {
+                    isNerveHovered = true;
+                } else if (hoveredNerveInfo && hoveredNerveInfo.name === nName) {
+                    if (hoveredNerveInfo.side === 'BOTH' || hoveredNerveInfo.side === nSide) {
+                        isNerveHovered = true;
+                    }
+                } else if (hoveredFromNerveLabel && hoveredFromNerveLabel.name === nName && hoveredFromNerveLabel.side === nSide) {
+                    isNerveHovered = true;
+                }
+
+                // Quiz focus for Nerves
+                if (currentViewMode === 'quiz') {
+                    const activeQ = quizQuestions[quizState.currentIdx];
+                    if (activeQ && activeQ.anatomyFocus === nName) {
+                        isNerveHovered = true;
+                    }
+                }
+                
+                const targetCol = isNerveHovered ? (currentViewMode === 'quiz' ? 0xe11d48 : hlColor) : n.userData.originalColor;
+                const targetEmissive = isNerveHovered ? (currentViewMode === 'quiz' ? 0xe11d48 : hlColor) : n.userData.originalEmissive;
+                const targetOpacity = isNerveHovered ? 1.0 : (currentViewMode === 'nerves' ? 0.85 : 0.0);
+                
+                n.material.color.lerp(new THREE.Color(targetCol), 0.12);
+                n.material.emissive.lerp(new THREE.Color(targetEmissive), 0.12);
+                n.material.opacity = THREE.MathUtils.lerp(n.material.opacity, targetOpacity, 0.12);
+                
+                const dynamicPulseFactor = isNerveHovered ? 1.5 : 0.75;
+                n.material.emissiveIntensity = THREE.MathUtils.lerp(
+                    n.material.emissiveIntensity, 
+                    dynamicPulseFactor * (1 + nervePulse * 0.25), 
+                    0.12
+                );
+            });
+
+            updateUIOverlays(); controls.update(); renderer.render(scene, camera);
+        }
+
+        function simulateLaw(lawName) {
+            activeLaw = lawName; activeActionGroup = null; activePalsyNerve = null; playAudioTone(640, 'triangle', 0.1, 0.05);
+            
+            ['sherrington', 'hering', 'synergist', 'listing'].forEach(l => {
+                const card = document.getElementById(`card-law-${l}`);
+                if (card) card.className = (l === lawName) 
+                    ? "cursor-pointer bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-500 transition shadow-xs" 
+                    : "cursor-pointer bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-purple-400 transition shadow-xs";
+            });
+
+            if (leftPlane && rightPlane) {
+                leftPlane.visible = (lawName === 'listing');
+                rightPlane.visible = (lawName === 'listing');
+            }
+
+            if (lawName === 'sherrington') { setMode('monocular'); setActiveEye('OD'); setGaze('dextro'); } 
+            else if (lawName === 'hering') { setMode('binocular'); setGaze('dextro'); }
+            else if (lawName === 'synergist') { setMode('monocular'); setActiveEye('OD'); setGaze('up'); }
+            else if (lawName === 'listing') { setMode('binocular'); setGaze('up-dextro'); }
+            
+            updateFloatingLabelsVisibility();
+        }
+
+        function startQuiz() {
+            quizState.currentIdx = 0;
+            quizState.score = 0;
+            quizState.answered = false;
+            renderQuizQuestion();
+        }
+
+        function renderQuizQuestion() {
+            quizState.answered = false;
+            const q = quizQuestions[quizState.currentIdx];
+            
+            document.getElementById('quiz-q-index').innerText = `Question ${quizState.currentIdx + 1} of ${quizQuestions.length}`;
+            document.getElementById('quiz-question-text').innerText = q.question;
+            document.getElementById('quiz-score-badge').innerText = `Score: ${quizState.score}/${quizQuestions.length}`;
+            
+            const feedback = document.getElementById('quiz-feedback');
+            feedback.classList.add('hidden');
+            document.getElementById('quiz-action-btn').classList.add('hidden');
+
+            const optionsContainer = document.getElementById('quiz-options-container');
+            optionsContainer.innerHTML = '';
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition flex items-center justify-between";
+                btn.innerHTML = `<span>${opt}</span> <i class="fa-regular fa-circle text-slate-300"></i>`;
+                btn.onclick = () => selectQuizOption(idx, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            updateFloatingLabelsVisibility();
+        }
+
+        function selectQuizOption(selectedIdx, optionBtn) {
+            if (quizState.answered) return;
+            quizState.answered = true;
+
+            const q = quizQuestions[quizState.currentIdx];
+            const feedback = document.getElementById('quiz-feedback');
+            const nextBtn = document.getElementById('quiz-action-btn');
+
+            const allButtons = document.getElementById('quiz-options-container').querySelectorAll('button');
+
+            if (selectedIdx === q.correctIndex) {
+                // Correct
+                playAudioTone(880, 'sine', 0.15, 0.05);
+                optionBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border-2 border-emerald-500 text-emerald-800 dark:text-emerald-400 text-xs font-extrabold flex items-center justify-between";
+                optionBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-500";
+                
+                feedback.className = "p-3 rounded-xl text-[11px] font-semibold bg-emerald-100/60 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/50 leading-relaxed";
+                feedback.innerHTML = `<strong>Correct!</strong> ${q.explanation}`;
+                quizState.score++;
+            } else {
+                // Incorrect
+                playAudioTone(220, 'triangle', 0.25, 0.05);
+                optionBtn.className = "w-full text-left p-3 rounded-xl bg-rose-50 dark:bg-rose-950/20 border-2 border-rose-500 text-rose-800 dark:text-rose-400 text-xs font-extrabold flex items-center justify-between";
+                optionBtn.querySelector('i').className = "fa-solid fa-circle-xmark text-rose-500";
+
+                const correctBtn = allButtons[q.correctIndex];
+                correctBtn.className = "w-full text-left p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-500 text-emerald-800 dark:text-emerald-400 text-xs font-semibold flex items-center justify-between";
+                correctBtn.querySelector('i').className = "fa-solid fa-circle-check text-emerald-500";
+
+                feedback.className = "p-3 rounded-xl text-[11px] font-semibold bg-rose-100/60 dark:bg-rose-950/20 text-rose-800 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/50 leading-relaxed";
+                feedback.innerHTML = `<strong>Incorrect.</strong> ${q.explanation}`;
+            }
+
+            feedback.classList.remove('hidden');
+            nextBtn.classList.remove('hidden');
+            document.getElementById('quiz-score-badge').innerText = `Score: ${quizState.score}/${quizQuestions.length}`;
+        }
+
+        function nextQuizQuestion() {
+            quizState.currentIdx++;
+            if (quizState.currentIdx < quizQuestions.length) {
+                renderQuizQuestion();
+            } else {
+                // Quiz completed
+                playAudioTone(920, 'sine', 0.3, 0.05);
+                const container = document.getElementById('quiz-question-container');
+                container.innerHTML = `
+                    <div class="text-center py-6 space-y-3">
+                        <div class="w-16 h-16 rounded-full bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400 text-2xl mx-auto"><i class="fa-solid fa-trophy"></i></div>
+                        <h4 class="font-bold text-slate-800 dark:text-slate-100">Exam Finished!</h4>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">You scored <strong>${quizState.score} out of ${quizQuestions.length}</strong> on the board criteria exam.</p>
+                        <button onclick="startQuiz()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-extrabold rounded-lg transition uppercase">Retry Exam</button>
+                    </div>
+                `;
+                document.getElementById('quiz-feedback').classList.add('hidden');
+                document.getElementById('quiz-action-btn').classList.add('hidden');
+                
+                // Track Module Completion
+                hubState.completedSimulators.Quiz = true;
+                updateCompletionProgress();
+            }
+        }
+
+        function resetScene() {
+            playAudioTone(640, 'triangle', 0.15, 0.05);
+            setViewMode('muscles');
+        }
+
+        function openMenuModal(modalId) { 
+            if (modalId === 'reference' || modalId === 'about') {
+                playAudioTone(520, 'sine', 0.1, 0.04);
+            }
+            document.getElementById(`${modalId}Modal`).classList.remove('hidden'); 
+        }
+        function closeMenuModal(modalId) { document.getElementById(`${modalId}Modal`).classList.add('hidden'); }
+        function toggleMute() { 
+            hubState.soundMuted = !hubState.soundMuted; 
+            document.getElementById('muteIcon').className = hubState.soundMuted ? "fa-solid fa-volume-xmark text-rose-500" : "fa-solid fa-volume-high text-teal-600";
+            document.getElementById('muteText').innerText = hubState.soundMuted ? "Unmute" : "Mute";
+        }
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('sahselab_theme', isDark ? 'dark' : 'light');
+        }
+        window.onload = function() {
+            if (localStorage.getItem('sahselab_theme') === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+            init(); startQuiz();
+        };
+        window.onresize = () => {
+            const c = document.getElementById('three-container');
+            if (c && camera && renderer) { camera.aspect = c.clientWidth / c.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(c.clientWidth, c.clientHeight); }
+        };
+    </script>
+</body>
+</html>
